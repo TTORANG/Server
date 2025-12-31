@@ -1,0 +1,29 @@
+# 의존성 폴더 (컨테이너에서 새로 설치함)
+node_modules
+
+# 환경 변수 파일 (민감 정보)
+.env
+.env.*
+
+# Git 관련
+.git
+.gitignore
+
+# 로그 파일
+*.log
+npm-debug.log*
+
+# IDE/에디터 설정
+.idea
+.vscode
+
+# OS 관련
+.DS_Store
+
+# Docker 관련
+Dockerfile
+.dockerignore
+
+# 문서
+README.md
+*.md
