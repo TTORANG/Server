@@ -20,19 +20,3 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
-
-const storage = new Storage();
-const bucketName = process.env.GCS_BUCKET_NAME;
-
-async function testGCS() {
-  const file = storage.bucket(bucketName).file("permission-test.txt");
-
-  await file.save("ok");
-  await file.delete();
-  console.log("GCS 연결 성공");
-}
-
-testGCS().catch((err) => {
-  console.error("GCS 연결 실패");
-  console.error(err.message);
-});
