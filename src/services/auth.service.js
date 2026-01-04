@@ -3,10 +3,11 @@ import * as authRepository from "../repositories/auth.repository.js";
 import { EmailNotFoundError } from "../errors/auth.error.js";
 
 const secret = process.env.JWT_SECRET;
-
 export const generateTokens = (user) => {
-  const accessToken = jwt.sign({ id: user.id, email: user.email }, secret, { expiresIn: "1h" });
-  const refreshToken = jwt.sign({ id: user.id }, secret, { expiresIn: "14d" });
+  const accessToken = jwt.sign({ id: user.id.toString(), email: user.email }, secret, {
+    expiresIn: "1h",
+  });
+  const refreshToken = jwt.sign({ id: user.id.toString() }, secret, { expiresIn: "14d" });
   return { accessToken, refreshToken };
 };
 

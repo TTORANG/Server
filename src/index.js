@@ -6,6 +6,10 @@ import { googleStrategy, jwtStrategy } from "./auth.config.js";
 import { handleGetMyPage, handleGoogleCallback } from "./controllers/auth.controller.js";
 dotenv.config();
 
+BigInt.prototype.toJSON = function () {
+  return this.toString();
+};
+
 const app = express();
 const port = process.env.PORT || 8080;
 
