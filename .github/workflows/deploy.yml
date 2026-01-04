@@ -55,4 +55,6 @@ jobs:
             --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated \
-            --port 8080
+            --port 8080 \
+            -add-cloudsql-instances ${{ env.PROJECT_ID }}:${{ env.REGION }}:ttorang-db \
+            --set-env-vars "DATABASE_URL=mysql://root:${{ secrets.DB_PASSWORD }}@localhost/ttorang?socket=/cloudsql/${{ env.PROJECT_ID }}:${{ env.REGION }}:ttorang-db"
