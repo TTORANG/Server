@@ -1,0 +1,374 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  user
+  admin
+  anonymous
+}
+
+enum OauthProvider {
+  google
+  kakao
+  naver
+}
+
+model User {
+  id            BigInt   @id @map("id")
+  name          String?  @db.VarChar(100) @map("name")
+  nickName      String?  @db.VarChar(20)  @map("nick_name")
+  email         String?  @db.VarChar(200) @map("email")
+  oauthProvider OauthProvider?            @map("oauth_provider")
+  oauthId       String?  @db.VarChar(100) @map("oauth_id")
+  role          UserRole?                 @map("role")
+  createdAt     DateTime?                 @map("created_at")
+  updatedAt     DateTime?                 @map("updated_at")
+  isDeleted     Boolean? @db.TinyInt       @map("is_deleted")
+
+  sessions  Session[]
+  projects  Project[]
+  comments  Comment[]
+  reactions Reaction[]
+
+  @@map("user")
+}
+
+model Session {
+  id          String   @id @db.Char(36) @map("id")
+  userId      BigInt   @map("user_id")
+  isAnonymous Boolean  @db.TinyInt @map("is_anonymous")
+  createdAt   DateTime @map("created_at")
+  lastSeenAt  DateTime? @map("last_seen_at")
+
+  user      User      @relation(fields: [userId], references: [id])
+  comments  Comment[]
+  reactions Reaction[]
+
+  @@map("session")
+}
+
+model Project {
+  id           BigInt   @id @map("id")
+  userId       BigInt   @map("user_id")
+  title        String?  @db.VarChar(100) @map("title")
+  thumbnailUrl String?  @db.Text @map("thumbnail_url")
+  createdAt    DateTime? @map("created_at")
+  updatedAt    DateTime? @map("updated_at")
+  isDeleted    Boolean? @db.TinyInt @map("is_deleted")
+
+  user          User            @relation(fields: [userId], references: [id])
+  slides        Slide[]
+  videos        Video[]
+  uploadedFiles UploadedFile[]
+  shareLinks    ShareLink[]
+  materials     ProjectMaterial[]
+
+  @@map("project")
+}
+
+model ShareLink {
+  id         BigInt   @id @map("id")
+  projectId  BigInt   @map("project_id")
+  shareToken String   @db.VarChar(255) @map("share_token")
+  isActive   Boolean? @db.TinyInt @map("is_active")
+  expiredAt  DateTime? @map("expired_at")
+  viewCount  Int?     @map("view_count")
+  createdAt  DateTime? @map("created_at")
+  updatedAt  DateTime? @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id])
+
+  @@unique([shareToken])
+  @@map("share_link")
+}
+
+enum TargetType {
+  slide
+  video
+}
+
+model Comment {
+  id          BigInt   @id @default(autoincrement()) @map("id")
+  userId      BigInt   @map("user_id")
+  sessionId   String   @db.Char(36) @map("session_id")
+  targetType  TargetType @map("target_type")
+  targetId    BigInt   @map("target_id")
+  timestampMs Int?     @map("timestamp_ms")
+  parentId    BigInt?  @map("parent_id")
+  content     String   @db.Text @map("content")
+  createdAt   DateTime @map("created_at")
+  updatedAt   DateTime? @map("updated_at")
+  isDeleted   Boolean  @default(false) @db.TinyInt @map("is_deleted")
+
+  user     User    @relation(fields: [userId], references: [id])
+  session  Session @relation(fields: [sessionId], references: [id])
+  parent   Comment? @relation("CommentParent", fields: [parentId], references: [id])
+  children Comment[] @relation("CommentParent")
+
+  @@map("comment")
+}
+
+model Reaction {
+  id         BigInt   @id @default(autoincrement())
+  userId     BigInt @map("user_id")
+  sessionId  String   @db.Char(36) @map("session_id")
+  targetType TargetType @map("target_type")
+  targetId   BigInt @map("target_id")
+  emojiType  String   @db.VarChar(32) @map("emoji_type")
+  createdAt  DateTime @map("created_at") @default(now())
+  isDeleted  Boolean  @map("is_deleted") @default(false) @db.TinyInt
+
+  user    User    @relation(fields: [userId], references: [id])
+  session Session @relation(fields: [sessionId], references: [id])
+
+  @@unique([userId, sessionId, targetType, targetId, emojiType], name: "uq_reaction_dedup")
+  @@map("reaction")
+}
+
+model Slide {
+  id          BigInt   @id @map("id")
+  projectId   BigInt   @map("project_id")
+  title       String?  @db.VarChar(100) @map("title")
+  slideNum    BigInt?  @map("slide_num")
+  sourceIndex Int?     @map("source_index")
+  createdAt   DateTime? @map("created_at")
+  updatedAt   DateTime? @map("updated_at")
+  isDeleted   Boolean? @db.TinyInt @map("is_deleted")
+
+  project     Project          @relation(fields: [projectId], references: [id])
+  script      Script?
+  assets      SlideAsset[]
+  videoEvents VideoSlideEvent[]
+
+  @@unique([projectId, slideNum])
+  @@map("slide")
+}
+
+model Script {
+  id                       BigInt   @id @map("id")
+  slideId                  BigInt   @unique @map("slide_id")
+  scriptText               String?  @db.LongText @map("script_text")
+  charCount                BigInt?  @map("char_count")
+  estimatedDurationSeconds BigInt?  @map("estimated_duration_seconds")
+  createdAt                DateTime? @map("created_at")
+  updatedAt                DateTime? @map("updated_at")
+
+  slide    Slide           @relation(fields: [slideId], references: [id])
+  versions ScriptVersion[]
+
+  @@map("script")
+}
+
+model ScriptVersion {
+  id            BigInt   @id @map("id")
+  scriptId      BigInt   @map("script_id")
+  scriptText    String?  @db.LongText @map("script_text")
+  charCount     Int?     @map("char_count")
+  versionNumber Int?     @map("version_number")
+  createdAt     DateTime? @map("created_at")
+
+  script Script @relation(fields: [scriptId], references: [id])
+
+  @@map("script_version")
+}
+
+enum FileExt {
+  pptx
+  pdf
+}
+
+model UploadedFile {
+  id               BigInt   @id @map("id")
+  projectId        BigInt   @map("project_id")
+  originalFilename String   @db.VarChar(255) @map("original_filename")
+  contentType      String   @db.VarChar(100) @map("content_type")
+  fileExt          FileExt  @map("file_ext")
+  sizeBytes        BigInt   @map("size_bytes")
+  sha256           String?  @db.Char(64) @map("sha256")
+  storageBucket    String   @db.VarChar(100) @map("storage_bucket")
+  storageKey       String   @db.VarChar(100) @map("storage_key")
+  storageUrl       String   @db.Text @map("storage_url")
+  createdAt        DateTime @map("created_at")
+  isDeleted        Boolean  @db.TinyInt @map("is_deleted")
+
+  project        Project          @relation(fields: [projectId], references: [id])
+  conversionJobs ConversionJob[]
+  materials      ProjectMaterial[]
+
+  @@map("uploaded_file")
+}
+
+enum ProjectMaterialFileType {
+  pptx
+  pdf
+}
+
+model ProjectMaterial {
+  id                BigInt   @id @default(autoincrement()) @map("id")
+  projectId         BigInt?  @map("project_id")
+  uploadedFileId    BigInt?  @map("uploaded_file_id")
+  fileType          ProjectMaterialFileType @map("file_type")
+  pageCount         Int      @map("page_count")
+  thumbnailSlideNum Int?     @map("thumbnail_slide_num")
+  createdAt         DateTime @map("created_at")
+  updatedAt         DateTime @map("updated_at")
+
+  project      Project?      @relation(fields: [projectId], references: [id])
+  uploadedFile UploadedFile? @relation(fields: [uploadedFileId], references: [id])
+
+  @@map("project_material")
+}
+
+enum VideoStatus {
+  recording
+  uploading
+  processing
+  ready
+  failed
+  deleted
+}
+
+enum VideoContainer {
+  mp4
+  webm
+}
+
+model Video {
+  id                  BigInt   @id @default(autoincrement()) @map("id")
+  projectId           BigInt?  @map("project_id")
+  title               String?  @db.VarChar(100) @map("title")
+  status              VideoStatus @map("status")
+  durationSeconds     Int?     @map("duration_seconds")
+  width               Int?     @map("width")
+  height              Int?     @map("height")
+  fps                 Decimal? @db.Decimal(5,2) @map("fps")
+  codec               String?  @db.VarChar(50) @map("codec")
+  container           VideoContainer? @map("container")
+  sourceStorageBucket String?  @db.VarChar(100) @map("source_storage_bucket")
+  sourceStorageKey    String?  @db.VarChar(500) @map("source_storage_key")
+  sourceUrl           String?  @db.Text @map("source_url")
+  hlsMasterUrl        String?  @db.Text @map("hls_master_url")
+  thumbnailUrl        String?  @db.Text @map("thumbnail_url")
+  errorMessage        String?  @db.Text @map("error_message")
+  createdAt           DateTime @map("created_at")
+  updatedAt           DateTime @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  project     Project?         @relation(fields: [projectId], references: [id])
+  chunks      VideoChunk[]
+  slideEvents VideoSlideEvent[]
+
+  @@map("video")
+}
+
+model VideoChunk {
+  id            BigInt   @id @default(autoincrement()) @map("id")
+  videoId       BigInt   @map("video_id")
+  chunkIndex    Int      @map("chunk_index")
+  sizeBytes     BigInt   @map("size_bytes")
+  sha256        String?  @db.Char(64) @map("sha256")
+  storageBucket String   @db.VarChar(100) @map("storage_bucket")
+  storageKey    String   @db.VarChar(500) @map("storage_key")
+  url           String   @db.Text @map("url")
+  uploadedAt    DateTime @map("uploaded_at")
+
+  video Video @relation(fields: [videoId], references: [id])
+
+  @@map("video_chunk")
+}
+
+enum VideoSlideEventType {
+  enter
+  leave
+}
+
+model VideoSlideEvent {
+  id          BigInt   @id @default(autoincrement()) @map("id")
+  slideId     BigInt   @map("slide_id")
+  videoId     BigInt   @map("video_id")
+  eventType   VideoSlideEventType @map("event_type")
+  timestampMs Int      @map("timestamp_ms")
+  createdAt   DateTime @map("created_at")
+
+  slide Slide @relation(fields: [slideId], references: [id])
+  video Video @relation(fields: [videoId], references: [id])
+
+  @@map("video_slide_event")
+}
+
+enum SlideAssetType {
+  image
+  thumbnail
+}
+
+enum SlideAssetFormat {
+  png
+  jpeg
+  webp
+}
+
+model SlideAsset {
+  id              BigInt   @id @default(autoincrement()) @map("id")
+  slideId         BigInt   @map("slide_id")
+  conversionJobId BigInt?  @map("conversion_job_id")
+  assetType       SlideAssetType   @map("asset_type")
+  format          SlideAssetFormat @map("format")
+  width           Int?     @map("width")
+  height          Int?     @map("height")
+  sizeBytes       BigInt?  @map("size_bytes")
+  storageBucket   String   @db.VarChar(100) @map("storage_bucket")
+  storageKey      String   @db.VarChar(500) @map("storage_key")
+  url             String   @db.Text @map("url")
+  createdAt       DateTime @map("created_at")
+
+  slide         Slide          @relation(fields: [slideId], references: [id])
+  conversionJob ConversionJob? @relation(fields: [conversionJobId], references: [id])
+
+  @@map("slide_asset")
+}
+
+enum ConversionJobType {
+  pptx_to_images
+  pdf_to_images
+  extract_metadata
+  generate_thumbnail
+  video_transcode
+  hls_packaging
+}
+
+enum ConversionJobStatus {
+  queued
+  processing
+  completed
+  failed
+}
+
+model ConversionJob {
+  id             BigInt   @id @default(autoincrement()) @map("id")
+  uploadedFileId BigInt   @map("uploaded_file_id")
+  jobType        ConversionJobType   @map("job_type")
+  status         ConversionJobStatus @map("status")
+  progress       Int      @db.UnsignedTinyInt @map("progress")
+  errorCode      String?  @db.VarChar(50) @map("error_code")
+  errorMessage   String?  @db.Text @map("error_message")
+  startedAt      DateTime? @map("started_at")
+  finishedAt     DateTime? @map("finished_at")
+  createdAt      DateTime  @map("created_at")
+
+  uploadedFile UploadedFile @relation(fields: [uploadedFileId], references: [id])
+  slideAssets  SlideAsset[]
+
+  @@map("conversion_job")
+}
