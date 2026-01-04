@@ -4,6 +4,7 @@ import cors from "cors";
 import passport from "passport";
 import { googleStrategy, jwtStrategy } from "./auth.config.js";
 import { handleGetMyPage, handleGoogleCallback } from "./controllers/auth.controller.js";
+import { postComplete, postUploadUrl } from "./controllers/files.controller.js";
 dotenv.config();
 
 const app = express();
@@ -34,3 +35,7 @@ app.get("/user/mypage", isLogin, handleGetMyPage);
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
+
+// 파일 업로드 API 라우팅(임시)
+app.post("/api/files/upload-url", postUploadUrl);
+app.post("/api/files/complete", postComplete);
