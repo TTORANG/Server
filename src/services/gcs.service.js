@@ -11,11 +11,14 @@ function getBucket() {
   return storage.bucket(bucketName);
 }
 
+const PPTX_CONTENT_TYPE =
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+
 const ALLOWED_CONTENT_TYPES = new Set([
   "image/png",
   "image/jpeg",
   "application/pdf",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  PPTX_CONTENT_TYPE,
 ]);
 
 const MAX_SIZE_BYTES = 20 * 1024 * 1024; // 수정 가능
@@ -51,30 +54,26 @@ function buildObjectKey({ purpose, projectId, slideId, contentType }) {
   throw new Error("INVALID_PURPOSE");
 }
 
+function createHttpError(status, message) {
+  const err = new Error(message);
+  err.status = status;
+  return err;
+}
+
 export async function createUploadUrl(body) {
   const { purpose, contentType, size, projectId, slideId } = body;
 
   if (!ALLOWED_CONTENT_TYPES.has(contentType)) {
-    const err = new Error("UNSUPPORTED_CONTENT_TYPE");
-    err.status = 400;
-    throw err;
+    throw createHttpError(400, "UNSUPPORTED_CONTENT_TYPE");
   }
   if (!Number.isInteger(size) || size <= 0 || size > MAX_SIZE_BYTES) {
-    const err = new Error("INVALID_SIZE");
-    err.status = 400;
-    throw err;
+    throw createHttpError(400, "INVALID_SIZE");
   }
   if (!Number.isInteger(projectId) || projectId <= 0) {
-    const err = new Error("INVALID_PROJECT_ID");
-    err.status = 400;
-    throw err;
+    throw createHttpError(400, "INVALID_PROJECT_ID");
   }
-  if (purpose === "slide_thumbnail") {
-    if (!Number.isInteger(slideId) || slideId <= 0) {
-      const err = new Error("INVALID_SLIDE_ID");
-      err.status = 400;
-      throw err;
-    }
+  if (purpose === "slide_thumbnail" && (!Number.isInteger(slideId) || slideId <= 0)) {
+    throw createHttpError(400, "INVALID_SLIDE_ID");
   }
 
   const objectKey = buildObjectKey({ purpose, projectId, slideId, contentType });

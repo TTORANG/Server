@@ -29,7 +29,7 @@ export async function postComplete(req, res) {
     // 여기서 (원하면) contentType/size 재검증 + DB 업데이트 추가
     res.status(200).json({ resultType: "SUCCESS", error: null, result: { ok: true, ...meta } });
   } catch (e) {
-    res.status(500).json({
+    res.status(e.status || 500).json({
       resultType: "FAIL",
       error: { errorCode: e.message || "UNKNOWN", reason: e.message || "error" },
       result: null,
