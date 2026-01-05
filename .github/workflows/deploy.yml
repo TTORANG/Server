@@ -3,11 +3,11 @@ name: Deploy to Cloud Run
 on:
   push:
     branches:
-      - main  # main 브랜치에 push될 때만 실행
+      - main # main 브랜치에 push될 때만 실행
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  REGION: asia-northeast3  # 서울 리전
+  REGION: asia-northeast3 # 서울 리전
   SERVICE_NAME: ttorang-server
   REPOSITORY: ttorang-repo
 

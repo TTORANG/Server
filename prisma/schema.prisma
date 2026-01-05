@@ -26,7 +26,7 @@ enum OauthProvider {
 }
 
 model User {
-  id            BigInt   @id @map("id")
+  id            BigInt   @id @default(autoincrement()) @map("id") 
   name          String?  @db.VarChar(100) @map("name")
   nickName      String?  @db.VarChar(20)  @map("nick_name")
   email         String?  @db.VarChar(200) @map("email")
@@ -60,7 +60,7 @@ model Session {
 }
 
 model Project {
-  id           BigInt   @id @map("id")
+  id           BigInt   @id @default(autoincrement()) @map("id")
   userId       BigInt   @map("user_id")
   title        String?  @db.VarChar(100) @map("title")
   thumbnailUrl String?  @db.Text @map("thumbnail_url")
@@ -79,7 +79,7 @@ model Project {
 }
 
 model ShareLink {
-  id         BigInt   @id @map("id")
+  id         BigInt   @id @default(autoincrement()) @map("id")
   projectId  BigInt   @map("project_id")
   shareToken String   @db.VarChar(255) @map("share_token")
   isActive   Boolean? @db.TinyInt @map("is_active")
@@ -138,7 +138,7 @@ model Reaction {
 }
 
 model Slide {
-  id          BigInt   @id @map("id")
+  id          BigInt   @id @default(autoincrement()) @map("id")
   projectId   BigInt   @map("project_id")
   title       String?  @db.VarChar(100) @map("title")
   slideNum    BigInt?  @map("slide_num")
@@ -157,7 +157,7 @@ model Slide {
 }
 
 model Script {
-  id                       BigInt   @id @map("id")
+  id                       BigInt   @id @default(autoincrement()) @map("id")
   slideId                  BigInt   @unique @map("slide_id")
   scriptText               String?  @db.LongText @map("script_text")
   charCount                BigInt?  @map("char_count")
@@ -172,7 +172,7 @@ model Script {
 }
 
 model ScriptVersion {
-  id            BigInt   @id @map("id")
+  id            BigInt   @id @default(autoincrement()) @map("id")
   scriptId      BigInt   @map("script_id")
   scriptText    String?  @db.LongText @map("script_text")
   charCount     Int?     @map("char_count")
@@ -190,7 +190,7 @@ enum FileExt {
 }
 
 model UploadedFile {
-  id               BigInt   @id @map("id")
+  id               BigInt   @id @default(autoincrement()) @map("id")
   projectId        BigInt   @map("project_id")
   originalFilename String   @db.VarChar(255) @map("original_filename")
   contentType      String   @db.VarChar(100) @map("content_type")
