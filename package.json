@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
+    "dev": "nodemon -e js,json,prisma --exec \"prisma generate && node src/index.js\"",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write"
@@ -15,16 +15,23 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@google-cloud/storage": "^7.18.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.0.0",
     "http-status-code": "^2.1.0",
-    "mysql2": "^3.16.0"
+    "jsonwebtoken": "^9.0.3",
+    "mysql2": "^3.16.0",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "passport-jwt": "^4.0.1"
   },
   "devDependencies": {
+    "@prisma/client": "^6.19.1",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "nodemon": "^3.1.11",
-    "prettier": "^3.7.4"
+    "prettier": "^3.7.4",
+    "prisma": "^6.19.1"
   }
 }
