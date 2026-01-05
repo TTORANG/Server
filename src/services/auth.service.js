@@ -14,6 +14,7 @@ export const generateTokens = (user) => {
 export const socialLoginVerification = async (profile, provider) => {
   let email;
   let name;
+  let providerId = profile.id;
 
   if (provider === "google") {
     email = profile.emails?.[0]?.value;
@@ -22,22 +23,26 @@ export const socialLoginVerification = async (profile, provider) => {
     email = profile._json?.kakao_account?.email;
     name = profile.displayName || profile._json?.properties?.nickname;
   } else if (provider === "naver") {
-    email = profile._json?.email;
-    name = profile._json?.name;
+    const response = profile._json?.response;
+    email = response?.email || profile._json?.email;
+    name = response?.name || profile._json?.name;
+    providerId = response?.id || profile.id;
   }
 
-  if (!email) throw new EmailNotFoundError({ profileId: profile.id });
+  console.log(`${provider} 프로필 정보:`, { email, name, providerId });
+
+  if (!email) throw new EmailNotFoundError({ profileId: providerId });
 
   let user = await authRepository.findUserByEmail(email);
 
   if (!user) {
     const userId = await authRepository.createSocialUser(
       email,
-      name,
+      name || "사용자",
       provider,
-      profile.id.toString()
+      providerId.toString()
     );
-    user = { id: userId, email, name };
+    user = { id: userId, email, name: name || "사용자" };
   }
 
   return user;
