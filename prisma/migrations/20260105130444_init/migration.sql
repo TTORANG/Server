@@ -1,6 +1,6 @@
 -- CreateTable
 CREATE TABLE `user` (
-    `id` BIGINT NOT NULL,
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
     `name` VARCHAR(100) NULL,
     `nick_name` VARCHAR(20) NULL,
     `email` VARCHAR(200) NULL,
@@ -27,7 +27,7 @@ CREATE TABLE `session` (
 
 -- CreateTable
 CREATE TABLE `project` (
-    `id` BIGINT NOT NULL,
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
     `user_id` BIGINT NOT NULL,
     `title` VARCHAR(100) NULL,
     `thumbnail_url` TEXT NULL,
@@ -40,7 +40,7 @@ CREATE TABLE `project` (
 
 -- CreateTable
 CREATE TABLE `share_link` (
-    `id` BIGINT NOT NULL,
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
     `project_id` BIGINT NOT NULL,
     `share_token` VARCHAR(255) NOT NULL,
     `is_active` BOOLEAN NULL,
@@ -87,7 +87,7 @@ CREATE TABLE `reaction` (
 
 -- CreateTable
 CREATE TABLE `slide` (
-    `id` BIGINT NOT NULL,
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
     `project_id` BIGINT NOT NULL,
     `title` VARCHAR(100) NULL,
     `slide_num` BIGINT NULL,
@@ -102,7 +102,7 @@ CREATE TABLE `slide` (
 
 -- CreateTable
 CREATE TABLE `script` (
-    `id` BIGINT NOT NULL,
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
     `slide_id` BIGINT NOT NULL,
     `script_text` LONGTEXT NULL,
     `char_count` BIGINT NULL,
@@ -116,7 +116,7 @@ CREATE TABLE `script` (
 
 -- CreateTable
 CREATE TABLE `script_version` (
-    `id` BIGINT NOT NULL,
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
     `script_id` BIGINT NOT NULL,
     `script_text` LONGTEXT NULL,
     `char_count` INTEGER NULL,
@@ -128,7 +128,7 @@ CREATE TABLE `script_version` (
 
 -- CreateTable
 CREATE TABLE `uploaded_file` (
-    `id` BIGINT NOT NULL,
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
     `project_id` BIGINT NOT NULL,
     `original_filename` VARCHAR(255) NOT NULL,
     `content_type` VARCHAR(100) NOT NULL,
