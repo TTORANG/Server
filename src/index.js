@@ -2,8 +2,13 @@ import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
 import passport from "passport";
-import { googleStrategy, jwtStrategy } from "./auth.config.js";
-import { handleGetMyPage, handleGoogleCallback } from "./controllers/auth.controller.js";
+import { googleStrategy, jwtStrategy, kakaoStrategy, naverStrategy } from "./auth.config.js";
+import {
+  handleGetMyPage,
+  handleGoogleCallback,
+  handleKakaoCallback,
+  handleNaverCallback,
+} from "./controllers/auth.controller.js";
 dotenv.config();
 
 BigInt.prototype.toJSON = function () {
@@ -20,6 +25,8 @@ app.use(express.urlencoded({ extended: false })); // 단순 객체 문자열 형
 app.use(passport.initialize());
 passport.use("jwt", jwtStrategy);
 passport.use("google", googleStrategy);
+passport.use("kakao", kakaoStrategy);
+passport.use("naver", naverStrategy);
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
@@ -27,12 +34,29 @@ app.get("/", (req, res) => {
 
 const isLogin = passport.authenticate("jwt", { session: false });
 
+// 구글 라우트
 app.get("/auth/google/login", passport.authenticate("google", { session: false }));
 app.get(
   "/auth/google/callback",
   passport.authenticate("google", { session: false, failureRedirect: "/login-failed" }),
   handleGoogleCallback
 );
+// 카카오 라우트
+app.get("/auth/kakao/login", passport.authenticate("kakao", { session: false }));
+app.get(
+  "/auth/kakao/callback",
+  passport.authenticate("kakao", { session: false, failureRedirect: "/login-failed" }),
+  handleKakaoCallback
+);
+
+// 네이버 라우트
+app.get("/auth/naver/login", passport.authenticate("naver", { session: false }));
+app.get(
+  "/auth/naver/callback",
+  passport.authenticate("naver", { session: false, failureRedirect: "/login-failed" }),
+  handleNaverCallback
+);
+
 app.get("/user/mypage", isLogin, handleGetMyPage);
 
 app.listen(port, () => {

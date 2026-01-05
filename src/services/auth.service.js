@@ -12,20 +12,32 @@ export const generateTokens = (user) => {
 };
 
 export const socialLoginVerification = async (profile, provider) => {
-  const email = profile.emails?.[0]?.value;
+  let email;
+  let name;
+
+  if (provider === "google") {
+    email = profile.emails?.[0]?.value;
+    name = profile.displayName;
+  } else if (provider === "kakao") {
+    email = profile._json?.kakao_account?.email;
+    name = profile.displayName || profile._json?.properties?.nickname;
+  } else if (provider === "naver") {
+    email = profile._json?.email;
+    name = profile._json?.name;
+  }
+
   if (!email) throw new EmailNotFoundError({ profileId: profile.id });
 
   let user = await authRepository.findUserByEmail(email);
 
-  // 유저가 없으면 회원가입
   if (!user) {
     const userId = await authRepository.createSocialUser(
       email,
-      profile.displayName,
+      name,
       provider,
-      profile.id
+      profile.id.toString()
     );
-    user = { id: userId, email, name: profile.displayName };
+    user = { id: userId, email, name };
   }
 
   return user;
