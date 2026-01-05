@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/index.js",
+    "start": "prisma migrate deploy && node src/index.js",
     "dev": "nodemon -e js,json,prisma --exec \"prisma generate && node src/index.js\"",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
