@@ -57,4 +57,4 @@ jobs:
             --allow-unauthenticated \
             --port 8080 \
             --add-cloudsql-instances=${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:ttorang-db \
-            --set-env-vars="CLOUD_SQL_CONNECTION_NAME=${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:ttorang-db,DB_USER=${{ secrets.DB_USER }},DB_PASSWORD=${{ secrets.DB_PASSWORD }},DB_NAME=${{ secrets.DB_NAME }}"
+            --set-env-vars="CLOUD_SQL_CONNECTION_NAME=${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:ttorang-db,DB_USER=${{ secrets.DB_USER }},DB_PASSWORD=${{ secrets.DB_PASSWORD }},DB_NAME=${{ secrets.DB_NAME }},DATABASE_URL=mysql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost/${{ secrets.DB_NAME }}?socket=/cloudsql/${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:ttorang-db"
