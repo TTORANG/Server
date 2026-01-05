@@ -3,11 +3,11 @@ name: Deploy to Cloud Run
 on:
   push:
     branches:
-      - main  # main 브랜치에 push될 때만 실행
+      - main # main 브랜치에 push될 때만 실행
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  REGION: asia-northeast3  # 서울 리전
+  REGION: asia-northeast3 # 서울 리전
   SERVICE_NAME: ttorang-server
   REPOSITORY: ttorang-repo
 
@@ -57,4 +57,4 @@ jobs:
             --allow-unauthenticated \
             --port 8080 \
             --add-cloudsql-instances=${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:ttorang-db \
-            --set-env-vars="CLOUD_SQL_CONNECTION_NAME=${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:ttorang-db,DB_USER=${{ secrets.DB_USER }},DB_PASSWORD=${{ secrets.DB_PASSWORD }},DB_NAME=${{ secrets.DB_NAME }}"
+            --set-env-vars="CLOUD_SQL_CONNECTION_NAME=${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:ttorang-db,DB_USER=${{ secrets.DB_USER }},DB_PASSWORD=${{ secrets.DB_PASSWORD }},DB_NAME=${{ secrets.DB_NAME }},DATABASE_URL=mysql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost/${{ secrets.DB_NAME }}?socket=/cloudsql/${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:ttorang-db,PASSPORT_GOOGLE_CLIENT_ID=${{ secrets.PASSPORT_GOOGLE_CLIENT_ID }},PASSPORT_GOOGLE_CLIENT_SECRET=${{ secrets.PASSPORT_GOOGLE_CLIENT_SECRET }},JWT_SECRET=${{ secrets.JWT_SECRET }}"
