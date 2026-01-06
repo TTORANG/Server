@@ -3,28 +3,43 @@ import * as authRepository from "../repositories/auth.repository.js";
 import { EmailNotFoundError } from "../errors/auth.error.js";
 
 const secret = process.env.JWT_SECRET;
-
 export const generateTokens = (user) => {
-  const accessToken = jwt.sign({ id: user.id, email: user.email }, secret, { expiresIn: "1h" });
-  const refreshToken = jwt.sign({ id: user.id }, secret, { expiresIn: "14d" });
+  const accessToken = jwt.sign({ id: user.id.toString(), email: user.email }, secret, {
+    expiresIn: "1h",
+  });
+  const refreshToken = jwt.sign({ id: user.id.toString() }, secret, { expiresIn: "14d" });
   return { accessToken, refreshToken };
 };
 
 export const socialLoginVerification = async (profile, provider) => {
-  const email = profile.emails?.[0]?.value;
-  if (!email) throw new EmailNotFoundError({ profileId: profile.id });
+  let email;
+  let name;
+  let providerId = profile.id;
+
+  if (provider === "google") {
+    email = profile.emails?.[0]?.value;
+    name = profile.displayName;
+  } else if (provider === "kakao") {
+    email = profile._json?.kakao_account?.email;
+    name = profile.displayName || profile._json?.properties?.nickname;
+  } else if (provider === "naver") {
+    const response = profile._json?.response || profile._json;
+    email = response?.email || profile.emails?.[0]?.value;
+    name = response?.name || profile.displayName;
+    providerId = response?.id || profile.id;
+  }
+
+  if (!email) throw new EmailNotFoundError({ profileId: providerId });
 
   let user = await authRepository.findUserByEmail(email);
 
-  // 유저가 없으면 회원가입
   if (!user) {
-    const userId = await authRepository.createSocialUser(
+    user = await authRepository.createSocialUser(
       email,
-      profile.displayName,
+      name || "사용자",
       provider,
-      profile.id
+      providerId.toString()
     );
-    user = { id: userId, email, name: profile.displayName };
   }
 
   return user;

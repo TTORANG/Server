@@ -10,6 +10,24 @@ export const handleGoogleCallback = (req, res) => {
     success: signinResponseDTO(user, tokens),
   });
 };
+export const handleKakaoCallback = (req, res) => {
+  const { user, tokens } = req.user;
+
+  res.status(200).json({
+    resultType: "SUCCESS",
+    error: null,
+    success: signinResponseDTO(user, tokens),
+  });
+};
+export const handleNaverCallback = (req, res) => {
+  const { user, tokens } = req.user;
+
+  res.status(200).json({
+    resultType: "SUCCESS",
+    error: null,
+    success: signinResponseDTO(user, tokens),
+  });
+};
 
 export const handleGetMyPage = (req, res) => {
   res.status(200).json({
