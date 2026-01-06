@@ -23,26 +23,23 @@ export const socialLoginVerification = async (profile, provider) => {
     email = profile._json?.kakao_account?.email;
     name = profile.displayName || profile._json?.properties?.nickname;
   } else if (provider === "naver") {
-    const response = profile._json?.response;
-    email = response?.email || profile._json?.email;
-    name = response?.name || profile._json?.name;
+    const response = profile._json?.response || profile._json;
+    email = response?.email || profile.emails?.[0]?.value;
+    name = response?.name || profile.displayName;
     providerId = response?.id || profile.id;
   }
-
-  console.log(`${provider} 프로필 정보:`, { email, name, providerId });
 
   if (!email) throw new EmailNotFoundError({ profileId: providerId });
 
   let user = await authRepository.findUserByEmail(email);
 
   if (!user) {
-    const userId = await authRepository.createSocialUser(
+    user = await authRepository.createSocialUser(
       email,
       name || "사용자",
       provider,
       providerId.toString()
     );
-    user = { id: userId, email, name: name || "사용자" };
   }
 
   return user;
