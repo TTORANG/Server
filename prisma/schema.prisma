@@ -50,7 +50,7 @@ model User {
 
 model Session {
   id          String   @id @db.Char(36) @default(uuid()) @map("id")      
-  userId      BigInt   @map("user_id")
+  userId      BigInt   @map("user_id")  
   isAnonymous Boolean  @default(false) @db.TinyInt @map("is_anonymous")    
   createdAt   DateTime @default(now()) @map("created_at")               
   lastSeenAt  DateTime? @updatedAt @map("last_seen_at")              
@@ -59,7 +59,7 @@ model Session {
   comments    Comment[]
   reactions   Reaction[]
 
-  @@unique([userId, isAnonymous])                                            
+  @@unique([userId, isAnonymous], name: "uq_session_user_anonymous")                                          
   @@index([userId])                                                       
   @@index([isAnonymous])                                                 
   @@index([createdAt], name: "idx_session_created")                      
@@ -94,7 +94,7 @@ model Project {
 model ShareLink {
   id         BigInt   @id @default(autoincrement()) @map("id")
   projectId  BigInt   @map("project_id")
-  shareToken String    @unique @db.VarChar(255) @map("share_token")
+  shareToken String    @db.VarChar(255) @map("share_token")
   isActive   Boolean   @default(true) @db.TinyInt @map("is_active")
   expiredAt  DateTime? @map("expired_at")
   viewCount  Int       @default(0) @map("view_count")
@@ -103,10 +103,11 @@ model ShareLink {
 
   project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
+  @@unique([shareToken], name: "uq_share_token_unique")
   @@index([projectId], name: "idx_share_project")
   @@index([isActive, expiredAt], name: "idx_share_active_expired")
   @@index([projectId, isActive], name: "idx_share_project_active")
-  @@unique([shareToken])
+
   @@map("share_link")
 }
 
