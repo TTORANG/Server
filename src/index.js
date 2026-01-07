@@ -3,18 +3,9 @@ import express from "express";
 import cors from "cors";
 import passport from "passport";
 import { googleStrategy, jwtStrategy, kakaoStrategy, naverStrategy } from "./auth.config.js";
-import {
-  handleGetMyPage,
-  handleGoogleCallback,
-  handleKakaoCallback,
-  handleNaverCallback,
-} from "./controllers/auth.controller.js";
+import { handleGetMyPage, handleSocialLoginCallback } from "./controllers/auth.controller.js";
 import { postComplete, postUploadUrl } from "./controllers/files.controller.js";
 dotenv.config();
-
-BigInt.prototype.toJSON = function () {
-  return this.toString();
-};
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -40,14 +31,14 @@ app.get("/auth/google/login", passport.authenticate("google", { session: false }
 app.get(
   "/auth/google/callback",
   passport.authenticate("google", { session: false, failureRedirect: "/login-failed" }),
-  handleGoogleCallback
+  handleSocialLoginCallback
 );
 // 카카오 라우트
 app.get("/auth/kakao/login", passport.authenticate("kakao", { session: false }));
 app.get(
   "/auth/kakao/callback",
   passport.authenticate("kakao", { session: false, failureRedirect: "/login-failed" }),
-  handleKakaoCallback
+  handleSocialLoginCallback
 );
 
 // 네이버 라우트
@@ -55,7 +46,7 @@ app.get("/auth/naver/login", passport.authenticate("naver", { session: false }))
 app.get(
   "/auth/naver/callback",
   passport.authenticate("naver", { session: false, failureRedirect: "/login-failed" }),
-  handleNaverCallback
+  handleSocialLoginCallback
 );
 
 app.get("/user/mypage", isLogin, handleGetMyPage);
