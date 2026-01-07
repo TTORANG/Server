@@ -50,6 +50,21 @@ app.get(
 );
 
 app.get("/user/mypage", isLogin, handleGetMyPage);
+app.use((err, req, res, next) => {
+  if (res.headersSent) {
+    return next(err);
+  }
+
+  res.status(err.status || err.statusCode || 500).json({
+    resultType: "FAILURE",
+    error: {
+      errorCode: err.errorCode || "INTERNAL_SERVER_ERROR",
+      reason: err.reason || err.message || "Internal Server Error",
+      data: err.data,
+    },
+    success: null,
+  });
+});
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
