@@ -49,15 +49,22 @@ model User {
 }
 
 model Session {
-  id          String   @id @db.Char(36) @map("id")
+  id          String   @id @db.Char(36) @default(uuid()) @map("id")      
   userId      BigInt   @map("user_id")
-  isAnonymous Boolean  @db.TinyInt @map("is_anonymous")
-  createdAt   DateTime @map("created_at")
-  lastSeenAt  DateTime? @map("last_seen_at")
+  isAnonymous Boolean  @default(false) @db.TinyInt @map("is_anonymous")    
+  createdAt   DateTime @default(now()) @map("created_at")               
+  lastSeenAt  DateTime? @updatedAt @map("last_seen_at")              
 
-  user      User      @relation(fields: [userId], references: [id])
-  comments  Comment[]
-  reactions Reaction[]
+  user        User     @relation(fields: [userId], references: [id])
+  comments    Comment[]
+  reactions   Reaction[]
+
+  @@unique([userId, isAnonymous])                                            
+  @@index([userId])                                                       
+  @@index([isAnonymous])                                                 
+  @@index([createdAt], name: "idx_session_created")                      
+  @@index([lastSeenAt(sort: Desc)], name: "idx_session_recent")           
+  @@index([userId, lastSeenAt(sort: Desc)], name: "idx_user_recent_sessions")
 
   @@map("session")
 }
