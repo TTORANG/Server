@@ -51,6 +51,7 @@ model User {
 model Session {
   id          String   @id @db.Char(36) @default(uuid()) @map("id")      
   userId      BigInt   @map("user_id")  
+  refreshToken String?  @db.Text @map("refresh_token")
   isAnonymous Boolean  @default(false) @db.TinyInt @map("is_anonymous")    
   createdAt   DateTime @default(now()) @map("created_at")               
   lastSeenAt  DateTime? @updatedAt @map("last_seen_at")
@@ -61,7 +62,8 @@ model Session {
 
   @@unique([userId, isAnonymous], name: "uq_session_user_anonymous")                                          
   @@index([userId])                                                       
-  @@index([isAnonymous])                                                 
+  @@index([isAnonymous])     
+  @@index([refreshToken(length: 255)], name: "idx_session_token")                                            
   @@index([createdAt], name: "idx_session_created")                      
   @@index([lastSeenAt(sort: Desc)], name: "idx_session_recent")           
   @@index([userId, lastSeenAt(sort: Desc)], name: "idx_user_recent_sessions")

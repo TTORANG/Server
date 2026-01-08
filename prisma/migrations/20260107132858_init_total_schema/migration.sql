@@ -1,16 +1,19 @@
 -- CreateTable
 CREATE TABLE `user` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
-    `name` VARCHAR(100) NULL,
+    `name` VARCHAR(100) NOT NULL,
     `nick_name` VARCHAR(20) NULL,
-    `email` VARCHAR(200) NULL,
-    `oauth_provider` ENUM('google', 'kakao', 'naver') NULL,
-    `oauth_id` VARCHAR(100) NULL,
-    `role` ENUM('user', 'admin', 'anonymous') NULL,
-    `created_at` DATETIME(3) NULL,
-    `updated_at` DATETIME(3) NULL,
-    `is_deleted` BOOLEAN NULL,
+    `email` VARCHAR(200) NOT NULL,
+    `oauth_provider` ENUM('google', 'kakao', 'naver') NOT NULL,
+    `oauth_id` VARCHAR(100) NOT NULL,
+    `role` ENUM('user', 'admin', 'anonymous') NOT NULL DEFAULT 'user',
+    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updated_at` DATETIME(3) NOT NULL,
+    `is_deleted` BOOLEAN NOT NULL DEFAULT false,
 
+    UNIQUE INDEX `user_email_key`(`email`),
+    INDEX `idx_user_email`(`email`),
+    INDEX `idx_user_oauth`(`oauth_provider`, `oauth_id`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -18,10 +21,18 @@ CREATE TABLE `user` (
 CREATE TABLE `session` (
     `id` CHAR(36) NOT NULL,
     `user_id` BIGINT NOT NULL,
-    `is_anonymous` BOOLEAN NOT NULL,
-    `created_at` DATETIME(3) NOT NULL,
+    `refresh_token` TEXT NULL,
+    `is_anonymous` BOOLEAN NOT NULL DEFAULT false,
+    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `last_seen_at` DATETIME(3) NULL,
 
+    INDEX `session_user_id_idx`(`user_id`),
+    INDEX `session_is_anonymous_idx`(`is_anonymous`),
+    INDEX `idx_session_token`(`refresh_token`(255)),
+    INDEX `idx_session_created`(`created_at`),
+    INDEX `idx_session_recent`(`last_seen_at` DESC),
+    INDEX `idx_user_recent_sessions`(`user_id`, `last_seen_at` DESC),
+    UNIQUE INDEX `session_user_id_is_anonymous_key`(`user_id`, `is_anonymous`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -29,12 +40,15 @@ CREATE TABLE `session` (
 CREATE TABLE `project` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
     `user_id` BIGINT NOT NULL,
-    `title` VARCHAR(100) NULL,
+    `title` VARCHAR(100) NOT NULL,
     `thumbnail_url` TEXT NULL,
-    `created_at` DATETIME(3) NULL,
-    `updated_at` DATETIME(3) NULL,
-    `is_deleted` BOOLEAN NULL,
+    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updated_at` DATETIME(3) NOT NULL,
+    `is_deleted` BOOLEAN NOT NULL DEFAULT false,
 
+    INDEX `idx_project_user_created`(`user_id`, `created_at` DESC),
+    INDEX `idx_project_title`(`title`),
+    INDEX `idx_project_updated`(`updated_at` DESC),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -43,12 +57,15 @@ CREATE TABLE `share_link` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
     `project_id` BIGINT NOT NULL,
     `share_token` VARCHAR(255) NOT NULL,
-    `is_active` BOOLEAN NULL,
+    `is_active` BOOLEAN NOT NULL DEFAULT true,
     `expired_at` DATETIME(3) NULL,
-    `view_count` INTEGER NULL,
-    `created_at` DATETIME(3) NULL,
-    `updated_at` DATETIME(3) NULL,
+    `view_count` INTEGER NOT NULL DEFAULT 0,
+    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updated_at` DATETIME(3) NOT NULL,
 
+    INDEX `idx_share_project`(`project_id`),
+    INDEX `idx_share_active_expired`(`is_active`, `expired_at`),
+    INDEX `idx_share_project_active`(`project_id`, `is_active`),
     UNIQUE INDEX `share_link_share_token_key`(`share_token`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -105,12 +122,13 @@ CREATE TABLE `script` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
     `slide_id` BIGINT NOT NULL,
     `script_text` LONGTEXT NULL,
-    `char_count` BIGINT NULL,
-    `estimated_duration_seconds` BIGINT NULL,
-    `created_at` DATETIME(3) NULL,
-    `updated_at` DATETIME(3) NULL,
+    `char_count` INTEGER NOT NULL DEFAULT 0,
+    `estimated_duration_seconds` INTEGER NOT NULL DEFAULT 0,
+    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updated_at` DATETIME(3) NOT NULL,
 
     UNIQUE INDEX `script_slide_id_key`(`slide_id`),
+    INDEX `idx_script_updated`(`updated_at` DESC),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -118,11 +136,14 @@ CREATE TABLE `script` (
 CREATE TABLE `script_version` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
     `script_id` BIGINT NOT NULL,
-    `script_text` LONGTEXT NULL,
-    `char_count` INTEGER NULL,
-    `version_number` INTEGER NULL,
-    `created_at` DATETIME(3) NULL,
+    `script_text` LONGTEXT NOT NULL,
+    `char_count` INTEGER NOT NULL,
+    `version_number` INTEGER NOT NULL,
+    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    INDEX `idx_script_version_script_created`(`script_id`, `created_at` DESC),
+    INDEX `idx_script_version_number`(`version_number`),
+    UNIQUE INDEX `script_version_script_id_version_number_key`(`script_id`, `version_number`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -248,10 +269,10 @@ CREATE TABLE `conversion_job` (
 ALTER TABLE `session` ADD CONSTRAINT `session_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `project` ADD CONSTRAINT `project_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `project` ADD CONSTRAINT `project_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `share_link` ADD CONSTRAINT `share_link_project_id_fkey` FOREIGN KEY (`project_id`) REFERENCES `project`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `share_link` ADD CONSTRAINT `share_link_project_id_fkey` FOREIGN KEY (`project_id`) REFERENCES `project`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `comment` ADD CONSTRAINT `comment_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -272,10 +293,10 @@ ALTER TABLE `reaction` ADD CONSTRAINT `reaction_session_id_fkey` FOREIGN KEY (`s
 ALTER TABLE `slide` ADD CONSTRAINT `slide_project_id_fkey` FOREIGN KEY (`project_id`) REFERENCES `project`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `script` ADD CONSTRAINT `script_slide_id_fkey` FOREIGN KEY (`slide_id`) REFERENCES `slide`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `script` ADD CONSTRAINT `script_slide_id_fkey` FOREIGN KEY (`slide_id`) REFERENCES `slide`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `script_version` ADD CONSTRAINT `script_version_script_id_fkey` FOREIGN KEY (`script_id`) REFERENCES `script`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `script_version` ADD CONSTRAINT `script_version_script_id_fkey` FOREIGN KEY (`script_id`) REFERENCES `script`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `uploaded_file` ADD CONSTRAINT `uploaded_file_project_id_fkey` FOREIGN KEY (`project_id`) REFERENCES `project`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
