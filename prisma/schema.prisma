@@ -49,8 +49,8 @@ model User {
 model Session {
   id          String   @id @db.Char(36) @map("id")
   userId      BigInt   @map("user_id")
-  isAnonymous Boolean  @db.TinyInt @map("is_anonymous")
-  createdAt   DateTime @map("created_at")
+  isAnonymous Boolean  @db.TinyInt @map("is_anonymous") @default(false)
+  createdAt   DateTime @map("created_at") @default(now())
   lastSeenAt  DateTime? @map("last_seen_at")
 
   user      User      @relation(fields: [userId], references: [id])
@@ -65,9 +65,9 @@ model Project {
   userId       BigInt   @map("user_id")
   title        String?  @db.VarChar(100) @map("title")
   thumbnailUrl String?  @db.Text @map("thumbnail_url")
-  createdAt    DateTime? @map("created_at")
-  updatedAt    DateTime? @map("updated_at")
-  isDeleted    Boolean? @db.TinyInt @map("is_deleted")
+  createdAt    DateTime? @map("created_at") @default(now())
+  updatedAt    DateTime? @map("updated_at") @updatedAt
+  isDeleted    Boolean? @db.TinyInt @map("is_deleted") @default(false)
 
   user          User            @relation(fields: [userId], references: [id])
   slides        Slide[]
@@ -83,11 +83,11 @@ model ShareLink {
   id         BigInt   @id @default(autoincrement()) @map("id")
   projectId  BigInt   @map("project_id")
   shareToken String   @db.VarChar(255) @map("share_token")
-  isActive   Boolean? @db.TinyInt @map("is_active")
+  isActive   Boolean? @db.TinyInt @map("is_active") @default(true)
   expiredAt  DateTime? @map("expired_at")
-  viewCount  Int?     @map("view_count")
-  createdAt  DateTime? @map("created_at")
-  updatedAt  DateTime? @map("updated_at")
+  viewCount  Int?     @map("view_count") @default(0)
+  createdAt  DateTime? @map("created_at") @default(now())
+  updatedAt  DateTime? @map("updated_at") @updatedAt
 
   project Project @relation(fields: [projectId], references: [id])
 
@@ -109,8 +109,8 @@ model Comment {
   timestampMs Int?     @map("timestamp_ms")
   parentId    BigInt?  @map("parent_id")
   content     String   @db.Text @map("content")
-  createdAt   DateTime @map("created_at")
-  updatedAt   DateTime? @map("updated_at")
+  createdAt   DateTime @map("created_at") @default(now())
+  updatedAt   DateTime? @map("updated_at") @updatedAt
   isDeleted   Boolean  @default(false) @db.TinyInt @map("is_deleted")
 
   user     User    @relation(fields: [userId], references: [id])
@@ -144,9 +144,9 @@ model Slide {
   title       String?  @db.VarChar(100) @map("title")
   slideNum    BigInt?  @map("slide_num")
   sourceIndex Int?     @map("source_index")
-  createdAt   DateTime? @map("created_at")
-  updatedAt   DateTime? @map("updated_at")
-  isDeleted   Boolean? @db.TinyInt @map("is_deleted")
+  createdAt   DateTime? @map("created_at") @default(now())
+  updatedAt   DateTime? @map("updated_at") @updatedAt
+  isDeleted   Boolean? @db.TinyInt @map("is_deleted") @default(false)
 
   project     Project          @relation(fields: [projectId], references: [id])
   script      Script?
@@ -161,10 +161,10 @@ model Script {
   id                       BigInt   @id @default(autoincrement()) @map("id")
   slideId                  BigInt   @unique @map("slide_id")
   scriptText               String?  @db.LongText @map("script_text")
-  charCount                BigInt?  @map("char_count")
-  estimatedDurationSeconds BigInt?  @map("estimated_duration_seconds")
-  createdAt                DateTime? @map("created_at")
-  updatedAt                DateTime? @map("updated_at")
+  charCount                BigInt?  @map("char_count") @default(0)
+  estimatedDurationSeconds BigInt?  @map("estimated_duration_seconds") @default(0)
+  createdAt                DateTime? @map("created_at") @default(now())
+  updatedAt                DateTime? @map("updated_at") @updatedAt
 
   slide    Slide           @relation(fields: [slideId], references: [id])
   versions ScriptVersion[]
@@ -178,7 +178,7 @@ model ScriptVersion {
   scriptText    String?  @db.LongText @map("script_text")
   charCount     Int?     @map("char_count")
   versionNumber Int?     @map("version_number")
-  createdAt     DateTime? @map("created_at")
+  createdAt     DateTime? @map("created_at") @default(now())
 
   script Script @relation(fields: [scriptId], references: [id])
 
@@ -201,8 +201,8 @@ model UploadedFile {
   storageBucket    String   @db.VarChar(100) @map("storage_bucket")
   storageKey       String   @db.VarChar(100) @map("storage_key")
   storageUrl       String   @db.Text @map("storage_url")
-  createdAt        DateTime @map("created_at")
-  isDeleted        Boolean  @db.TinyInt @map("is_deleted")
+  createdAt        DateTime @map("created_at") @default(now())
+  isDeleted        Boolean  @db.TinyInt @map("is_deleted") @default(false)
 
   project        Project          @relation(fields: [projectId], references: [id])
   conversionJobs ConversionJob[]
@@ -223,8 +223,8 @@ model ProjectMaterial {
   fileType          ProjectMaterialFileType @map("file_type")
   pageCount         Int      @map("page_count")
   thumbnailSlideNum Int?     @map("thumbnail_slide_num")
-  createdAt         DateTime @map("created_at")
-  updatedAt         DateTime @map("updated_at")
+  createdAt         DateTime @map("created_at") @default(now())
+  updatedAt         DateTime @map("updated_at") @updatedAt
 
   project      Project?      @relation(fields: [projectId], references: [id])
   uploadedFile UploadedFile? @relation(fields: [uploadedFileId], references: [id])
@@ -250,7 +250,7 @@ model Video {
   id                  BigInt   @id @default(autoincrement()) @map("id")
   projectId           BigInt?  @map("project_id")
   title               String?  @db.VarChar(100) @map("title")
-  status              VideoStatus @map("status")
+  status              VideoStatus @map("status") @default(recording)
   durationSeconds     Int?     @map("duration_seconds")
   width               Int?     @map("width")
   height              Int?     @map("height")
@@ -263,8 +263,8 @@ model Video {
   hlsMasterUrl        String?  @db.Text @map("hls_master_url")
   thumbnailUrl        String?  @db.Text @map("thumbnail_url")
   errorMessage        String?  @db.Text @map("error_message")
-  createdAt           DateTime @map("created_at")
-  updatedAt           DateTime @map("updated_at")
+  createdAt           DateTime @map("created_at") @default(now())
+  updatedAt           DateTime @map("updated_at") @updatedAt
   deletedAt           DateTime? @map("deleted_at")
 
   project     Project?         @relation(fields: [projectId], references: [id])
@@ -283,7 +283,7 @@ model VideoChunk {
   storageBucket String   @db.VarChar(100) @map("storage_bucket")
   storageKey    String   @db.VarChar(500) @map("storage_key")
   url           String   @db.Text @map("url")
-  uploadedAt    DateTime @map("uploaded_at")
+  uploadedAt    DateTime @map("uploaded_at") @default(now())
 
   video Video @relation(fields: [videoId], references: [id])
 
@@ -301,7 +301,7 @@ model VideoSlideEvent {
   videoId     BigInt   @map("video_id")
   eventType   VideoSlideEventType @map("event_type")
   timestampMs Int      @map("timestamp_ms")
-  createdAt   DateTime @map("created_at")
+  createdAt   DateTime @map("created_at") @default(now())
 
   slide Slide @relation(fields: [slideId], references: [id])
   video Video @relation(fields: [videoId], references: [id])
@@ -332,7 +332,7 @@ model SlideAsset {
   storageBucket   String   @db.VarChar(100) @map("storage_bucket")
   storageKey      String   @db.VarChar(500) @map("storage_key")
   url             String   @db.Text @map("url")
-  createdAt       DateTime @map("created_at")
+  createdAt       DateTime @map("created_at") @default(now())
 
   slide         Slide          @relation(fields: [slideId], references: [id])
   conversionJob ConversionJob? @relation(fields: [conversionJobId], references: [id])
@@ -360,13 +360,13 @@ model ConversionJob {
   id             BigInt   @id @default(autoincrement()) @map("id")
   uploadedFileId BigInt   @map("uploaded_file_id")
   jobType        ConversionJobType   @map("job_type")
-  status         ConversionJobStatus @map("status")
-  progress       Int      @db.UnsignedTinyInt @map("progress")
+  status         ConversionJobStatus @map("status") @default(queued)
+  progress       Int      @db.UnsignedTinyInt @map("progress") @default(0)
   errorCode      String?  @db.VarChar(50) @map("error_code")
   errorMessage   String?  @db.Text @map("error_message")
   startedAt      DateTime? @map("started_at")
   finishedAt     DateTime? @map("finished_at")
-  createdAt      DateTime  @map("created_at")
+  createdAt      DateTime  @map("created_at") @default(now())
 
   uploadedFile UploadedFile @relation(fields: [uploadedFileId], references: [id])
   slideAssets  SlideAsset[]
