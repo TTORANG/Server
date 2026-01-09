@@ -54,7 +54,8 @@ model Session {
   refreshToken String?  @db.Text @map("refresh_token")
   isAnonymous Boolean  @default(false) @db.TinyInt @map("is_anonymous")    
   createdAt   DateTime @default(now()) @map("created_at")               
-  lastSeenAt  DateTime? @updatedAt @map("last_seen_at")
+  lastSeenAt  DateTime? @updatedAt @map("last_seen_at")              
+  expiresAt DateTime? @map("expires_at") 
 
   user        User     @relation(fields: [userId], references: [id])
   comments    Comment[]
@@ -67,7 +68,8 @@ model Session {
   @@index([createdAt], name: "idx_session_created")                      
   @@index([lastSeenAt(sort: Desc)], name: "idx_session_recent")           
   @@index([userId, lastSeenAt(sort: Desc)], name: "idx_user_recent_sessions")
-
+  @@index([expiresAt], name: "idx_session_expires")
+  
   @@map("session")
 }
 

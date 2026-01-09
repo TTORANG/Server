@@ -27,7 +27,7 @@
     "passport-jwt": "^4.0.1",
     "passport-kakao": "^1.0.1",
     "passport-naver": "^1.0.6",
-    "uuid": "^13.0.0"
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@prisma/client": "^6.19.1",
