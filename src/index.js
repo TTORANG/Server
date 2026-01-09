@@ -3,7 +3,12 @@ import express from "express";
 import cors from "cors";
 import passport from "passport";
 import { googleStrategy, jwtStrategy, kakaoStrategy, naverStrategy } from "./auth.config.js";
-import { handleGetMyPage, handleSocialLoginCallback } from "./controllers/auth.controller.js";
+import {
+  handleGetMyPage,
+  handleSocialLoginCallback,
+  handleLogout,
+  handleWithdrawal,
+} from "./controllers/auth.controller.js";
 import { postComplete, postUploadUrl } from "./controllers/files.controller.js";
 import {
   handleCreateAnonymousProject,
@@ -54,6 +59,12 @@ app.get(
   passport.authenticate("naver", { session: false, failureRedirect: "/login-failed" }),
   handleSocialLoginCallback
 );
+
+// 로그아웃
+app.post("/auth/logout", isLogin, handleLogout);
+
+// 계정 삭제
+app.delete("/users/:id", isLogin, handleWithdrawal);
 
 // 익명 세션 생성 (로그인 불필요)
 app.post("/session/anonymous", handleCreateAnonymousSession);

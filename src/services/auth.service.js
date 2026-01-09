@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import * as authRepository from "../repositories/auth.repository.js";
 import { EmailNotFoundError } from "../errors/auth.error.js";
+import { deleteRefreshToken } from "../repositories/auth.repository.js";
 
 const secret = process.env.JWT_SECRET;
 export const generateTokens = (user) => {
@@ -43,4 +44,16 @@ export const socialLoginVerification = async (profile, provider) => {
   }
 
   return user;
+};
+
+export const logoutUser = async (userId) => {
+  try {
+    const updatedSession = await deleteRefreshToken(userId);
+    return { id: userId };
+  } catch (error) {
+    if (error.code === "P2025") {
+      return { id: userId };
+    }
+    throw error;
+  }
 };
