@@ -12,3 +12,20 @@ export const userMyPageResponseDTO = (user) => {
     user: { id: user.id != null ? user.id.toString() : null, email: user.email, name: user.name },
   };
 };
+
+export const logoutResponseDTO = (user) => {
+  return {
+    message: "성공적으로 로그아웃되었습니다.",
+    user: { id: user?.id ? user.id.toString() : null },
+  };
+};
+
+export const withdrawalResponseDTO = (userId) => {
+  return {
+    message: "계정이 성공적으로 삭제되었습니다.",
+    user: {
+      id: userId.toString(),
+    },
+    withdrawnAt: new Date().toISOString(),
+  };
+};

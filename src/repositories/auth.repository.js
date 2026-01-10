@@ -27,3 +27,31 @@ export const createSocialUser = async (email, name, provider, providerId, role) 
     },
   });
 };
+
+export const deleteRefreshToken = async (userId) => {
+  return await prisma.session.update({
+    where: {
+      uq_session_user_anonymous: {
+        userId: userId,
+        isAnonymous: false,
+      },
+    },
+    data: {
+      refreshToken: null,
+      lastSeenAt: new Date(),
+    },
+  });
+};
+
+export const withdrawUser = async (userId) => {
+  return await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: BigInt(userId) },
+      data: { isDeleted: true },
+    });
+
+    await tx.session.deleteMany({
+      where: { userId: BigInt(userId) },
+    });
+  });
+};

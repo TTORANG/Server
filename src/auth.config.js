@@ -15,9 +15,7 @@ export const googleStrategy = new GoogleStrategy(
   },
   async (accessToken, refreshToken, profile, cb) => {
     try {
-      const user = await authService.socialLoginVerification(profile, "google");
-      const tokens = authService.generateTokens(user);
-      return cb(null, { user, tokens }); // user 정보와 토큰을 같이 전달
+      return cb(null, { profile, provider: "google" });
     } catch (err) {
       return cb(err);
     }
@@ -45,9 +43,7 @@ export const kakaoStrategy = new KakaoStrategy(
   },
   async (accessToken, refreshToken, profile, cb) => {
     try {
-      const user = await authService.socialLoginVerification(profile, "kakao");
-      const tokens = authService.generateTokens(user);
-      return cb(null, { user, tokens });
+      return cb(null, { profile, provider: "kakao" });
     } catch (err) {
       return cb(err);
     }
@@ -63,9 +59,7 @@ export const naverStrategy = new NaverStrategy(
   },
   async (accessToken, refreshToken, profile, cb) => {
     try {
-      const user = await authService.socialLoginVerification(profile, "naver");
-      const tokens = authService.generateTokens(user);
-      return cb(null, { user, tokens });
+      return cb(null, { profile, provider: "naver" });
     } catch (err) {
       return cb(err);
     }
