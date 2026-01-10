@@ -11,7 +11,7 @@ export const createAnonymousSession = async (sessionId) => {
       data: {
         name: "익명 사용자",
         email: `anon_${sessionId}@ttorang.com`,
-        oauthProvider: "google",
+        oauthProvider: "anonymous",
         oauthId: sessionId,
         role: "anonymous",
       },

@@ -23,6 +23,7 @@ enum OauthProvider {
   google
   kakao
   naver
+  anonymous
 }
 
 model User {

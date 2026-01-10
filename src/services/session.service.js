@@ -59,12 +59,3 @@ export const editAnonymousProject = async (projectId, userId, title) => {
     updatedAt: project.updatedAt,
   };
 };
-
-// 로그인 성공 후 세션 정보 업데이트 (레포지토리 함수 사용)
-export const handleSocialLoginSuccess = async (user) => {
-  // 1. 토큰 생성
-  const tokens = generateTokens(user);
-  await upsertUserSession(user.id, tokens.refreshToken);
-
-  return { user, tokens };
-};

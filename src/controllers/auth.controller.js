@@ -66,7 +66,6 @@ export const handleWithdrawal = async (req, res, next) => {
       success: withdrawalResponseDTO(result.id),
     });
   } catch (error) {
-    console.error("고객 지원팀 문의:", error);
-    next(new WithdrawFailedError());
+    next(error);
   }
 };
