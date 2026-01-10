@@ -1,14 +1,21 @@
 import { logoutResponseDTO, signinResponseDTO, userMyPageResponseDTO } from "../dtos/auth.dto.js";
-import { logoutUser } from "../services/auth.service.js";
+import { handleSocialLoginSuccess, logoutUser } from "../services/auth.service.js";
 
-export const handleSocialLoginCallback = (req, res) => {
-  const { user, tokens } = req.user;
+export const handleSocialLoginCallback = async (req, res, next) => {
+  try {
+    const { profile, provider } = req.user;
 
-  res.status(200).json({
-    resultType: "SUCCESS",
-    error: null,
-    success: signinResponseDTO(user, tokens),
-  });
+    // 서비스 호출 (여기서 유저 확인 + 세션 저장 + 토큰 발급이 한 번에 일어남)
+    const { user, tokens } = await handleSocialLoginSuccess(profile, provider);
+
+    res.status(200).json({
+      resultType: "SUCCESS",
+      error: null,
+      success: signinResponseDTO(user, tokens),
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 export const handleGetMyPage = (req, res) => {
@@ -42,7 +49,7 @@ export const handleWithdrawal = async (req, res, next) => {
     if (req.params.id !== userId.toString()) {
       throw new BaseError("본인의 계정만 삭제할 수 있습니다.", 403, "A002");
     }
-    const result = await authService.processWithdrawal(userId);
+    const result = await processWithdrawal(userId);
     res.status(200).json({
       resultType: "SUCCESS",
       error: null,
