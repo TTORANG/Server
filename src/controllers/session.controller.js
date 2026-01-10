@@ -34,6 +34,7 @@ export const handleCreateAnonymousProject = async (req, res, next) => {
 
     res.status(201).json({
       resultType: "SUCCESS",
+      error: null,
       success: projectResponseDTO(project),
     });
   } catch (error) {
