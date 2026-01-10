@@ -42,3 +42,16 @@ export const deleteRefreshToken = async (userId) => {
     },
   });
 };
+
+export const withdrawUser = async (userId) => {
+  return await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: BigInt(userId) },
+      data: { isDeleted: true },
+    });
+
+    await tx.session.deleteMany({
+      where: { userId: BigInt(userId) },
+    });
+  });
+};

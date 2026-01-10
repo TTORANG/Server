@@ -1,7 +1,11 @@
 import jwt from "jsonwebtoken";
-import * as authRepository from "../repositories/auth.repository.js";
-import { EmailNotFoundError } from "../errors/auth.error.js";
-import { deleteRefreshToken } from "../repositories/auth.repository.js";
+import { EmailNotFoundError, WithdrawUserError } from "../errors/auth.error.js";
+import {
+  deleteRefreshToken,
+  withdrawUser,
+  createSocialUser,
+  findUserByEmail,
+} from "../repositories/auth.repository.js";
 import { upsertUserSession } from "../repositories/session.repository.js";
 
 const secret = process.env.JWT_SECRET;
@@ -33,15 +37,13 @@ export const socialLoginVerification = async (profile, provider) => {
 
   if (!email) throw new EmailNotFoundError({ profileId: providerId });
 
-  let user = await authRepository.findUserByEmail(email);
+  let user = await findUserByEmail(email);
 
+  if (user && user.isDeleted) {
+    throw new WithdrawUserError();
+  }
   if (!user) {
-    user = await authRepository.createSocialUser(
-      email,
-      name || "사용자",
-      provider,
-      providerId.toString()
-    );
+    user = await createSocialUser(email, name || "사용자", provider, providerId.toString());
   }
 
   return user;
@@ -65,4 +67,9 @@ export const logoutUser = async (userId) => {
     }
     throw error;
   }
+};
+
+export const processWithdrawal = async (userId) => {
+  await withdrawUser(userId);
+  return { id: userId };
 };

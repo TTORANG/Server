@@ -19,3 +19,13 @@ export const logoutResponseDTO = (user) => {
     user: { id: user?.id ? user.id.toString() : null },
   };
 };
+
+export const withdrawalResponseDTO = (userId) => {
+  return {
+    message: "계정이 성공적으로 삭제되었습니다.",
+    user: {
+      id: userId.toString(),
+    },
+    withdrawnAt: new Date().toISOString(),
+  };
+};

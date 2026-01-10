@@ -1,5 +1,15 @@
-import { logoutResponseDTO, signinResponseDTO, userMyPageResponseDTO } from "../dtos/auth.dto.js";
-import { handleSocialLoginSuccess, logoutUser } from "../services/auth.service.js";
+import {
+  logoutResponseDTO,
+  signinResponseDTO,
+  userMyPageResponseDTO,
+  withdrawalResponseDTO,
+} from "../dtos/auth.dto.js";
+import { UserNotSameError, WithdrawFailedError } from "../errors/auth.error.js";
+import {
+  handleSocialLoginSuccess,
+  logoutUser,
+  processWithdrawal,
+} from "../services/auth.service.js";
 
 export const handleSocialLoginCallback = async (req, res, next) => {
   try {
@@ -47,16 +57,16 @@ export const handleWithdrawal = async (req, res, next) => {
     const userId = req.user.id;
     // URL 파라미터의 ID와 현재 로그인 유저 ID 검증 (보안)
     if (req.params.id !== userId.toString()) {
-      throw new BaseError("본인의 계정만 삭제할 수 있습니다.", 403, "A002");
+      return next(new UserNotSameError());
     }
     const result = await processWithdrawal(userId);
     res.status(200).json({
       resultType: "SUCCESS",
       error: null,
-      success: result,
+      success: withdrawalResponseDTO(result.id),
     });
   } catch (error) {
-    error.reason = "계정 삭제에 실패했습니다. 고객 지원팀에 문의하세요.";
-    next(error);
+    console.error("고객 지원팀 문의:", error);
+    next(new WithdrawFailedError());
   }
 };
