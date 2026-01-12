@@ -31,9 +31,6 @@ export async function getJobWithUploadedFile(jobOrId) {
 
   if (!jobId) throw new Error("MISSING_JOB_ID");
 
-  const bucketName = process.env.GCS_BUCKET_NAME;
-  if (!bucketName) throw new Error("GCS_BUCKET_NAME_NOT_SET");
-
   const job = await prisma.conversionJob.findUnique({
     where: { id: BigInt(jobId) },
     include: { uploadedFile: true },
@@ -130,25 +127,17 @@ export async function upsertProjectMaterial({
   pageCount,
   thumbnailSlideNum,
 }) {
-  // (uploadedFileId 단위로 1개만 유지한다고 가정)
-  const existing = await prisma.projectMaterial.findFirst({
+  return prisma.projectMaterial.upsert({
     where: { uploadedFileId: BigInt(uploadedFileId) },
-  });
-
-  if (existing) {
-    return prisma.projectMaterial.update({
-      where: { id: existing.id },
-      data: {
-        projectId: BigInt(projectId),
-        fileType,
-        pageCount,
-        thumbnailSlideNum: thumbnailSlideNum ?? existing.thumbnailSlideNum,
-      },
-    });
-  }
-
-  return prisma.projectMaterial.create({
-    data: {
+    update: {
+      projectId: BigInt(projectId),
+      fileType,
+      pageCount,
+      ...(thumbnailSlideNum !== undefined && {
+        thumbnailSlideNum,
+      }),
+    },
+    create: {
       projectId: BigInt(projectId),
       uploadedFileId: BigInt(uploadedFileId),
       fileType,

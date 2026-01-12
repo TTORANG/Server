@@ -8,10 +8,10 @@ import {
   uuid,
   createSlideAsset,
   updateProjectThumbnail,
+  downloadFromGCS,
 } from "../../utils/conversion.util.js";
 import { SlideImageNotFoundError, SlideNotFoundError } from "../../errors/conversion.error.js";
 import { prisma } from "../../db.config.js";
-4;
 
 /**
  * 썸네일 생성 서비스
@@ -55,69 +55,71 @@ export async function generateThumbnail(jobOrId, opts = {}) {
   const tmpIn = tmpPath(`thumb-in-${job.id}.png`);
   const tmpOut = tmpPath(`thumb-out-${job.id}.png`);
 
-  // GCS에서 읽어오는 부분: gs:// URL만 저장 중이므로 bucket/key 사용
-  // imageAsset.storageBucket / storageKey 기준
-  const { Storage } = await import("@google-cloud/storage");
-  const storage = new Storage();
-  await storage
-    .bucket(imageAsset.storageBucket)
-    .file(imageAsset.storageKey)
-    .download({ destination: tmpIn });
-
-  let outPath = tmpIn;
-
-  // sharp가 있으면 리사이즈
   try {
-    const sharp = (await import("sharp")).default;
-    await sharp(tmpIn)
-      .resize({ width: Number(opts.width ?? 512) })
-      .png()
-      .toFile(tmpOut);
-    outPath = tmpOut;
-  } catch {
-    // sharp 없으면 원본 그대로 thumbnail로 사용
-    outPath = tmpIn;
-  }
+    // ✅ GCS 다운로드 유틸 재사용
+    await downloadFromGCS({
+      bucketName: imageAsset.storageBucket,
+      objectKey: imageAsset.storageKey,
+      destPath: tmpIn,
+    });
 
-  const meta = await maybeImageMeta(outPath);
-  const env = envPrefix();
+    let outPath = tmpIn;
 
-  const objectKey = `${env}/project/${projectId}/thumbnail/${uuid()}.png`;
-  const uploaded = await uploadToGCS({
-    bucketName: imageAsset.storageBucket,
-    srcPath: outPath,
-    objectKey,
-    contentType: "image/png",
-  });
+    // sharp 있으면 resize
+    try {
+      const sharp = (await import("sharp")).default;
+      await sharp(tmpIn)
+        .resize({ width: Number(opts.width ?? 512) })
+        .png()
+        .toFile(tmpOut);
+      outPath = tmpOut;
+    } catch {
+      outPath = tmpIn;
+    }
 
-  // 썸네일 중복 생성 방지
-  await prisma.slideAsset.deleteMany({
-    where: {
+    const meta = await maybeImageMeta(outPath);
+    const env = envPrefix();
+
+    const objectKey = `${env}/project/${projectId}/thumbnail/${uuid()}.png`;
+    const uploaded = await uploadToGCS({
+      bucketName: imageAsset.storageBucket,
+      srcPath: outPath,
+      objectKey,
+      contentType: "image/png",
+    });
+
+    // 기존 thumbnail 제거
+    await prisma.slideAsset.deleteMany({
+      where: {
+        slideId: slide.id,
+        assetType: "thumbnail",
+      },
+    });
+
+    const thumbAsset = await createSlideAsset({
       slideId: slide.id,
+      conversionJobId: job.id,
       assetType: "thumbnail",
-    },
-  });
+      format: "png",
+      width: meta.width,
+      height: meta.height,
+      sizeBytes: meta.sizeBytes,
+      storageBucket: uploaded.storageBucket,
+      storageKey: uploaded.storageKey,
+      url: uploaded.url,
+    });
 
-  // SlideAsset(thumbnail) 생성
-  const thumbAsset = await createSlideAsset({
-    slideId: slide.id,
-    conversionJobId: job.id,
-    assetType: "thumbnail",
-    format: "png",
-    width: meta.width,
-    height: meta.height,
-    sizeBytes: meta.sizeBytes,
-    storageBucket: uploaded.storageBucket,
-    storageKey: uploaded.storageKey,
-    url: uploaded.url,
-  });
+    await updateProjectThumbnail(projectId, uploaded.url);
 
-  // Project.thumbnailUrl 반영
-  await updateProjectThumbnail(projectId, uploaded.url);
-
-  // 임시 파일 정리
-  await fs.unlink(tmpIn).catch(() => {});
-  await fs.unlink(tmpOut).catch(() => {});
-
-  return { ok: true, slideNum, thumbnailAssetId: thumbAsset.id, thumbnailUrl: uploaded.url };
+    return {
+      ok: true,
+      slideNum,
+      thumbnailAssetId: thumbAsset.id,
+      thumbnailUrl: uploaded.url,
+    };
+  } finally {
+    // ✅ fs.rm으로 통일
+    await fs.rm(tmpIn, { force: true }).catch(() => {});
+    await fs.rm(tmpOut, { force: true }).catch(() => {});
+  }
 }
