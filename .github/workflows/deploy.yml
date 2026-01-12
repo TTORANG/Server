@@ -49,6 +49,9 @@ jobs:
 
       # 7. Cloud Run에 배포
       - name: Deploy to Cloud Run
+        env:
+          CLOUD_SQL_CONNECTION: ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:ttorang-db
+          DATABASE_URL: mysql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost/${{ secrets.DB_NAME }}?socket=/cloudsql/${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:ttorang-db
         run: |
           gcloud run deploy ${{ env.SERVICE_NAME }} \
             --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
@@ -56,5 +59,17 @@ jobs:
             --platform managed \
             --allow-unauthenticated \
             --port 8080 \
-            --add-cloudsql-instances=${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:ttorang-db \
-            --set-env-vars="CLOUD_SQL_CONNECTION_NAME=${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:ttorang-db,DB_USER=${{ secrets.DB_USER }},DB_PASSWORD=${{ secrets.DB_PASSWORD }},DB_NAME=${{ secrets.DB_NAME }},DATABASE_URL=mysql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost/${{ secrets.DB_NAME }}?socket=/cloudsql/${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:ttorang-db,PASSPORT_GOOGLE_CLIENT_ID=${{ secrets.PASSPORT_GOOGLE_CLIENT_ID }},PASSPORT_GOOGLE_CLIENT_SECRET=${{ secrets.PASSPORT_GOOGLE_CLIENT_SECRET }},JWT_SECRET=${{ secrets.JWT_SECRET }}"
+            --add-cloudsql-instances=${{ env.CLOUD_SQL_CONNECTION }} \
+            --set-env-vars="^##^
+              CLOUD_SQL_CONNECTION_NAME=${{ env.CLOUD_SQL_CONNECTION }}##
+              DB_USER=${{ secrets.DB_USER }}##
+              DB_PASSWORD=${{ secrets.DB_PASSWORD }}##
+              DB_NAME=${{ secrets.DB_NAME }}##
+              DATABASE_URL=${{ env.DATABASE_URL }}##
+              PASSPORT_GOOGLE_CLIENT_ID=${{ secrets.PASSPORT_GOOGLE_CLIENT_ID }}##
+              PASSPORT_GOOGLE_CLIENT_SECRET=${{ secrets.PASSPORT_GOOGLE_CLIENT_SECRET }}##
+              PASSPORT_KAKAO_CLIENT_ID=${{ secrets.PASSPORT_KAKAO_CLIENT_ID }}##
+              PASSPORT_KAKAO_CLIENT_SECRET=${{ secrets.PASSPORT_KAKAO_CLIENT_SECRET }}##
+              PASSPORT_NAVER_CLIENT_ID=${{ secrets.PASSPORT_NAVER_CLIENT_ID }}##
+              PASSPORT_NAVER_CLIENT_SECRET=${{ secrets.PASSPORT_NAVER_CLIENT_SECRET }}##
+              JWT_SECRET=${{ secrets.JWT_SECRET }}"
