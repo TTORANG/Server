@@ -7,9 +7,11 @@ on:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  REGION: asia-northeast3 # 서울 리전
+  REGION: asia-northeast3
   SERVICE_NAME: ttorang-server
   REPOSITORY: ttorang-repo
+  DB_INSTANCE: ttorang-db
+  CLOUD_TASKS_QUEUE: conversion-queue
 
 jobs:
   deploy:
@@ -30,7 +32,7 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          project_id: ${{ env.PROJECT_ID }}
 
       # 4. Docker 인증 설정 (Artifact Registry)
       - name: Configure Docker for Artifact Registry
@@ -49,6 +51,9 @@ jobs:
 
       # 7. Cloud Run에 배포
       - name: Deploy to Cloud Run
+        env:
+          CLOUD_SQL_CONNECTION: ${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.DB_INSTANCE }}
+          DATABASE_URL: mysql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost/${{ secrets.DB_NAME }}?socket=/cloudsql/${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.DB_INSTANCE }}
         run: |
           gcloud run deploy ${{ env.SERVICE_NAME }} \
             --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
@@ -56,5 +61,18 @@ jobs:
             --platform managed \
             --allow-unauthenticated \
             --port 8080 \
-            --add-cloudsql-instances=${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:ttorang-db \
-            --set-env-vars="CLOUD_SQL_CONNECTION_NAME=${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:ttorang-db,DB_USER=${{ secrets.DB_USER }},DB_PASSWORD=${{ secrets.DB_PASSWORD }},DB_NAME=${{ secrets.DB_NAME }},DATABASE_URL=mysql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost/${{ secrets.DB_NAME }}?socket=/cloudsql/${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:ttorang-db,PASSPORT_GOOGLE_CLIENT_ID=${{ secrets.PASSPORT_GOOGLE_CLIENT_ID }},PASSPORT_GOOGLE_CLIENT_SECRET=${{ secrets.PASSPORT_GOOGLE_CLIENT_SECRET }},JWT_SECRET=${{ secrets.JWT_SECRET }}"
+            --add-cloudsql-instances=${{ env.CLOUD_SQL_CONNECTION }} \
+            --set-env-vars="^##^
+              CLOUD_SQL_CONNECTION_NAME=${{ env.CLOUD_SQL_CONNECTION }}##
+              DB_USER=${{ secrets.DB_USER }}##
+              DB_PASSWORD=${{ secrets.DB_PASSWORD }}##
+              DB_NAME=${{ secrets.DB_NAME }}##
+              DATABASE_URL=${{ env.DATABASE_URL }}##
+              PASSPORT_GOOGLE_CLIENT_ID=${{ secrets.PASSPORT_GOOGLE_CLIENT_ID }}##
+              PASSPORT_GOOGLE_CLIENT_SECRET=${{ secrets.PASSPORT_GOOGLE_CLIENT_SECRET }}##
+              JWT_SECRET=${{ secrets.JWT_SECRET }}##
+              GCP_PROJECT_ID=${{ env.PROJECT_ID }}##
+              GCP_LOCATION=${{ env.REGION }}##
+              CLOUD_TASKS_QUEUE_NAME=${{ env.CLOUD_TASKS_QUEUE }}##
+              CLOUD_TASKS_SERVICE_ACCOUNT=${{ secrets.CLOUD_TASKS_SERVICE_ACCOUNT }}##
+              CLOUD_RUN_SERVICE_URL=${{ secrets.CLOUD_RUN_SERVICE_URL }}"

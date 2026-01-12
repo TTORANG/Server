@@ -16,6 +16,9 @@ import {
   handleMergeSession,
   handleUpdateAnonymousProject,
 } from "./controllers/session.controller.js";
+
+import { handleProcessJob } from "./controllers/worker.controller.js";
+
 dotenv.config();
 
 const app = express();
@@ -104,3 +107,6 @@ app.listen(port, () => {
 // 파일 업로드 API 라우팅(임시)
 app.post("/api/files/upload-url", postUploadUrl);
 app.post("/api/files/complete", postComplete);
+
+// Worker 엔드포인트 (Cloud Tasks에서 호출)
+app.post("/worker/process-job", handleProcessJob);
