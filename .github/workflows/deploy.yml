@@ -52,8 +52,8 @@ jobs:
       # 7. Cloud Run에 배포
       - name: Deploy to Cloud Run
         env:
-          CLOUD_SQL_CONNECTION: ${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.DB_INSTANCE }}
-          DATABASE_URL: mysql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost/${{ secrets.DB_NAME }}?socket=/cloudsql/${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.DB_INSTANCE }}
+          CLOUD_SQL_CONNECTION: ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:ttorang-db
+          DATABASE_URL: mysql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost/${{ secrets.DB_NAME }}?socket=/cloudsql/${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:ttorang-db
         run: |
           gcloud run deploy ${{ env.SERVICE_NAME }} \
             --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
@@ -70,9 +70,8 @@ jobs:
               DATABASE_URL=${{ env.DATABASE_URL }}##
               PASSPORT_GOOGLE_CLIENT_ID=${{ secrets.PASSPORT_GOOGLE_CLIENT_ID }}##
               PASSPORT_GOOGLE_CLIENT_SECRET=${{ secrets.PASSPORT_GOOGLE_CLIENT_SECRET }}##
-              JWT_SECRET=${{ secrets.JWT_SECRET }}##
-              GCP_PROJECT_ID=${{ env.PROJECT_ID }}##
-              GCP_LOCATION=${{ env.REGION }}##
-              CLOUD_TASKS_QUEUE_NAME=${{ env.CLOUD_TASKS_QUEUE }}##
-              CLOUD_TASKS_SERVICE_ACCOUNT=${{ secrets.CLOUD_TASKS_SERVICE_ACCOUNT }}##
-              CLOUD_RUN_SERVICE_URL=${{ secrets.CLOUD_RUN_SERVICE_URL }}"
+              PASSPORT_KAKAO_CLIENT_ID=${{ secrets.PASSPORT_KAKAO_CLIENT_ID }}##
+              PASSPORT_KAKAO_CLIENT_SECRET=${{ secrets.PASSPORT_KAKAO_CLIENT_SECRET }}##
+              PASSPORT_NAVER_CLIENT_ID=${{ secrets.PASSPORT_NAVER_CLIENT_ID }}##
+              PASSPORT_NAVER_CLIENT_SECRET=${{ secrets.PASSPORT_NAVER_CLIENT_SECRET }}##
+              JWT_SECRET=${{ secrets.JWT_SECRET }}"
