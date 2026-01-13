@@ -16,6 +16,7 @@
   "description": "",
   "dependencies": {
     "@google-cloud/storage": "^7.18.0",
+    "@google-cloud/tasks": "^6.2.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.0.0",

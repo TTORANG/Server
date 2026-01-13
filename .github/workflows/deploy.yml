@@ -7,9 +7,11 @@ on:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  REGION: asia-northeast3 # 서울 리전
+  REGION: asia-northeast3
   SERVICE_NAME: ttorang-server
   REPOSITORY: ttorang-repo
+  DB_INSTANCE: ttorang-db
+  CLOUD_TASKS_QUEUE: conversion-queue
 
 jobs:
   deploy:
@@ -30,7 +32,7 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          project_id: ${{ env.PROJECT_ID }}
 
       # 4. Docker 인증 설정 (Artifact Registry)
       - name: Configure Docker for Artifact Registry
