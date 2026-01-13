@@ -1,5 +1,8 @@
-import { prisma } from "../db.config.js";
-
+import {
+  updateJobToProcessing,
+  updateJobToCompleted,
+  updateJobToFailed,
+} from "../repositories/conversionJob.repository.js";
 
 /**
  * Cloud Tasks에서 호출되는 작업 처리 엔드포인트
@@ -13,14 +16,7 @@ export async function handleProcessJob(req, res) {
   }
 
   try {
-    // 작업 상태를 processing으로 업데이트
-    await prisma.conversionJob.update({
-      where: { id: BigInt(conversionJobId) },
-      data: {
-        status: "processing",
-        startedAt: new Date(),
-      },
-    });
+    await updateJobToProcessing(conversionJobId);
 
     // jobType에 따라 적절한 처리 함수 호출
     // switch (jobType) {
@@ -40,29 +36,18 @@ export async function handleProcessJob(req, res) {
     //     throw new Error(`Unknown job type: ${jobType}`);
     // }
 
-    // 작업 완료 상태로 업데이트
-    await prisma.conversionJob.update({
-      where: { id: BigInt(conversionJobId) },
-      data: {
-        status: "completed",
-        progress: 100,
-        finishedAt: new Date(),
-      },
-    });
+    await updateJobToCompleted(conversionJobId);
 
     return res.status(200).json({ success: true });
   } catch (error) {
     console.error(`Job ${conversionJobId} failed:`, error);
 
-    // 작업 실패 상태로 업데이트
-    await prisma.conversionJob.update({
-      where: { id: BigInt(conversionJobId) },
-      data: {
-        status: "failed",
-        errorMessage: error.message,
-        finishedAt: new Date(),
-      },
-    });
+    // 작업 실패 상태로 업데이트 (DB 업데이트 실패해도 200 반환)
+    try {
+      await updateJobToFailed(conversionJobId, error.message);
+    } catch (dbError) {
+      console.error(`Failed to update job ${conversionJobId} status:`, dbError);
+    }
 
     // Cloud Tasks가 재시도하지 않도록 200 반환
     // 실패 정보는 DB에 기록됨

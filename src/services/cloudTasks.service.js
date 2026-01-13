@@ -1,5 +1,5 @@
 import { CloudTasksClient } from "@google-cloud/tasks";
-import { prisma } from "../db.config.js";
+import { createConversionJob } from "../repositories/conversionJob.repository.js";
 
 // Lazy initialization - 실제 사용 시에만 클라이언트 생성
 let client = null;
@@ -61,18 +61,10 @@ export async function enqueueConversionTask({ conversionJobId, jobType, delaySec
 }
 
 export async function createAndEnqueueConversionJob({ uploadedFileId, jobType }) {
-  const conversionJob = await prisma.conversionJob.create({
-    data: {
-      uploadedFileId,
-      jobType,
-      status: "queued",
-      progress: 0,
-      createdAt: new Date(),
-    },
-  });
+  const conversionJob = await createConversionJob({ uploadedFileId, jobType });
 
   await enqueueConversionTask({
-    conversionJobId: Number(conversionJob.id),
+    conversionJobId: conversionJob.id.toString(),
     jobType,
   });
 
