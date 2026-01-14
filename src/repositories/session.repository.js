@@ -84,36 +84,6 @@ export const mergeDataByUserId = async (anonymousSessionId, targetUserId) => {
   });
 };
 
-export const createAnonymousProject = async (userId, title) => {
-  return await prisma.project.create({
-    data: {
-      userId: userId,
-      title: title || "제목 없는 프로젝트",
-      isDeleted: false,
-    },
-  });
-};
-
-export const updateAnonymousProject = async (projectId, userId, title) => {
-  try {
-    return await prisma.project.update({
-      where: {
-        id: BigInt(projectId),
-        userId: userId,
-      },
-      data: {
-        title: title,
-        updatedAt: new Date(),
-      },
-    });
-  } catch (error) {
-    if (error.code === "P2025") {
-      throw new SessionAccessDeniedError({ projectId });
-    }
-    throw error;
-  }
-};
-
 // 소셜 로그인 성공 시 세션 업데이트 또는 생성 (보안 로직용)
 export const upsertUserSession = async (userId, refreshToken) => {
   return await prisma.session.upsert({

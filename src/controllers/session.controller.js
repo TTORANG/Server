@@ -1,14 +1,7 @@
-import {
-  anonymousSessionResponseDTO,
-  mergeResultResponseDTO,
-  projectResponseDTO,
-} from "../dtos/session.dto.js";
-import {
-  editAnonymousProject,
-  issueAnonymousSession,
-  mergeAnonymousData,
-  startAnonymousProject,
-} from "../services/session.service.js";
+import { projectResponseDTO } from "../dtos/project.dto.js";
+import { anonymousSessionResponseDTO, mergeResultResponseDTO } from "../dtos/session.dto.js";
+import { processCreateProject, processUpdateProjectName } from "../services/project.service.js";
+import { issueAnonymousSession, mergeAnonymousData } from "../services/session.service.js";
 
 // 익명 세션 생성
 export const handleCreateAnonymousSession = async (req, res, next) => {
@@ -29,8 +22,8 @@ export const handleCreateAnonymousSession = async (req, res, next) => {
 export const handleCreateAnonymousProject = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { title } = req.body;
-    const project = await startAnonymousProject(userId, title);
+
+    const project = await processCreateProject(userId, req.body);
 
     res.status(201).json({
       resultType: "SUCCESS",
@@ -48,7 +41,8 @@ export const handleUpdateAnonymousProject = async (req, res, next) => {
     const { id } = req.params;
     const { title } = req.body;
     const userId = req.user.id;
-    const project = await editAnonymousProject(id, userId, title);
+
+    const project = await processUpdateProjectName(id, userId, title);
 
     res.status(200).json({
       resultType: "SUCCESS",
