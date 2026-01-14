@@ -3,6 +3,8 @@ import express from "express";
 import cors from "cors";
 import passport from "passport";
 import { googleStrategy, jwtStrategy, kakaoStrategy, naverStrategy } from "./auth.config.js";
+import swaggerUi from "swagger-ui-express";
+import { specs } from "./swagger.config.js";
 import {
   handleGetMyPage,
   handleSocialLoginCallback,
@@ -45,6 +47,9 @@ app.get("/", (req, res) => {
 });
 
 const isLogin = passport.authenticate("jwt", { session: false });
+
+// swagger 문서
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
 
 // 구글 라우트
 app.get("/auth/google/login", passport.authenticate("google", { session: false }));
