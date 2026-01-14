@@ -16,13 +16,3 @@ export const mergeResultResponseDTO = (mergedCount) => {
     mergedProjectsCount: mergedCount,
   };
 };
-
-export const projectResponseDTO = (project) => {
-  return {
-    projectId: project.id.toString(),
-    title: project.title,
-    createdAt: project.createdAt,
-    updatedAt: project.updatedAt || project.createdAt,
-    message: "프로젝트 처리가 완료되었습니다.",
-  };
-};

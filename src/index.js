@@ -18,6 +18,12 @@ import {
 } from "./controllers/session.controller.js";
 
 import { handleProcessJob } from "./controllers/worker.controller.js";
+import {
+  handleCreateProject,
+  handleDeleteProject,
+  handleGetProjectList,
+  handleUpdateProjectName,
+} from "./controllers/project.controller.js";
 
 dotenv.config();
 
@@ -83,6 +89,18 @@ app.post("/session/merge", isLogin, handleMergeSession);
 
 // 마이페이지 라우트(로그인 테스트)
 app.get("/user/mypage", isLogin, handleGetMyPage);
+
+// 프로젝트 생성
+app.post("/presentations", isLogin, handleCreateProject);
+
+// 프로젝트 이름 업데이트
+app.patch("/presentations/:id", isLogin, handleUpdateProjectName);
+
+// 프로젝트 삭제
+app.delete("/presentations/:id", isLogin, handleDeleteProject);
+
+// 프로젝트 목록 조회/검색
+app.get("/presentations", isLogin, handleGetProjectList);
 
 app.use((err, req, res, next) => {
   if (res.headersSent) {
