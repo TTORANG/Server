@@ -15,11 +15,11 @@ export const processCreateProject = async (userId, projectData) => {
   // 확장자에 따른 작업 타입 결정
   const jobType = file.fileExt === "pdf" ? "pdf_to_images" : "pptx_to_images";
 
-  // // 비동기 큐 등록
-  // await createAndEnqueueConversionJob({
-  //   uploadedFileId: BigInt(uploadedFileId),
-  //   jobType: jobType,
-  // });
+  // 비동기 큐 등록
+  await createAndEnqueueConversionJob({
+    uploadedFileId: BigInt(uploadedFileId),
+    jobType: jobType,
+  });
 
   return project;
 };
