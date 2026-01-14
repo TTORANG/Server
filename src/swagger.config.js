@@ -25,6 +25,7 @@ const options = {
           type: "http",
           scheme: "bearer",
           bearerFormat: "JWT",
+          description: "JWT 토큰을 Authorization 헤더에 Bearer 형식으로 입력하세요.",
         },
       },
     },
