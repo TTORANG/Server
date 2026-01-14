@@ -1,38 +1,19 @@
-import { createUploadUrl, verifyUploadedObject } from "../services/gcs.service.js";
+import { createUploadUrl } from "../services/gcs.service.js";
 
-export async function postUploadUrl(req, res) {
+export async function postUploadUrl(req, res, next) {
   try {
     const result = await createUploadUrl(req.body);
-    res.status(200).json({ resultType: "SUCCESS", error: null, result });
+    return success(res, result);
   } catch (e) {
-    res.status(e.status || 500).json({
-      resultType: "FAIL",
-      error: { errorCode: e.message || "UNKNOWN", reason: e.message || "error" },
-      result: null,
-    });
+    next(e);
   }
 }
 
-export async function postComplete(req, res) {
+export async function postComplete(req, res, next) {
   try {
-    const { objectKey } = req.body;
-    if (!objectKey) {
-      return res.status(400).json({
-        resultType: "FAIL",
-        error: { errorCode: "MISSING_OBJECT_KEY", reason: "objectKey required" },
-        result: null,
-      });
-    }
-
-    const meta = await verifyUploadedObject({ objectKey });
-
-    // 여기서 (원하면) contentType/size 재검증 + DB 업데이트 추가
-    res.status(200).json({ resultType: "SUCCESS", error: null, result: { ok: true, ...meta } });
+    const result = await completeFileUpload(req.body);
+    return success(res, result);
   } catch (e) {
-    res.status(e.status || 500).json({
-      resultType: "FAIL",
-      error: { errorCode: e.message || "UNKNOWN", reason: e.message || "error" },
-      result: null,
-    });
+    next(e);
   }
 }
