@@ -26,11 +26,12 @@ export const projectListResponseDTO = (projects, total, page, limit) => {
       thumbnailUrl: project.thumbnailUrl || (primaryFile ? primaryFile.storageUrl : null),
       slideCount: project._count.materials,
       feedbackCount: 0,
-      duration: project.duration || 0,
+      durationSeconds: project.durationSeconds || 0,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
     };
   });
+  // TODO: 피드백 수 집계 기능 구현 필요
 
   return {
     presentations,

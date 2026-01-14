@@ -1,5 +1,5 @@
 import { prisma } from "../db.config.js";
-import { ProjectNotFoundError } from "../errors/project.error.js";
+import { FileNotAttachedError } from "../errors/project.error.js";
 
 // 프로젝트 생성 및 파일 연결
 export const createProject = async (userId, title, uploadedFileId) => {
@@ -8,7 +8,7 @@ export const createProject = async (userId, title, uploadedFileId) => {
       where: { id: BigInt(uploadedFileId) },
     });
 
-    if (!file) throw new ProjectNotFoundError();
+    if (!file) throw new FileNotAttachedError({ uploadedFileId });
 
     const project = await tx.project.create({
       data: {
@@ -27,7 +27,7 @@ export const createProject = async (userId, title, uploadedFileId) => {
 };
 
 // 프로젝트 이름 수정
-export const updatePrjectTitle = async (projectId, userId, title) => {
+export const updateProjectTitle = async (projectId, userId, title) => {
   return await prisma.project.update({
     where: {
       id: BigInt(projectId),

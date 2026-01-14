@@ -7,7 +7,7 @@ import {
   createProject,
   deleteProject,
   getProjectList,
-  updatePrjectTitle,
+  updateProjectTitle,
 } from "../repositories/project.repository.js";
 import { createAndEnqueueConversionJob } from "./cloudTasks.service.js";
 // 프로젝트 생성
@@ -32,7 +32,7 @@ export const processCreateProject = async (userId, projectData) => {
 // 프로젝트 이름 업데이트
 export const processUpdateProjectName = async (projectId, userId, title) => {
   try {
-    return await updatePrjectTitle(projectId, userId, title);
+    return await updateProjectTitle(projectId, userId, title);
   } catch (error) {
     if (error.code === "P2025") throw new ProjectNotFoundError();
     throw error;
