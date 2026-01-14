@@ -20,42 +20,9 @@ import {
  *     tags: [Auth]
  *     responses:
  *       200:
- *         description: 소셜 로그인 성공
- *         content:
- *           application/json:
- *             example:
- *               resultType: "SUCCESS"
- *               error: null
- *               success:
- *                 message: "소셜 로그인 성공!"
- *                 user:
- *                   id: "123"
- *                   email: "user@example.com"
- *                   name: "홍길동"
- *                 tokens:
- *                   accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
- *                   refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *         $ref: '#/components/responses/SocialLoginSuccess'
  *       400:
- *         description: 잘못된 소셜 로그인 요청
- *         content:
- *           application/json:
- *             examples:
- *               EmailNotFound:
- *                 summary: 프로필 이메일을 찾을 수 없음 (A001)
- *                 value:
- *                   resultType: "FAILURE"
- *                   error:
- *                     errorCode: "A001"
- *                     reason: "프로필 이메일을 찾을 수 없습니다."
- *                   success: null
- *               WithdrawUser:
- *                 summary: 탈퇴한 계정으로 로그인 시도 (U002)
- *                 value:
- *                   resultType: "FAILURE"
- *                   error:
- *                     errorCode: "U002"
- *                     reason: "탈퇴한 계정입니다. 고객 센터에 문의하세요"
- *                   success: null
+ *         $ref: '#/components/responses/AuthFailure'
  */
 /**
  * @swagger
@@ -66,42 +33,9 @@ import {
  *     tags: [Auth]
  *     responses:
  *       200:
- *         description: 소셜 로그인 성공
- *         content:
- *           application/json:
- *             example:
- *               resultType: "SUCCESS"
- *               error: null
- *               success:
- *                 message: "소셜 로그인 성공!"
- *                 user:
- *                   id: "123"
- *                   email: "user@example.com"
- *                   name: "홍길동"
- *                 tokens:
- *                   accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
- *                   refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *         $ref: '#/components/responses/SocialLoginSuccess'
  *       400:
- *         description: 잘못된 소셜 로그인 요청
- *         content:
- *           application/json:
- *             examples:
- *               EmailNotFound:
- *                 summary: 프로필 이메일을 찾을 수 없음 (A001)
- *                 value:
- *                   resultType: "FAILURE"
- *                   error:
- *                     errorCode: "A001"
- *                     reason: "프로필 이메일을 찾을 수 없습니다."
- *                   success: null
- *               WithdrawUser:
- *                 summary: 탈퇴한 계정으로 로그인 시도 (U002)
- *                 value:
- *                   resultType: "FAILURE"
- *                   error:
- *                     errorCode: "U002"
- *                     reason: "탈퇴한 계정입니다. 고객 센터에 문의하세요"
- *                   success: null
+ *         $ref: '#/components/responses/AuthFailure'
  */
 /**
  * @swagger
@@ -112,42 +46,9 @@ import {
  *     tags: [Auth]
  *     responses:
  *       200:
- *         description: 소셜 로그인 성공
- *         content:
- *           application/json:
- *             example:
- *               resultType: "SUCCESS"
- *               error: null
- *               success:
- *                 message: "소셜 로그인 성공!"
- *                 user:
- *                   id: "123"
- *                   email: "user@example.com"
- *                   name: "홍길동"
- *                 tokens:
- *                   accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
- *                   refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *         $ref: '#/components/responses/SocialLoginSuccess'
  *       400:
- *         description: 잘못된 소셜 로그인 요청
- *         content:
- *           application/json:
- *             examples:
- *               EmailNotFound:
- *                 summary: 프로필 이메일을 찾을 수 없음 (A001)
- *                 value:
- *                   resultType: "FAILURE"
- *                   error:
- *                     errorCode: "A001"
- *                     reason: "프로필 이메일을 찾을 수 없습니다."
- *                   success: null
- *               WithdrawUser:
- *                 summary: 탈퇴한 계정으로 로그인 시도 (U002)
- *                 value:
- *                   resultType: "FAILURE"
- *                   error:
- *                     errorCode: "U002"
- *                     reason: "탈퇴한 계정입니다. 고객 센터에 문의하세요"
- *                   success: null
+ *         $ref: '#/components/responses/AuthFailure'
  */
 export const handleSocialLoginCallback = async (req, res, next) => {
   try {

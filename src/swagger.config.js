@@ -1,5 +1,6 @@
 // src/swagger.config.js
 import swaggerJSDoc from "swagger-jsdoc";
+import { components } from "./swagger/responses.js";
 
 const options = {
   definition: {
@@ -15,7 +16,7 @@ const options = {
         description: "로컬 테스트 서버",
       },
       {
-        url: "https://ttorang-server-.asia-northeast3.run.app",
+        url: process.env.SERVER_URL,
         description: "개발용 배포 서버 (GCP)",
       },
     ],
@@ -28,6 +29,7 @@ const options = {
           description: "JWT 토큰을 Authorization 헤더에 Bearer 형식으로 입력하세요.",
         },
       },
+      ...components,
     },
   },
   apis: ["./src/controllers/*.js", "./src/index.js"],
