@@ -79,6 +79,7 @@ model Project {
   userId       BigInt   @map("user_id")
   title        String  @db.VarChar(100) @map("title")
   thumbnailUrl String?  @db.Text @map("thumbnail_url")
+  durationSeconds Int? @map("duration_seconds")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
   isDeleted    Boolean   @default(false) @db.TinyInt @map("is_deleted")
