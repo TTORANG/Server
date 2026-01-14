@@ -1,6 +1,8 @@
 import { Storage } from "@google-cloud/storage";
 import crypto from "crypto";
 import { InvalidUploadError } from "../errors/files.error.js";
+import { ALLOWED_CONTENT_TYPES, MAX_SIZE_BYTES } from "../constants/files.js";
+import { extFromContentType } from "../utils/file-ext.util.js";
 
 const storage = new Storage();
 
@@ -10,33 +12,6 @@ function getBucket() {
     throw new InvalidUploadError(null, "GCS_BUCKET_NAME_NOT_SET");
   }
   return storage.bucket(bucketName);
-}
-
-const PPTX_CONTENT_TYPE =
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-
-const ALLOWED_CONTENT_TYPES = new Set([
-  "image/png",
-  "image/jpeg",
-  "application/pdf",
-  PPTX_CONTENT_TYPE,
-]);
-
-const MAX_SIZE_BYTES = 20 * 1024 * 1024; // 수정 가능
-
-function extFromContentType(contentType) {
-  switch (contentType) {
-    case "image/png":
-      return "png";
-    case "image/jpeg":
-      return "jpg";
-    case "application/pdf":
-      return "pdf";
-    case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-      return "pptx";
-    default:
-      return null;
-  }
 }
 
 function buildObjectKey({ purpose, projectId, slideId, contentType }) {

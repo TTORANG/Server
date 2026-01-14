@@ -1,22 +1,8 @@
+import { ALLOWED_CONTENT_TYPES, MAX_SIZE_BYTES } from "../constants/files.js";
 import { prisma } from "../db.config.js";
 import { InvalidUploadError } from "../errors/files.error.js";
+import { extFromContentType } from "../utils/file-ext.util.js";
 import { verifyUploadedObject } from "./gcs.service.js";
-
-const ALLOWED_CONTENT_TYPES = new Set([
-  "image/png",
-  "image/jpeg",
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-]);
-
-const MAX_SIZE_BYTES = 20 * 1024 * 1024;
-
-function fileExtFromContentType(contentType) {
-  if (contentType === "application/pdf") return "pdf";
-  if (contentType === "application/vnd.openxmlformats-officedocument.presentationml.presentation")
-    return "pptx";
-  return null;
-}
 
 export async function completeFileUpload({ objectKey, projectId }) {
   // 기본 검증
@@ -44,7 +30,7 @@ export async function completeFileUpload({ objectKey, projectId }) {
     throw new InvalidUploadError({ size: meta.size, max: MAX_SIZE_BYTES }, "INVALID_FILE_SIZE");
   }
 
-  const fileExt = fileExtFromContentType(meta.contentType);
+  const fileExt = extFromContentType(meta.contentType);
   if (!fileExt) {
     throw new InvalidUploadError({ contentType: meta.contentType }, "UNSUPPORTED_FILE_EXTENSION");
   }
