@@ -1,7 +1,12 @@
-import { ProjectNotFoundError } from "../errors/project.error.js";
+import {
+  InvalidPageError,
+  ProjectNotFoundError,
+  SearchQueryTooShortError,
+} from "../errors/project.error.js";
 import {
   createProject,
   deleteProject,
+  getProjectList,
   updatePrjectTitle,
 } from "../repositories/project.repository.js";
 import { createAndEnqueueConversionJob } from "./cloudTasks.service.js";
@@ -42,4 +47,26 @@ export const processDeleteProject = async (projectId, userId) => {
     if (error.code === "P2025") throw new ProjectNotFoundError();
     throw error;
   }
+};
+
+// 프로젝트 목록
+export const processGetProjectList = async (userId, query) => {
+  const { page = 1, limit = 20, search = null, maxDuration = null, sort = "latest" } = query;
+
+  if (page < 1) {
+    throw new InvalidPageError();
+  }
+
+  if (search && search.length < 2) {
+    throw new SearchQueryTooShortError();
+  }
+  const { total, projects } = await getProjectList(userId, {
+    page,
+    limit,
+    search,
+    maxDuration,
+    sort,
+  });
+
+  return { total, projects, page, limit };
 };
