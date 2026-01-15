@@ -74,4 +74,5 @@ jobs:
               PASSPORT_KAKAO_CLIENT_SECRET=${{ secrets.PASSPORT_KAKAO_CLIENT_SECRET }}##
               PASSPORT_NAVER_CLIENT_ID=${{ secrets.PASSPORT_NAVER_CLIENT_ID }}##
               PASSPORT_NAVER_CLIENT_SECRET=${{ secrets.PASSPORT_NAVER_CLIENT_SECRET }}##
-              JWT_SECRET=${{ secrets.JWT_SECRET }}"
+              JWT_SECRET=${{ secrets.JWT_SECRET }}##
+              SERVER_URL=https://ttorang-server-407623424780.asia-northeast3.run.app"
