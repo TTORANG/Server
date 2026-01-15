@@ -9,7 +9,7 @@ import {
   getProjectList,
   updateProjectTitle,
 } from "../repositories/project.repository.js";
-import { createAndEnqueueConversionJob } from "./cloudTasks.service.js";
+import { startConversionPipeline } from "./conversionJob.service.js";
 // 프로젝트 생성
 export const processCreateProject = async (userId, projectData) => {
   const { title, uploadedFileId } = projectData;
@@ -17,13 +17,10 @@ export const processCreateProject = async (userId, projectData) => {
   // DB 작업 완료 (트랜잭션 끝)
   const { project, file } = await createProject(userId, title, uploadedFileId);
 
-  // 확장자에 따른 작업 타입 결정
-  const jobType = file.fileExt === "pdf" ? "pdf_to_images" : "pptx_to_images";
-
-  // 비동기 큐 등록
-  await createAndEnqueueConversionJob({
+  // 비동기 변환 파이프라인 시작
+  await startConversionPipeline({
     uploadedFileId: BigInt(uploadedFileId),
-    jobType: jobType,
+    fileExt: file.fileExt,
   });
 
   return project;
