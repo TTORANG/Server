@@ -4,17 +4,11 @@ import { InvalidUploadError } from "../errors/files.error.js";
 import { extFromContentType } from "../utils/file-ext.util.js";
 import { verifyUploadedObject } from "./gcs.service.js";
 
-export async function completeFileUpload({ objectKey, projectId }) {
-  // 기본 검증
-  if (!objectKey || !Number.isInteger(projectId) || projectId <= 0) {
-    throw new InvalidUploadError({ objectKey, projectId }, "INVALID_PROJECT_OR_OBJECT_KEY");
-  }
-
+export async function completeFileUpload({ objectKey }) {
   // objectKey 범위 검증
   const env = process.env.NODE_ENV || "dev";
-  const allowedPrefix = `${env}/project/${projectId}/`;
-  if (!objectKey.startsWith(allowedPrefix)) {
-    throw new InvalidUploadError({ objectKey, allowedPrefix }, "INVALID_OBJECT_KEY_PREFIX");
+  if (!objectKey) {
+    throw new InvalidUploadError({ objectKey }, "INVALID_OBJECT_KEY");
   }
 
   // GCS 메타데이터 조회
@@ -38,7 +32,7 @@ export async function completeFileUpload({ objectKey, projectId }) {
   // UploadedFile INSERT (업로드 확정)
   const uploadedFile = await prisma.uploadedFile.create({
     data: {
-      projectId,
+      projectId: null,
       originalFilename: objectKey.split("/").pop(),
       contentType: meta.contentType,
       fileExt,
@@ -50,7 +44,8 @@ export async function completeFileUpload({ objectKey, projectId }) {
   });
 
   // ConversionJob 생성 (파이프라인 트리거)
-  const jobType = fileExt === "pptx" ? "pptx_to_images" : "pdf_to_images";
+  const jobType =
+    fileExt === "pptx" ? "pptx_to_images" : fileExt === "pdf" ? "pdf_to_images" : null;
 
   const conversionJob = await prisma.conversionJob.create({
     data: {
@@ -61,8 +56,8 @@ export async function completeFileUpload({ objectKey, projectId }) {
   });
 
   return {
-    uploadedFileId: uploadedFile.id,
-    conversionJobId: conversionJob.id,
+    uploadedFileId: uploadedFile.id.toString(),
+    conversionJobId: conversionJob.id.toString(),
     status: conversionJob.status,
   };
 }
