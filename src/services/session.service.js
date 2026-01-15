@@ -1,11 +1,8 @@
 import { v4 as uuidv4 } from "uuid";
 import {
-  createAnonymousProject,
   createAnonymousSession,
   findSessionById,
   mergeDataByUserId,
-  updateAnonymousProject,
-  upsertUserSession,
 } from "../repositories/session.repository.js";
 import { generateTokens } from "./auth.service.js";
 import { SessionNotFoundError, NoDataToMergeError } from "../errors/session.error.js";
@@ -36,26 +33,4 @@ export const mergeAnonymousData = async (anonymousSessionId, userId) => {
     throw new NoDataToMergeError({ anonymousSessionId });
   }
   return mergedCount;
-};
-
-// 익명 프로젝트 시작
-export const startAnonymousProject = async (userId, title) => {
-  const project = await createAnonymousProject(userId, title);
-
-  return {
-    id: project.id.toString(),
-    title: project.title,
-    createdAt: project.createdAt,
-  };
-};
-
-// 익명 프로젝트 업데이트
-export const editAnonymousProject = async (projectId, userId, title) => {
-  const project = await updateAnonymousProject(projectId, userId, title);
-
-  return {
-    id: project.id.toString(),
-    title: project.title,
-    updatedAt: project.updatedAt,
-  };
 };

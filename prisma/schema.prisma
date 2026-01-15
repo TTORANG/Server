@@ -79,6 +79,7 @@ model Project {
   userId       BigInt   @map("user_id")
   title        String  @db.VarChar(100) @map("title")
   thumbnailUrl String?  @db.Text @map("thumbnail_url")
+  durationSeconds Int? @map("duration_seconds")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
   isDeleted    Boolean   @default(false) @db.TinyInt @map("is_deleted")
@@ -217,7 +218,7 @@ enum FileExt {
 
 model UploadedFile {
   id               BigInt   @id @default(autoincrement()) @map("id")
-  projectId        BigInt   @map("project_id")
+  projectId        BigInt?   @map("project_id")
   originalFilename String   @db.VarChar(255) @map("original_filename")
   contentType      String   @db.VarChar(100) @map("content_type")
   fileExt          FileExt  @map("file_ext")
@@ -229,7 +230,7 @@ model UploadedFile {
   createdAt        DateTime @map("created_at") @default(now())
   isDeleted        Boolean  @db.TinyInt @map("is_deleted") @default(false)
 
-  project        Project          @relation(fields: [projectId], references: [id])
+  project        Project?          @relation(fields: [projectId], references: [id])
   conversionJobs ConversionJob[]
   materials      ProjectMaterial[]
 
@@ -244,7 +245,7 @@ enum ProjectMaterialFileType {
 model ProjectMaterial {
   id                BigInt   @id @default(autoincrement()) @map("id")
   projectId         BigInt?  @map("project_id")
-  uploadedFileId    BigInt?  @map("uploaded_file_id")
+  uploadedFileId    BigInt?  @map("uploaded_file_id") 
   fileType          ProjectMaterialFileType @map("file_type")
   pageCount         Int      @map("page_count")
   thumbnailSlideNum Int?     @map("thumbnail_slide_num")
@@ -253,7 +254,8 @@ model ProjectMaterial {
 
   project      Project?      @relation(fields: [projectId], references: [id])
   uploadedFile UploadedFile? @relation(fields: [uploadedFileId], references: [id])
-
+  
+  @@unique([uploadedFileId])
   @@map("project_material")
 }
 

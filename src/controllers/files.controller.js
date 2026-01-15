@@ -1,38 +1,121 @@
-import { createUploadUrl, verifyUploadedObject } from "../services/gcs.service.js";
+import { completeFileUpload } from "../services/files.service.js";
+import { createUploadUrl } from "../services/gcs.service.js";
+import { success } from "../utils/response.util.js";
 
-export async function postUploadUrl(req, res) {
+export async function postUploadUrl(req, res, next) {
+  /**
+   * @openapi
+   * /api/files/upload-url:
+   *   post:
+   *     summary: 파일 업로드용 Signed URL 발급
+   *     description: GCS에 직접 업로드할 수 있는 Signed URL을 발급한다.
+   *     tags: [File]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required: [purpose, contentType, size]
+   *             properties:
+   *               purpose:
+   *                 type: string
+   *                 enum: [presentation_file]
+   *               contentType:
+   *                 type: string
+   *                 example: application/pdf
+   *               size:
+   *                 type: integer
+   *                 example: 1048576
+   *     responses:
+   *       200:
+   *         description: Signed URL 발급 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *             example:
+   *               resultType: SUCCESS
+   *               error: null
+   *               success:
+   *                 objectKey: dev/upload/temp/uuid.pdf
+   *                 uploadUrl: https://storage.googleapis.com/...
+   *                 expiresAt: "2026-01-15T12:00:00.000Z"
+   *       400:
+   *         description: 파일 업로드 요청 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *             example:
+   *               resultType: FAILURE
+   *               error:
+   *                 errorCode: F001
+   *                 reason: 잘못된 파일 업로드 요청입니다.
+   *                 data: null
+   *               success: null
+   */
+
   try {
     const result = await createUploadUrl(req.body);
-    res.status(200).json({ resultType: "SUCCESS", error: null, result });
+    return success(res, result);
   } catch (e) {
-    res.status(e.status || 500).json({
-      resultType: "FAIL",
-      error: { errorCode: e.message || "UNKNOWN", reason: e.message || "error" },
-      result: null,
-    });
+    next(e);
   }
 }
 
-export async function postComplete(req, res) {
+export async function postComplete(req, res, next) {
+  /**
+   * @openapi
+   * /api/files/complete:
+   *   post:
+   *     summary: 파일 업로드 완료 처리
+   *     description: 업로드된 파일을 검증하고 DB에 확정 저장한다.
+   *     tags: [File]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required: [objectKey]
+   *             properties:
+   *               objectKey:
+   *                 type: string
+   *                 example: dev/upload/temp/uuid.pdf
+   *     responses:
+   *       200:
+   *         description: 업로드 확정 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *             example:
+   *               resultType: SUCCESS
+   *               error: null
+   *               success:
+   *                 uploadedFileId: "10"
+   *                 conversionJobId: "22"
+   *                 status: queued
+   *       400:
+   *         description: 파일 업로드 검증 실패
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *             example:
+   *               resultType: FAILURE
+   *               error:
+   *                 errorCode: F001
+   *                 reason: 파일 업로드 검증 실패
+   *                 data: null
+   *               success: null
+   */
+
   try {
-    const { objectKey } = req.body;
-    if (!objectKey) {
-      return res.status(400).json({
-        resultType: "FAIL",
-        error: { errorCode: "MISSING_OBJECT_KEY", reason: "objectKey required" },
-        result: null,
-      });
-    }
-
-    const meta = await verifyUploadedObject({ objectKey });
-
-    // 여기서 (원하면) contentType/size 재검증 + DB 업데이트 추가
-    res.status(200).json({ resultType: "SUCCESS", error: null, result: { ok: true, ...meta } });
+    const result = await completeFileUpload(req.body);
+    return success(res, result);
   } catch (e) {
-    res.status(e.status || 500).json({
-      resultType: "FAIL",
-      error: { errorCode: e.message || "UNKNOWN", reason: e.message || "error" },
-      result: null,
-    });
+    next(e);
   }
 }

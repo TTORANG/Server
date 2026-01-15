@@ -4,5 +4,5 @@ credentials/*.json
 
 # dotenv environment variable files
 .env
-.env.*
 /src/generated/prisma
+gcp-key.json
