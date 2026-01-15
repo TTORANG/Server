@@ -12,6 +12,12 @@ export const createConversionJob = async ({ uploadedFileId, jobType }) => {
   });
 };
 
+export const getJobById = async (jobId) => {
+  return await prisma.conversionJob.findUnique({
+    where: { id: BigInt(jobId) },
+  });
+};
+
 export const updateJobToProcessing = async (jobId) => {
   return await prisma.conversionJob.update({
     where: { id: BigInt(jobId) },

@@ -19,13 +19,15 @@ import {
   handleUpdateAnonymousProject,
 } from "./controllers/session.controller.js";
 
-import { handleProcessJob } from "./controllers/worker.controller.js";
+
+import { handleProcessJob } from "./controllers/conversionJob.controller.js";
 import {
   handleCreateProject,
   handleDeleteProject,
   handleGetProjectList,
   handleUpdateProjectName,
 } from "./controllers/project.controller.js";
+
 
 dotenv.config();
 
