@@ -29,6 +29,8 @@
     "passport-jwt": "^4.0.1",
     "passport-kakao": "^1.0.1",
     "passport-naver": "^1.0.6",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
@@ -38,5 +40,11 @@
     "nodemon": "^3.1.11",
     "prettier": "^3.7.4",
     "prisma": "^6.19.1"
+  },
+  "overrides": {
+    "inflight": "^1.0.7",
+    "glob": "^10.3.10",
+    "lodash.get": "^4.4.1",
+    "lodash.isequal": "^4.5.0"
   }
 }

@@ -1,48 +1,26 @@
 import { Storage } from "@google-cloud/storage";
 import crypto from "crypto";
+import { InvalidUploadError } from "../errors/files.error.js";
+import { ALLOWED_CONTENT_TYPES, MAX_SIZE_BYTES } from "../constants/files.js";
+import { extFromContentType } from "../utils/file-ext.util.js";
 
 const storage = new Storage();
 
 function getBucket() {
   const bucketName = process.env.GCS_BUCKET_NAME;
   if (!bucketName) {
-    throw new Error("GCS_BUCKET_NAME_NOT_SET");
+    throw new InvalidUploadError(null, "GCS_BUCKET_NAME_NOT_SET");
   }
   return storage.bucket(bucketName);
-}
-
-const PPTX_CONTENT_TYPE =
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-
-const ALLOWED_CONTENT_TYPES = new Set([
-  "image/png",
-  "image/jpeg",
-  "application/pdf",
-  PPTX_CONTENT_TYPE,
-]);
-
-const MAX_SIZE_BYTES = 20 * 1024 * 1024; // 수정 가능
-
-function extFromContentType(contentType) {
-  switch (contentType) {
-    case "image/png":
-      return "png";
-    case "image/jpeg":
-      return "jpg";
-    case "application/pdf":
-      return "pdf";
-    case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-      return "pptx";
-    default:
-      return null;
-  }
 }
 
 function buildObjectKey({ purpose, projectId, slideId, contentType }) {
   const env = process.env.NODE_ENV || "dev";
   const uuid = crypto.randomUUID();
   const ext = extFromContentType(contentType);
-  if (!ext) throw new Error("UNSUPPORTED_CONTENT_TYPE");
+  if (!ext) {
+    throw new InvalidUploadError({ contentType }, "UNSUPPORTED_CONTENT_TYPE");
+  }
 
   if (purpose === "project_thumbnail") {
     return `${env}/project/${projectId}/thumbnail/${uuid}.${ext}`;
@@ -50,30 +28,29 @@ function buildObjectKey({ purpose, projectId, slideId, contentType }) {
   if (purpose === "slide_thumbnail") {
     return `${env}/slide/${projectId}/${slideId}/thumbnail/${uuid}.${ext}`;
   }
+  if (purpose === "presentation_file") {
+    return `${env}/upload/temp/${uuid}.${ext}`;
+  }
 
-  throw new Error("INVALID_PURPOSE");
-}
-
-function createHttpError(status, message) {
-  const err = new Error(message);
-  err.status = status;
-  return err;
+  throw new InvalidUploadError({ purpose }, "INVALID_PURPOSE");
 }
 
 export async function createUploadUrl(body) {
   const { purpose, contentType, size, projectId, slideId } = body;
 
   if (!ALLOWED_CONTENT_TYPES.has(contentType)) {
-    throw createHttpError(400, "UNSUPPORTED_CONTENT_TYPE");
+    throw new InvalidUploadError({ contentType }, "UNSUPPORTED_CONTENT_TYPE");
   }
   if (!Number.isInteger(size) || size <= 0 || size > MAX_SIZE_BYTES) {
-    throw createHttpError(400, "INVALID_SIZE");
+    throw new InvalidUploadError({ size }, "INVALID_FILE_SIZE");
   }
-  if (!Number.isInteger(projectId) || projectId <= 0) {
-    throw createHttpError(400, "INVALID_PROJECT_ID");
+  if (purpose !== "presentation_file") {
+    if (!Number.isInteger(projectId) || projectId <= 0) {
+      throw new InvalidUploadError({ projectId }, "INVALID_PROJECT_ID");
+    }
   }
   if (purpose === "slide_thumbnail" && (!Number.isInteger(slideId) || slideId <= 0)) {
-    throw createHttpError(400, "INVALID_SLIDE_ID");
+    throw new InvalidUploadError({ slideId }, "INVALID_SLIDE_ID");
   }
 
   const objectKey = buildObjectKey({ purpose, projectId, slideId, contentType });

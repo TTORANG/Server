@@ -3,6 +3,8 @@ import express from "express";
 import cors from "cors";
 import passport from "passport";
 import { googleStrategy, jwtStrategy, kakaoStrategy, naverStrategy } from "./auth.config.js";
+import swaggerUi from "swagger-ui-express";
+import { specs } from "./swagger.config.js";
 import {
   handleGetMyPage,
   handleSocialLoginCallback,
@@ -17,7 +19,15 @@ import {
   handleUpdateAnonymousProject,
 } from "./controllers/session.controller.js";
 
+
 import { handleProcessJob } from "./controllers/conversionJob.controller.js";
+import {
+  handleCreateProject,
+  handleDeleteProject,
+  handleGetProjectList,
+  handleUpdateProjectName,
+} from "./controllers/project.controller.js";
+
 
 dotenv.config();
 
@@ -39,6 +49,9 @@ app.get("/", (req, res) => {
 });
 
 const isLogin = passport.authenticate("jwt", { session: false });
+
+// swagger 문서
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
 
 // 구글 라우트
 app.get("/auth/google/login", passport.authenticate("google", { session: false }));
@@ -83,6 +96,18 @@ app.post("/session/merge", isLogin, handleMergeSession);
 
 // 마이페이지 라우트(로그인 테스트)
 app.get("/user/mypage", isLogin, handleGetMyPage);
+
+// 프로젝트 생성
+app.post("/presentations", isLogin, handleCreateProject);
+
+// 프로젝트 이름 업데이트
+app.patch("/presentations/:id", isLogin, handleUpdateProjectName);
+
+// 프로젝트 삭제
+app.delete("/presentations/:id", isLogin, handleDeleteProject);
+
+// 프로젝트 목록 조회/검색
+app.get("/presentations", isLogin, handleGetProjectList);
 
 app.use((err, req, res, next) => {
   if (res.headersSent) {
