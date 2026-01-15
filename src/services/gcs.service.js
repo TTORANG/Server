@@ -28,6 +28,9 @@ function buildObjectKey({ purpose, projectId, slideId, contentType }) {
   if (purpose === "slide_thumbnail") {
     return `${env}/slide/${projectId}/${slideId}/thumbnail/${uuid}.${ext}`;
   }
+  if (purpose === "presentation_file") {
+    return `${env}/upload/temp/${uuid}.${ext}`;
+  }
 
   throw new InvalidUploadError({ purpose }, "INVALID_PURPOSE");
 }
@@ -41,8 +44,10 @@ export async function createUploadUrl(body) {
   if (!Number.isInteger(size) || size <= 0 || size > MAX_SIZE_BYTES) {
     throw new InvalidUploadError({ size }, "INVALID_FILE_SIZE");
   }
-  if (!Number.isInteger(projectId) || projectId <= 0) {
-    throw new InvalidUploadError({ projectId }, "INVALID_PROJECT_ID");
+  if (purpose !== "presentation_file") {
+    if (!Number.isInteger(projectId) || projectId <= 0) {
+      throw new InvalidUploadError({ projectId }, "INVALID_PROJECT_ID");
+    }
   }
   if (purpose === "slide_thumbnail" && (!Number.isInteger(slideId) || slideId <= 0)) {
     throw new InvalidUploadError({ slideId }, "INVALID_SLIDE_ID");
