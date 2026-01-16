@@ -14,13 +14,13 @@ const slideAssetMapper = (slide) => {
   return mainAsset;
 };
 export const slideListResponseDTO = (slides) => {
-  return slides.map((slide) => {
+  return slides.map((slide, index) => {
     let mainAsset = slideAssetMapper(slide);
 
     return {
       slideId: slide.id.toString(),
       projectId: slide.projectId.toString(),
-      title: slide.title || `슬라이드 ${slide.slideNum}`,
+      title: slide.title || `슬라이드 ${index + 1}`,
       slideNum: slide.slideNum ? Number(slide.slideNum) : null,
       imageUrl: mainAsset ? mainAsset.url : null,
       createdAt: slide.createdAt,

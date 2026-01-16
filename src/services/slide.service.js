@@ -49,8 +49,13 @@ export const processGetSlideDetail = async (slideId, userId) => {
     throw new SlideAccessDeniedError();
   }
 
-  const prevId = await getPrevSlideId(slide.projectId, slide.slideNum);
-  const nextId = await getNextSlideId(slide.projectId, slide.slideNum);
+  let prevId = null;
+  let nextId = null;
+
+  if (slide.slideNum != null) {
+    prevId = await getPrevSlideId(slide.projectId, slide.slideNum);
+    nextId = await getNextSlideId(slide.projectId, slide.slideNum);
+  }
 
   return { slide, prevId, nextId };
 };
