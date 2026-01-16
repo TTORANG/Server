@@ -26,7 +26,7 @@ import {
   handleGetProjectList,
   handleUpdateProjectName,
 } from "./controllers/project.controller.js";
-import { handleGetSlides } from "./controllers/slide.controller.js";
+import { handleGetSlides, handlePatchSlideTitle } from "./controllers/slide.controller.js";
 
 dotenv.config();
 
@@ -110,6 +110,9 @@ app.get("/presentations", isLogin, handleGetProjectList);
 
 // 슬라이드 목록 조회
 app.get("/presentations/:projectId/slides", isLogin, handleGetSlides);
+
+// 슬라이드 제목 수정
+app.patch("/presentations/slides/:slideId", isLogin, handlePatchSlideTitle);
 
 app.use((err, req, res, next) => {
   if (res.headersSent) {

@@ -38,3 +38,15 @@ export const getProjectExist = async (projectId, userId) => {
     where: { id: BigInt(projectId), userId, isDeleted: false },
   });
 };
+
+export const updateSlideTitle = async (slideId, newTitle) => {
+  return await prisma.slide.update({
+    where: { id: BigInt(slideId) },
+    data: {
+      title: newTitle,
+    },
+    include: {
+      assets: true,
+    },
+  });
+};
