@@ -19,7 +19,6 @@ import {
   handleUpdateAnonymousProject,
 } from "./controllers/session.controller.js";
 
-
 import { handleProcessJob } from "./controllers/conversionJob.controller.js";
 import {
   handleCreateProject,
@@ -27,7 +26,7 @@ import {
   handleGetProjectList,
   handleUpdateProjectName,
 } from "./controllers/project.controller.js";
-
+import { handleGetSlides } from "./controllers/slide.controller.js";
 
 dotenv.config();
 
@@ -108,6 +107,9 @@ app.delete("/presentations/:id", isLogin, handleDeleteProject);
 
 // 프로젝트 목록 조회/검색
 app.get("/presentations", isLogin, handleGetProjectList);
+
+// 슬라이드 목록 조회
+app.get("/presentations/:projectId/slides", isLogin, handleGetSlides);
 
 app.use((err, req, res, next) => {
   if (res.headersSent) {
