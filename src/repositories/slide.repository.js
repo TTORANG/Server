@@ -50,3 +50,31 @@ export const updateSlideTitle = async (slideId, newTitle) => {
     },
   });
 };
+
+export const getPrevSlideId = async (projectId, currentSlideNum) => {
+  const prevSlide = await prisma.slide.findFirst({
+    where: {
+      projectId: BigInt(projectId),
+      slideNum: { lt: currentSlideNum },
+      isDeleted: false,
+    },
+    orderBy: { slideNum: "desc" },
+    select: { id: true },
+  });
+
+  return prevSlide ? prevSlide.id.toString() : null;
+};
+
+export const getNextSlideId = async (projectId, currentSlideNum) => {
+  const nextSlide = await prisma.slide.findFirst({
+    where: {
+      projectId: BigInt(projectId),
+      slideNum: { gt: currentSlideNum },
+      isDeleted: false,
+    },
+    orderBy: { slideNum: "asc" },
+    select: { id: true },
+  });
+
+  return nextSlide ? nextSlide.id.toString() : null;
+};

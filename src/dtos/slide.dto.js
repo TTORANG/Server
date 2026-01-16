@@ -40,3 +40,18 @@ export const slideResponseDTO = (slide) => {
     updatedAt: slide.updatedAt,
   };
 };
+
+export const slideDetailResponseDTO = (slide, prevId, nextId) => {
+  let mainAsset = slideAssetMapper(slide);
+
+  return {
+    slideId: slide.id.toString(),
+    projectId: slide.projectId.toString(),
+    title: slide.title || `슬라이드 ${slide.slideNum}`,
+    slideNum: slide.slideNum ? Number(slide.slideNum) : null,
+    imageUrl: mainAsset ? mainAsset.url : null,
+    prevSlideId: prevId,
+    nextSlideId: nextId,
+    updatedAt: slide.updatedAt,
+  };
+};
