@@ -18,27 +18,44 @@ function toInt(value) {
 function requireProjectId(projectId) {
   const pid = toInt(projectId);
   if (!Number.isInteger(pid) || pid <= 0) {
-    throw new InvalidUploadError({ projectId }, "존재하지 않는 프로젝트 id입니다.");
+    throw new InvalidUploadError({ projectId }, "프로젝트 ID가 올바르지 않습니다.");
   }
   return pid;
 }
 
-export async function createVideo(body) {
-  const projectId = requireProjectId(body.projectId);
-  const container = body.container ?? "mp4";
-  const title = body.title ?? null;
+export async function createVideo({ projectId, title }) {
+  // projectId 형식 검증
+  const pid = requireProjectId(projectId);
 
+  // 프로젝트 존재 + 미삭제 여부 검증 (핵심)
+  const project = await prisma.project.findFirst({
+    where: {
+      id: pid,
+      isDeleted: false,
+    },
+    select: { id: true },
+  });
+
+  if (!project) {
+    throw new InvalidUploadError({ projectId: pid }, "존재하지 않는 프로젝트입니다.");
+  }
+
+  // 비디오 생성
   const video = await prisma.video.create({
     data: {
-      projectId,
+      projectId: pid,
       title,
-      container,
       status: "uploading",
     },
   });
 
-  // BigInt JSON 문제 방지: 문자열로 반환
-  return { videoId: video.id.toString() };
+  return {
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      videoId: video.id.toString(),
+    },
+  };
 }
 
 export async function createVideoChunkUploadUrl(input) {
