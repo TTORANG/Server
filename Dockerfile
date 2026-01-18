@@ -1,7 +1,7 @@
 FROM node:20-alpine
 
-# FFmpeg 설치 (영상 인코딩용)
-RUN apk add --no-cache ffmpeg
+# FFmpeg 설치 (영상 인코딩용) + poppler-utils (PDF to Image 변환용)
+RUN apk add --no-cache ffmpeg poppler-utils
 
 WORKDIR /app
 

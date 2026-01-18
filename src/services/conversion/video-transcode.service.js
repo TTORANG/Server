@@ -6,6 +6,7 @@ import {
   updateVideoHlsUrl,
   deleteVideoChunks,
 } from "../../repositories/video.repository.js";
+import { getJobById } from "../../repositories/conversionJob.repository.js";
 import {
   downloadFromGCS,
   uploadToGCS,
@@ -15,6 +16,7 @@ import {
   envPrefix,
   listFiles,
 } from "../../utils/conversion.util.js";
+import pLimit from "p-limit";
 
 /**
  * Video Transcode 서비스
@@ -27,10 +29,7 @@ export const videoTranscode = async (jobOrId) => {
   const jobId = typeof jobOrId === "object" ? jobOrId.id : jobOrId;
 
   // Job에서 videoId 조회
-  const { prisma } = await import("../../db.config.js");
-  const job = await prisma.conversionJob.findUnique({
-    where: { id: BigInt(jobId) },
-  });
+  const job = await getJobById(jobId);
 
   if (!job?.videoId) {
     throw new Error("VIDEO_ID_NOT_FOUND_IN_JOB");
@@ -87,16 +86,22 @@ export const videoTranscode = async (jobOrId) => {
   }
 };
 
-// 1. GCS에서 청크들 다운로드
+// 1. GCS에서 청크들 다운로드 (병렬 처리, 동시 최대 5개)
 const downloadChunks = async (chunks, destDir) => {
-  for (const chunk of chunks) {
-    const destPath = path.join(destDir, `chunk_${String(chunk.chunkIndex).padStart(5, "0")}.webm`);
-    await downloadFromGCS({
-      bucketName: chunk.storageBucket,
-      objectKey: chunk.storageKey,
-      destPath,
-    });
-  }
+  const limit = pLimit(5);
+
+  await Promise.all(
+    chunks.map((chunk) =>
+      limit(async () => {
+        const destPath = path.join(destDir, `chunk_${String(chunk.chunkIndex).padStart(5, "0")}.webm`);
+        await downloadFromGCS({
+          bucketName: chunk.storageBucket,
+          objectKey: chunk.storageKey,
+          destPath,
+        });
+      })
+    )
+  );
 };
 
 // 2. 청크들을 하나의 파일로 병합
