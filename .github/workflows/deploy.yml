@@ -75,4 +75,9 @@ jobs:
               PASSPORT_NAVER_CLIENT_ID=${{ secrets.PASSPORT_NAVER_CLIENT_ID }}##
               PASSPORT_NAVER_CLIENT_SECRET=${{ secrets.PASSPORT_NAVER_CLIENT_SECRET }}##
               JWT_SECRET=${{ secrets.JWT_SECRET }}##
-              SERVER_URL=https://ttorang-server-407623424780.asia-northeast3.run.app"
+              SERVER_URL=https://ttorang-server-407623424780.asia-northeast3.run.app##
+              GCS_BUCKET_NAME=ttorang-upload-dev##
+              CDN_HOST=https://cdn.ttorang.com##
+              GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}##
+              CLOUD_RUN_SERVICE_URL=https://ttorang-server-407623424780.asia-northeast3.run.app##
+              CLOUD_TASKS_SERVICE_ACCOUNT=${{ secrets.CLOUD_TASKS_SERVICE_ACCOUNT }}"
