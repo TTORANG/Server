@@ -1,9 +1,10 @@
 import { prisma } from "../db.config.js";
 
-export const createConversionJob = async ({ uploadedFileId, jobType }) => {
+export const createConversionJob = async ({ uploadedFileId, videoId, jobType }) => {
   return await prisma.conversionJob.create({
     data: {
-      uploadedFileId,
+      uploadedFileId: uploadedFileId ?? null,
+      videoId: videoId ?? null,
       jobType,
       status: "queued",
       progress: 0,

@@ -19,7 +19,6 @@ import {
   handleUpdateAnonymousProject,
 } from "./controllers/session.controller.js";
 
-
 import { handleProcessJob } from "./controllers/conversionJob.controller.js";
 import {
   handleCreateProject,
@@ -27,7 +26,6 @@ import {
   handleGetProjectList,
   handleUpdateProjectName,
 } from "./controllers/project.controller.js";
-
 
 dotenv.config();
 
@@ -135,3 +133,23 @@ app.post("/api/files/complete", postComplete);
 
 // Worker 엔드포인트 (Cloud Tasks에서 호출)
 app.post("/worker/process-job", handleProcessJob);
+
+// CDN 및 Video 설정 테스트 엔드포인트 (개발용)
+app.get("/test/cdn-config", (req, res) => {
+  const cdnHost = process.env.CDN_HOST;
+  const gcsBucket = process.env.GCS_BUCKET_NAME;
+
+  res.json({
+    resultType: "SUCCESS",
+    success: {
+      cdnHost: cdnHost || "(not set)",
+      gcsBucket: gcsBucket || "(not set)",
+      cdnConfigured: !!cdnHost,
+      gcsConfigured: !!gcsBucket,
+      sampleHlsUrl: cdnHost
+        ? `${cdnHost}/dev/video/123/hls/sample-uuid/master.m3u8`
+        : `gs://${gcsBucket || "bucket"}/dev/video/123/hls/sample-uuid/master.m3u8`,
+    },
+    error: null,
+  });
+});
