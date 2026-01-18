@@ -1,5 +1,8 @@
 FROM node:20-alpine
 
+# FFmpeg 설치 (영상 인코딩용)
+RUN apk add --no-cache ffmpeg
+
 WORKDIR /app
 
 #해당 파일이 안바뀌면(설정이 안바뀌면)
