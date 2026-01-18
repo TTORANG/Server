@@ -314,6 +314,7 @@ model VideoChunk {
   uploadedAt    DateTime @map("uploaded_at") @default(now())
 
   video Video @relation(fields: [videoId], references: [id])
+  @@unique([videoId, chunkIndex])
 
   @@map("video_chunk")
 }

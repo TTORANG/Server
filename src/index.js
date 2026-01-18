@@ -31,6 +31,12 @@ import {
   handleGetSlides,
   handlePatchSlideTitle,
 } from "./controllers/slide.controller.js";
+import {
+  completeVideoChunk,
+  completeVideoUpload,
+  createVideo,
+  createVideoChunkUploadUrl,
+} from "./controllers/video.controller.js";
 
 dotenv.config();
 
@@ -121,6 +127,22 @@ app.patch("/presentations/slides/:slideId", isLogin, handlePatchSlideTitle);
 // 슬라이드 네비게이션 기능
 app.get("/presentations/slides/:slideId", isLogin, handleGetSlideDetail);
 
+// 파일 업로드 API 라우팅(임시)
+app.post("/api/files/upload-url", postUploadUrl);
+app.post("/api/files/complete", postComplete);
+
+// 영상 업로드 API
+app.post("/videos", createVideo);
+// 비디오 청크 업로드 url 발급
+app.post("/videos/:videoId/chunks/upload-url", createVideoChunkUploadUrl);
+// 비디오 청크 업로드 검증
+app.post("/videos/:videoId/chunks/complete", completeVideoChunk);
+// 비디오 업로드 검증
+app.post("/videos/:videoId/complete", completeVideoUpload);
+
+// Worker 엔드포인트 (Cloud Tasks에서 호출)
+app.post("/worker/process-job", handleProcessJob);
+
 app.use((err, req, res, next) => {
   if (res.headersSent) {
     return next(err);
@@ -140,10 +162,3 @@ app.use((err, req, res, next) => {
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
-
-// 파일 업로드 API 라우팅(임시)
-app.post("/api/files/upload-url", postUploadUrl);
-app.post("/api/files/complete", postComplete);
-
-// Worker 엔드포인트 (Cloud Tasks에서 호출)
-app.post("/worker/process-job", handleProcessJob);
