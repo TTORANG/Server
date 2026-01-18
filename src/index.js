@@ -132,13 +132,13 @@ app.post("/api/files/upload-url", postUploadUrl);
 app.post("/api/files/complete", postComplete);
 
 // 영상 업로드 API
-app.post("/videos", createVideo);
+app.post("/videos", isLogin, createVideo);
 // 비디오 청크 업로드 url 발급
-app.post("/videos/:videoId/chunks/upload-url", createVideoChunkUploadUrl);
+app.post("/videos/:videoId/chunks/upload-url", isLogin, createVideoChunkUploadUrl);
 // 비디오 청크 업로드 검증
-app.post("/videos/:videoId/chunks/complete", completeVideoChunk);
+app.post("/videos/:videoId/chunks/complete", isLogin, completeVideoChunk);
 // 비디오 업로드 검증
-app.post("/videos/:videoId/complete", completeVideoUpload);
+app.post("/videos/:videoId/complete", isLogin, completeVideoUpload);
 
 // Worker 엔드포인트 (Cloud Tasks에서 호출)
 app.post("/worker/process-job", handleProcessJob);

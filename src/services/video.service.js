@@ -60,33 +60,15 @@ export async function createVideo({ projectId, title }) {
 
 export async function createVideoChunkUploadUrl(input) {
   const projectId = requireProjectId(input.projectId);
-  const videoId = toInt(input.videoId);
-  const chunkIndex = toInt(input.chunkIndex);
-  const size = typeof input.size === "string" ? Number(input.size) : input.size;
-  const contentType = input.contentType;
-
-  if (!Number.isInteger(videoId) || videoId <= 0) {
-    throw new VideoNotFoundError({ videoId });
-  }
-  if (!Number.isInteger(chunkIndex) || chunkIndex < 0) {
-    throw new InvalidVideoChunkError({ chunkIndex });
-  }
-
-  if (contentType !== "video/webm") {
-    throw new InvalidVideoChunkError({ contentType });
-  }
-  if (!Number.isFinite(size) || size <= 0 || size > MAX_SIZE_BYTES) {
-    throw new InvalidVideoChunkError({ size, max: MAX_SIZE_BYTES });
-  }
 
   // video_chunk 목적 Signed URL 발급 (gcs.service.js가 projectId를 요구하는 상태면 그대로 통과)
   return await createUploadUrl({
     purpose: "video_chunk",
     projectId,
-    videoId,
-    chunkIndex,
-    size: Math.trunc(size),
-    contentType,
+    videoId: input.videoId,
+    chunkIndex: input.chunkIndex,
+    size: input.size,
+    contentType: input.contentType,
   });
 }
 
@@ -100,6 +82,16 @@ export async function completeVideoChunk(input) {
   if (!Number.isInteger(videoId) || videoId <= 0) throw new VideoNotFoundError({ videoId });
   if (!Number.isInteger(chunkIndex) || chunkIndex < 0)
     throw new InvalidVideoChunkError({ chunkIndex });
+
+  const keyParts = objectKey.split("/");
+  if (
+    keyParts.length < 7 ||
+    toInt(keyParts[2]) !== projectId ||
+    toInt(keyParts[4]) !== videoId ||
+    toInt(keyParts[6]) !== chunkIndex
+  ) {
+    throw new InvalidVideoChunkError({ reason: "objectKey가 요청 파라미터와 일치하지 않습니다." });
+  }
 
   const meta = await verifyUploadedObject({ objectKey });
 
@@ -155,7 +147,7 @@ export async function completeVideoUpload(input) {
     });
   }
 
-  // 청크 존재 if (!Number.isInteger(chunkIndex) || chunkIndex < 0)
+  // 청크 존재
   const chunkCount = await prisma.videoChunk.count({
     where: { videoId },
   });
