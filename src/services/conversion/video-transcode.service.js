@@ -23,7 +23,7 @@ import {
  * jobType: video_transcode
  */
 
-export async function videoTranscode(jobOrId) {
+export const videoTranscode = async (jobOrId) => {
   const jobId = typeof jobOrId === "object" ? jobOrId.id : jobOrId;
 
   // Job에서 videoId 조회
@@ -85,12 +85,10 @@ export async function videoTranscode(jobOrId) {
     // 임시 파일 정리
     await fs.rm(workDir, { recursive: true, force: true }).catch(() => {});
   }
-}
+};
 
-/**
- * GCS에서 청크들 다운로드
- */
-async function downloadChunks(chunks, destDir) {
+// 1. GCS에서 청크들 다운로드
+const downloadChunks = async (chunks, destDir) => {
   for (const chunk of chunks) {
     const destPath = path.join(destDir, `chunk_${String(chunk.chunkIndex).padStart(5, "0")}.webm`);
     await downloadFromGCS({
@@ -99,12 +97,10 @@ async function downloadChunks(chunks, destDir) {
       destPath,
     });
   }
-}
+};
 
-/**
- * 청크들을 하나의 파일로 병합
- */
-async function mergeChunks(chunksDir, outputPath, chunks) {
+// 2. 청크들을 하나의 파일로 병합
+const mergeChunks = async (chunksDir, outputPath, chunks) => {
   // concat demuxer용 파일 목록 생성
   const listPath = path.join(chunksDir, "concat_list.txt");
   const fileList = chunks
@@ -114,45 +110,66 @@ async function mergeChunks(chunksDir, outputPath, chunks) {
   await fs.writeFile(listPath, fileList);
 
   // FFmpeg concat
-  await runCmd("ffmpeg", [
-    "-f", "concat",
-    "-safe", "0",
-    "-i", listPath,
-    "-c", "copy",
-    outputPath,
-  ], { cwd: chunksDir });
-}
+  await runCmd("ffmpeg", ["-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy", outputPath], {
+    cwd: chunksDir,
+  });
+};
 
-/**
- * HLS 변환 (다중 품질)
- */
-async function encodeToHLS(inputPath, hlsDir) {
+// 3. HLS 변환 (다중 품질)
+const encodeToHLS = async (inputPath, hlsDir) => {
   // 720p + 1080p 다중 품질 HLS 생성
   await runCmd("ffmpeg", [
-    "-i", inputPath,
+    "-i",
+    inputPath,
     // 720p 스트림
-    "-map", "0:v:0", "-map", "0:a:0?",
-    "-c:v:0", "libx264", "-b:v:0", "2500k", "-s:v:0", "1280x720",
-    "-c:a:0", "aac", "-b:a:0", "128k",
+    "-map",
+    "0:v:0",
+    "-map",
+    "0:a:0?",
+    "-c:v:0",
+    "libx264",
+    "-b:v:0",
+    "2500k",
+    "-s:v:0",
+    "1280x720",
+    "-c:a:0",
+    "aac",
+    "-b:a:0",
+    "128k",
     // 1080p 스트림
-    "-map", "0:v:0", "-map", "0:a:0?",
-    "-c:v:1", "libx264", "-b:v:1", "5000k", "-s:v:1", "1920x1080",
-    "-c:a:1", "aac", "-b:a:1", "192k",
+    "-map",
+    "0:v:0",
+    "-map",
+    "0:a:0?",
+    "-c:v:1",
+    "libx264",
+    "-b:v:1",
+    "5000k",
+    "-s:v:1",
+    "1920x1080",
+    "-c:a:1",
+    "aac",
+    "-b:a:1",
+    "192k",
     // HLS 설정
-    "-f", "hls",
-    "-hls_time", "10",
-    "-hls_list_size", "0",
-    "-hls_segment_filename", path.join(hlsDir, "v%v/segment_%03d.ts"),
-    "-master_pl_name", "master.m3u8",
-    "-var_stream_map", "v:0,a:0 v:1,a:1",
+    "-f",
+    "hls",
+    "-hls_time",
+    "10",
+    "-hls_list_size",
+    "0",
+    "-hls_segment_filename",
+    path.join(hlsDir, "v%v/segment_%03d.ts"),
+    "-master_pl_name",
+    "master.m3u8",
+    "-var_stream_map",
+    "v:0,a:0 v:1,a:1",
     path.join(hlsDir, "v%v/playlist.m3u8"),
   ]);
-}
+};
 
-/**
- * HLS 파일들을 GCS에 업로드
- */
-async function uploadHLSToGCS(hlsDir, video) {
+// 4. HLS 파일들을 GCS에 업로드
+const uploadHLSToGCS = async (hlsDir, video) => {
   const env = envPrefix();
   const videoUuid = uuid();
   const destPrefix = `${env}/video/${video.id}/hls/${videoUuid}`;
@@ -193,21 +210,22 @@ async function uploadHLSToGCS(hlsDir, video) {
     return `${cdnHost}/${destPrefix}/master.m3u8`;
   }
   return `gs://${bucketName}/${destPrefix}/master.m3u8`;
-}
+};
 
-/**
- * 원본 청크 GCS에서 삭제 + DB 삭제
- */
-async function cleanupChunks(video) {
+// 청크 삭제 로직
+const cleanupChunks = async (video) => {
   const { Storage } = await import("@google-cloud/storage");
   const storage = new Storage();
   const bucket = storage.bucket(process.env.GCS_BUCKET_NAME);
 
   // GCS에서 청크 파일 삭제
   for (const chunk of video.chunks) {
-    await bucket.file(chunk.storageKey).delete().catch(() => {});
+    await bucket
+      .file(chunk.storageKey)
+      .delete()
+      .catch(() => {});
   }
 
   // DB에서 청크 레코드 삭제
   await deleteVideoChunks(video.id);
-}
+};
