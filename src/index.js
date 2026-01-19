@@ -19,7 +19,6 @@ import {
   handleUpdateAnonymousProject,
 } from "./controllers/session.controller.js";
 
-
 import { handleProcessJob } from "./controllers/conversionJob.controller.js";
 import {
   handleCreateProject,
@@ -27,7 +26,17 @@ import {
   handleGetProjectList,
   handleUpdateProjectName,
 } from "./controllers/project.controller.js";
-
+import {
+  handleGetSlideDetail,
+  handleGetSlides,
+  handlePatchSlideTitle,
+} from "./controllers/slide.controller.js";
+import {
+  completeVideoChunk,
+  completeVideoUpload,
+  createVideo,
+  createVideoChunkUploadUrl,
+} from "./controllers/video.controller.js";
 
 dotenv.config();
 
@@ -109,6 +118,31 @@ app.delete("/presentations/:id", isLogin, handleDeleteProject);
 // 프로젝트 목록 조회/검색
 app.get("/presentations", isLogin, handleGetProjectList);
 
+// 슬라이드 목록 조회
+app.get("/presentations/:projectId/slides", isLogin, handleGetSlides);
+
+// 슬라이드 제목 수정
+app.patch("/presentations/slides/:slideId", isLogin, handlePatchSlideTitle);
+
+// 슬라이드 네비게이션 기능
+app.get("/presentations/slides/:slideId", isLogin, handleGetSlideDetail);
+
+// 파일 업로드 API 라우팅(임시)
+app.post("/api/files/upload-url", postUploadUrl);
+app.post("/api/files/complete", postComplete);
+
+// 영상 업로드 API
+app.post("/videos", isLogin, createVideo);
+// 비디오 청크 업로드 url 발급
+app.post("/videos/:videoId/chunks/upload-url", isLogin, createVideoChunkUploadUrl);
+// 비디오 청크 업로드 검증
+app.post("/videos/:videoId/chunks/complete", isLogin, completeVideoChunk);
+// 비디오 업로드 검증
+app.post("/videos/:videoId/complete", isLogin, completeVideoUpload);
+
+// Worker 엔드포인트 (Cloud Tasks에서 호출)
+app.post("/worker/process-job", handleProcessJob);
+
 app.use((err, req, res, next) => {
   if (res.headersSent) {
     return next(err);
@@ -128,10 +162,3 @@ app.use((err, req, res, next) => {
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
-
-// 파일 업로드 API 라우팅(임시)
-app.post("/api/files/upload-url", postUploadUrl);
-app.post("/api/files/complete", postComplete);
-
-// Worker 엔드포인트 (Cloud Tasks에서 호출)
-app.post("/worker/process-job", handleProcessJob);

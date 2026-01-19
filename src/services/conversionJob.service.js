@@ -10,12 +10,13 @@ import { pptxToImages } from "./conversion/pptx-to-images.service.js";
 import { pdfToImages } from "./conversion/pdf-to-images.service.js";
 import { generateThumbnail } from "./conversion/thumbnail.service.js";
 import { extractMetadata } from "./conversion/metadata.service.js";
+import { videoTranscode } from "./conversion/video-transcode.service.js";
 
 /**
  * 작업 생성 및 큐에 추가
  */
-const createAndEnqueueJob = async ({ uploadedFileId, jobType }) => {
-  const job = await createConversionJob({ uploadedFileId, jobType });
+const createAndEnqueueJob = async ({ uploadedFileId, videoId, jobType }) => {
+  const job = await createConversionJob({ uploadedFileId, videoId, jobType });
 
   await enqueueConversionTask({
     conversionJobId: job.id.toString(),
@@ -38,6 +39,8 @@ const executeJob = async (conversionJobId, jobType) => {
       return await generateThumbnail(conversionJobId);
     case "extract_metadata":
       return await extractMetadata(conversionJobId);
+    case "video_transcode":
+      return await videoTranscode(conversionJobId);
     default:
       throw new Error(`Unknown job type: ${jobType}`);
   }
@@ -143,5 +146,25 @@ export const startConversionPipeline = async ({ uploadedFileId, fileExt }) => {
       { id: imageJob.id.toString(), jobType: imageConversionJobType },
       { id: metadataJob.id.toString(), jobType: "extract_metadata" },
     ],
+  };
+};
+
+/**
+ * 영상 녹화 완료 후 인코딩 파이프라인 시작
+ *
+ * - video_transcode: 청크 병합 → HLS 변환 → GCS 업로드
+ */
+export const startVideoEncodingPipeline = async ({ videoId }) => {
+  const job = await createAndEnqueueJob({
+    videoId,
+    jobType: "video_transcode",
+  });
+
+  console.log(`[Pipeline] Video encoding started for video ${videoId}:`, {
+    jobId: job.id.toString(),
+  });
+
+  return {
+    job: { id: job.id.toString(), jobType: "video_transcode" },
   };
 };
