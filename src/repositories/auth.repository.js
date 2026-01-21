@@ -10,7 +10,7 @@ export const findUserByEmail = async (email) => {
 // ID로 유저 찾기 (JWT 검증용)
 export const findUserById = async (id) => {
   return await prisma.user.findUnique({
-    where: { id: id },
+    where: { id: BigInt(id) },
   });
 };
 
@@ -45,7 +45,7 @@ export const deleteRefreshToken = async (userId) => {
 
 export const withdrawUser = async (userId) => {
   return await prisma.$transaction(async (tx) => {
-    await tx.user.update({
+    const updatedUser = await tx.user.update({
       where: { id: BigInt(userId) },
       data: { isDeleted: true },
     });
@@ -53,5 +53,6 @@ export const withdrawUser = async (userId) => {
     await tx.session.deleteMany({
       where: { userId: BigInt(userId) },
     });
+    return updatedUser;
   });
 };
