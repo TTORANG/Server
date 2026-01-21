@@ -70,6 +70,6 @@ export const logoutUser = async (userId) => {
 };
 
 export const processWithdrawal = async (userId) => {
-  await withdrawUser(userId);
+  const result = await withdrawUser(userId);
   return { id: userId };
 };
