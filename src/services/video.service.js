@@ -74,8 +74,8 @@ export async function createVideoChunkUploadUrl(input) {
   return await createUploadUrl({
     purpose: "video_chunk",
     projectId,
-    videoId: input.videoId,
-    chunkIndex: input.chunkIndex,
+    videoId,
+    chunkIndex,
     size: input.size,
     contentType: input.contentType,
   });
