@@ -1,4 +1,4 @@
-import { updateScriptText } from "../repositories/script.repository.js";
+import { getScriptText, updateScriptText } from "../repositories/script.repository.js";
 
 export const processScriptUpdate = async (slideId, text) => {
   try {
@@ -27,4 +27,24 @@ const estimateDurationCount = (charCount) => {
     duration = Math.ceil((charCount / CHARS_PER_MINUTE) * 60);
   }
   return duration;
+};
+
+export const processScriptGet = async (slideId) => {
+  try {
+    const script = await getScriptText(slideId);
+
+    if (!script) {
+      return {
+        slideId,
+        scriptText: "",
+        charCount: 0,
+        estimateDurationCount: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    }
+    return script;
+  } catch (error) {
+    throw error;
+  }
 };

@@ -37,7 +37,7 @@ import {
   createVideo,
   createVideoChunkUploadUrl,
 } from "./controllers/video.controller.js";
-import { handleUploadScript } from "./controllers/script.controller.js";
+import { handleGetScript, handleUploadScript } from "./controllers/script.controller.js";
 
 dotenv.config();
 
@@ -130,6 +130,9 @@ app.get("/presentations/slides/:slideId", isLogin, handleGetSlideDetail);
 
 // 대본 저장
 app.patch("/slides/:id/script", isLogin, handleUploadScript);
+
+// 대본 조회
+app.get("/slides/:id/script", isLogin, handleGetScript);
 
 // 파일 업로드 API 라우팅(임시)
 app.post("/api/files/upload-url", postUploadUrl);
