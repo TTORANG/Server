@@ -60,6 +60,15 @@ export async function createVideo({ projectId, title }) {
 
 export async function createVideoChunkUploadUrl(input) {
   const projectId = requireProjectId(input.projectId);
+  const videoId = toInt(input.videoId);
+  const chunkIndex = toInt(input.chunkIndex);
+
+  if (!Number.isInteger(videoId) || videoId <= 0) {
+    throw new InvalidUploadError({ videoId }, "비디오 ID가 올바르지 않습니다.");
+  }
+  if (!Number.isInteger(chunkIndex) || chunkIndex < 0) {
+    throw new InvalidUploadError({ chunkIndex }, "비디오 청크 인덱스가 올바르지 않습니다.");
+  }
 
   // video_chunk 목적 Signed URL 발급 (gcs.service.js가 projectId를 요구하는 상태면 그대로 통과)
   return await createUploadUrl({
