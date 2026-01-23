@@ -200,6 +200,7 @@ model ScriptVersion {
   scriptId      BigInt   @map("script_id")
   scriptText    String   @db.LongText @map("script_text") // 히스토리이므로 필수값
   charCount     Int      @map("char_count")
+  estimatedDurationSeconds Int       @default(0) @map("estimated_duration_seconds")
   versionNumber Int      @map("version_number")
   createdAt     DateTime @default(now()) @map("created_at")
 
