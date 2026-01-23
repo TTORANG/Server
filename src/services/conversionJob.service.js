@@ -70,6 +70,29 @@ const chainThumbnailJob = async (parentJobId) => {
 };
 
 /**
+ * 이미지 변환 완료 후 메타데이터 추출 작업 체이닝
+ */
+const chainMetadataJob = async (parentJobId) => {
+  try {
+    const parentJob = await getJobById(parentJobId);
+
+    if (!parentJob?.uploadedFileId) {
+      console.warn(`Cannot chain metadata job: parent job ${parentJobId} not found`);
+      return;
+    }
+
+    const metadataJob = await createAndEnqueueJob({
+      uploadedFileId: parentJob.uploadedFileId,
+      jobType: "extract_metadata",
+    });
+
+    console.log(`Chained metadata job ${metadataJob.id} from parent ${parentJobId}`);
+  } catch (error) {
+    console.error(`Failed to chain metadata job from ${parentJobId}:`, error);
+  }
+};
+
+/**
  * 작업 처리 메인 로직
  * - 상태 관리 (processing → completed/failed)
  * - 작업 실행
@@ -81,9 +104,12 @@ export const processJob = async (conversionJobId, jobType) => {
 
     const result = await executeJob(conversionJobId, jobType);
 
-    // 이미지 변환 완료 후 썸네일 작업 체이닝
+    // 이미지 변환 완료 후 썸네일 + 메타데이터 작업 체이닝
     if ((jobType === "pptx_to_images" || jobType === "pdf_to_images") && result?.ok) {
-      await chainThumbnailJob(conversionJobId);
+      await Promise.all([
+        chainThumbnailJob(conversionJobId),
+        chainMetadataJob(conversionJobId),
+      ]);
     }
 
     await updateJobToCompleted(conversionJobId);
@@ -105,12 +131,11 @@ export const processJob = async (conversionJobId, jobType) => {
 /**
  * 파일 업로드 완료 후 파이프라인 시작
  *
- * 병렬 실행:
- * - pptx_to_images 또는 pdf_to_images (파일 확장자에 따라)
- * - extract_metadata
- *
- * 체이닝 (이미지 변환 완료 후):
- * - generate_thumbnail (processJob에서 체이닝)
+ * 실행 순서:
+ * 1. pptx_to_images 또는 pdf_to_images (파일 확장자에 따라)
+ * 2. 이미지 변환 완료 후 체이닝:
+ *    - generate_thumbnail
+ *    - extract_metadata
  */
 export const startConversionPipeline = async ({ uploadedFileId, fileExt }) => {
   const ext = fileExt.toLowerCase();
@@ -125,27 +150,18 @@ export const startConversionPipeline = async ({ uploadedFileId, fileExt }) => {
     return { jobs: [] };
   }
 
-  const [imageJob, metadataJob] = await Promise.all([
-    createAndEnqueueJob({
-      uploadedFileId,
-      jobType: imageConversionJobType,
-    }),
-    createAndEnqueueJob({
-      uploadedFileId,
-      jobType: "extract_metadata",
-    }),
-  ]);
+  // 이미지 변환 작업만 먼저 시작 (메타데이터는 이미지 변환 완료 후 체이닝됨)
+  const imageJob = await createAndEnqueueJob({
+    uploadedFileId,
+    jobType: imageConversionJobType,
+  });
 
   console.log(`[Pipeline] Started for file ${uploadedFileId}:`, {
     imageJob: imageJob.id.toString(),
-    metadataJob: metadataJob.id.toString(),
   });
 
   return {
-    jobs: [
-      { id: imageJob.id.toString(), jobType: imageConversionJobType },
-      { id: metadataJob.id.toString(), jobType: "extract_metadata" },
-    ],
+    jobs: [{ id: imageJob.id.toString(), jobType: imageConversionJobType }],
   };
 };
 
