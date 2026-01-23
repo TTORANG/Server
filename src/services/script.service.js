@@ -7,10 +7,13 @@ import {
 
 export const processScriptUpdate = async (slideId, text) => {
   try {
+    const currentScript = await getScriptText(slideId);
+    if (currentScript && (currentScript.scriptText || "").trim() === (text || "").trim()) {
+      return currentScript;
+    }
+
     const charCount = scriptCharCount(text);
-
     const duration = estimateDurationCount(charCount);
-
     const updatedScript = await updateScriptText(slideId, text, charCount, duration);
 
     return updatedScript;
