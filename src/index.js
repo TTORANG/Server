@@ -134,16 +134,16 @@ app.patch("/presentations/slides/:slideId", isLogin, handlePatchSlideTitle);
 app.get("/presentations/slides/:slideId", isLogin, handleGetSlideDetail);
 
 // 대본 저장
-app.patch("/slides/:id/script", isLogin, handleUploadScript);
+app.patch("/presentations/slides/:slideId/script", isLogin, handleUploadScript);
 
 // 대본 조회
-app.get("/slides/:id/script", isLogin, handleGetScript);
+app.get("/presentations/slides/:slideId/script", isLogin, handleGetScript);
 
 // 대본 버전 목록 조회
-app.get("/slides/:id/versions", isLogin, handleGetScriptVersion);
+app.get("/presentations/slides/:slideId/versions", isLogin, handleGetScriptVersion);
 
 // 대본 버전 복원
-app.post("/slides/:id/restore", isLogin, handleRestoreVersion);
+app.post("/presentations/slides/:slideId/restore", isLogin, handleRestoreVersion);
 
 // 파일 업로드 API 라우팅(임시)
 app.post("/api/files/upload-url", postUploadUrl);

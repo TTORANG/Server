@@ -7,16 +7,17 @@ import {
 
 export const processScriptUpdate = async (slideId, text) => {
   try {
-    const currentScript = await getScriptText(slideId);
-    if (currentScript && (currentScript.scriptText || "").trim() === (text || "").trim()) {
-      return currentScript;
+    const current = await getScriptText(slideId);
+
+    if (current && (current.scriptText || "").trim() === (text || "").trim()) {
+      return { result: current, isUpdated: false };
     }
 
     const charCount = scriptCharCount(text);
     const duration = estimateDurationCount(charCount);
     const updatedScript = await updateScriptText(slideId, text, charCount, duration);
 
-    return updatedScript;
+    return { result: updatedScript, isUpdated: true };
   } catch (error) {
     throw error;
   }
@@ -44,8 +45,8 @@ export const processScriptGet = async (slideId) => {
     if (!script) {
       return {
         slideId,
-        scriptText: "",
         charCount: 0,
+        scriptText: "",
         estimatedDurationSeconds: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
