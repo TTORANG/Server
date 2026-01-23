@@ -37,6 +37,12 @@ import {
   createVideo,
   createVideoChunkUploadUrl,
 } from "./controllers/video.controller.js";
+import {
+  handleGetScript,
+  handleGetScriptVersion,
+  handleRestoreVersion,
+  handleUploadScript,
+} from "./controllers/script.controller.js";
 
 dotenv.config();
 
@@ -126,6 +132,18 @@ app.patch("/presentations/slides/:slideId", isLogin, handlePatchSlideTitle);
 
 // 슬라이드 네비게이션 기능
 app.get("/presentations/slides/:slideId", isLogin, handleGetSlideDetail);
+
+// 대본 저장
+app.patch("/presentations/slides/:slideId/script", isLogin, handleUploadScript);
+
+// 대본 조회
+app.get("/presentations/slides/:slideId/script", isLogin, handleGetScript);
+
+// 대본 버전 목록 조회
+app.get("/presentations/slides/:slideId/versions", isLogin, handleGetScriptVersion);
+
+// 대본 버전 복원
+app.post("/presentations/slides/:slideId/restore", isLogin, handleRestoreVersion);
 
 // 파일 업로드 API 라우팅(임시)
 app.post("/api/files/upload-url", postUploadUrl);
