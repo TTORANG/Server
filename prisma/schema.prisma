@@ -157,7 +157,7 @@ model Reaction {
   user    User    @relation(fields: [userId], references: [id])
   session Session @relation(fields: [sessionId], references: [id])
 
-  @@unique([userId, sessionId, targetType, targetId, timestampMs, emojiType])
+  @@unique([userId, sessionId, targetType, targetId, timestampMs, emojiType], name: "uq_reaction_dedup_with_timestamp")
   @@map("reaction")
 }
 

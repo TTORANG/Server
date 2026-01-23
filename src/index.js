@@ -148,7 +148,7 @@ app.get("/presentations/slides/:slideId/versions", isLogin, handleGetScriptVersi
 app.post("/presentations/slides/:slideId/restore", isLogin, handleRestoreVersion);
 
 // 프로젝트의 영상 목록 조회
-app.get("/presentations/:id/videos", handleGetVideoList);
+app.get("/presentations/:id/videos", isLogin, handleGetVideoList);
 
 // 파일 업로드 API 라우팅(임시)
 app.post("/api/files/upload-url", postUploadUrl);
@@ -163,7 +163,7 @@ app.post("/videos/:videoId/chunks/complete", isLogin, completeVideoChunk);
 // 비디오 업로드 검증
 app.post("/videos/:videoId/complete", isLogin, completeVideoUpload);
 // 영상 상세 조회
-app.get("/videos/:id", handleGetVideoDetail);
+app.get("/videos/:id", isLogin, handleGetVideoDetail);
 
 // Worker 엔드포인트 (Cloud Tasks에서 호출)
 app.post("/worker/process-job", handleProcessJob);
