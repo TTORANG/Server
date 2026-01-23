@@ -40,6 +40,7 @@ import {
 import {
   handleGetScript,
   handleGetScriptVersion,
+  handleRestoreVersion,
   handleUploadScript,
 } from "./controllers/script.controller.js";
 
@@ -140,6 +141,9 @@ app.get("/slides/:id/script", isLogin, handleGetScript);
 
 // 대본 버전 목록 조회
 app.get("/slides/:id/versions", isLogin, handleGetScriptVersion);
+
+// 대본 버전 복원
+app.post("/slides/:id/restore", isLogin, handleRestoreVersion);
 
 // 파일 업로드 API 라우팅(임시)
 app.post("/api/files/upload-url", postUploadUrl);

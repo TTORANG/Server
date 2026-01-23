@@ -1,6 +1,7 @@
 import { scriptResponseDTO, scriptVersionResponseDTO } from "../dtos/script.dto.js";
 import {
   processScriptGet,
+  processScriptRestore,
   processScriptUpdate,
   processScriptVersionGet,
 } from "../services/script.service.js";
@@ -44,6 +45,22 @@ export const handleGetScriptVersion = async (req, res, next) => {
       resultType: "SUCCESS",
       error: null,
       success: scriptVersionResponseDTO(result),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const handleRestoreVersion = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { version } = req.body;
+    const result = await processScriptRestore(id, version);
+
+    res.status(200).json({
+      resultType: "SUCCESS",
+      error: null,
+      success: scriptResponseDTO(result),
     });
   } catch (error) {
     next(error);

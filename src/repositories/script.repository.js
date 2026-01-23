@@ -1,4 +1,5 @@
 import { prisma } from "../db.config.js";
+import { ScriptNotFoundError, VersionNotFoundError } from "../errors/script.error.js";
 
 // 대본 저장
 export const updateScriptText = async (slideId, text, charCount, duration) => {
@@ -36,6 +37,7 @@ export const updateScriptText = async (slideId, text, charCount, duration) => {
         scriptId: script.id,
         scriptText: text,
         charCount,
+        estimatedDurationSeconds: duration,
         versionNumber: nextVersion,
       },
     });
@@ -64,5 +66,42 @@ export const getScriptVersionList = async (slideId) => {
     orderBy: {
       versionNumber: "desc",
     },
+  });
+};
+
+// 대본 버전 복원
+export const postScriptVersion = async (slideId, versionNumber) => {
+  return await prisma.$transaction(async (tx) => {
+    const currentScript = await tx.script.findUnique({
+      where: { slideId: BigInt(slideId) },
+    });
+
+    if (!currentScript) {
+      throw new ScriptNotFoundError({ slideId });
+    }
+
+    const versionData = await tx.scriptVersion.findUnique({
+      where: {
+        uq_script_version: {
+          scriptId: currentScript.id,
+          versionNumber: parseInt(versionNumber),
+        },
+      },
+    });
+
+    if (!versionData) {
+      throw new VersionNotFoundError({ slideId });
+    }
+
+    return await tx.script.update({
+      where: {
+        id: currentScript.id,
+      },
+      data: {
+        scriptText: versionData.scriptText,
+        charCount: versionData.charCount,
+        estimatedDurationSeconds: versionData.estimatedDurationSeconds,
+      },
+    });
   });
 };

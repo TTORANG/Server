@@ -1,7 +1,7 @@
-import { ScriptNotFoundError } from "../errors/script.error.js";
 import {
   getScriptText,
   getScriptVersionList,
+  postScriptVersion,
   updateScriptText,
 } from "../repositories/script.repository.js";
 
@@ -43,7 +43,7 @@ export const processScriptGet = async (slideId) => {
         slideId,
         scriptText: "",
         charCount: 0,
-        estimateDurationCount: 0,
+        estimatedDurationSeconds: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -58,6 +58,15 @@ export const processScriptVersionGet = async (slideId) => {
   try {
     const result = await getScriptVersionList(slideId);
 
+    return result;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const processScriptRestore = async (id, versionNumber) => {
+  try {
+    const result = await postScriptVersion(id, versionNumber);
     return result;
   } catch (error) {
     throw error;

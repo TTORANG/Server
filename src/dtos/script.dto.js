@@ -1,7 +1,7 @@
 export const scriptResponseDTO = (script) => {
   return {
-    message: "대본이 저장되었습니다.",
-    slideId: script.id.toString(),
+    message: "대본 작업이 완료되었습니다.",
+    slideId: script.slideId.toString(),
     charCount: script.charCount,
     estimatedDurationSeconds: script.estimatedDurationSeconds,
     createdAt: script.createdAt,
