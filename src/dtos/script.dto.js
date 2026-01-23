@@ -8,3 +8,11 @@ export const scriptResponseDTO = (script) => {
     updatedAt: script.updatedAt,
   };
 };
+export const scriptVersionResponseDTO = (scriptVersion) => {
+  return scriptVersion.map((v) => ({
+    versionNumber: v.versionNumber,
+    scriptText: v.scriptText,
+    charCount: v.charCount,
+    createdAt: v.createdAt,
+  }));
+};

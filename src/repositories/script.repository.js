@@ -52,3 +52,17 @@ export const getScriptText = async (slideId) => {
     },
   });
 };
+
+// 대본 버전 조회
+export const getScriptVersionList = async (slideId) => {
+  return await prisma.scriptVersion.findMany({
+    where: {
+      script: {
+        slideId: BigInt(slideId),
+      },
+    },
+    orderBy: {
+      versionNumber: "desc",
+    },
+  });
+};
