@@ -176,3 +176,143 @@ export async function completeVideoUpload(input) {
 
   return { ok: true };
 }
+
+// 영상 목록 조회
+export async function getVideoList({ projectId }) {
+  const pid = toInt(projectId);
+  if (!Number.isInteger(pid) || pid <= 0) {
+    throw new InvalidUploadError({ projectId }, "프로젝트 ID가 올바르지 않습니다.");
+  }
+
+  // 프로젝트 존재 검증
+  const project = await prisma.project.findFirst({
+    where: {
+      id: pid,
+      isDeleted: false,
+    },
+    select: { id: true },
+  });
+
+  if (!project) {
+    throw new InvalidUploadError({ projectId: pid }, "존재하지 않는 프로젝트입니다.");
+  }
+
+  const videos = await prisma.video.findMany({
+    where: {
+      projectId: pid,
+      deletedAt: null,
+      status: { not: "deleted" },
+    },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      durationSeconds: true,
+      thumbnailUrl: true,
+      createdAt: true,
+    },
+  });
+
+  return {
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      videos: videos.map((v) => ({
+        ...v,
+        id: v.id.toString(),
+      })),
+    },
+  };
+}
+
+// 영상 상세 조회
+export async function getVideoDetail({ videoId }) {
+  const vid = toInt(videoId);
+  if (!Number.isInteger(vid) || vid <= 0) {
+    throw new VideoNotFoundError({ videoId });
+  }
+
+  const video = await prisma.video.findFirst({
+    where: {
+      id: vid,
+      deletedAt: null,
+    },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      durationSeconds: true,
+      width: true,
+      height: true,
+      fps: true,
+      hlsMasterUrl: true,
+      thumbnailUrl: true,
+      createdAt: true,
+    },
+  });
+
+  if (!video) {
+    throw new VideoNotFoundError({ videoId: vid });
+  }
+
+  // 타임스탬프 리액션 집계
+  const reactions = await prisma.reaction.groupBy({
+    by: ["timestampMs", "emojiType"],
+    where: {
+      targetType: "video",
+      targetId: vid,
+      timestampMs: { not: null },
+      isDeleted: false,
+    },
+    _count: { _all: true },
+  });
+
+  // 타임스탬프 댓글
+  const comments = await prisma.comment.findMany({
+    where: {
+      targetType: "video",
+      targetId: vid,
+      isDeleted: false,
+    },
+    orderBy: { timestampMs: "asc" },
+    select: {
+      id: true,
+      timestampMs: true,
+      content: true,
+      createdAt: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  });
+
+  return {
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      video: {
+        ...video,
+        id: video.id.toString(),
+      },
+      timeline: {
+        reactions: reactions.map((r) => ({
+          timestampMs: r.timestampMs,
+          emojiType: r.emojiType,
+          count: r._count._all,
+        })),
+        comments: comments.map((c) => ({
+          ...c,
+          id: c.id.toString(),
+          user: {
+            ...c.user,
+            id: c.user.id.toString(),
+          },
+        })),
+      },
+    },
+  };
+}

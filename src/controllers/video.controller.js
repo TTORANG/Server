@@ -234,3 +234,25 @@ export async function completeVideoUpload(req, res, next) {
     next(e);
   }
 }
+
+// 프로젝트 영상 목록 조회
+export async function handleGetVideoList(req, res, next) {
+  try {
+    const { id: projectId } = req.params;
+    const result = await videoService.getVideoList({ projectId });
+    res.json(result);
+  } catch (e) {
+    next(e);
+  }
+}
+
+// 영상 상세 조회
+export async function handleGetVideoDetail(req, res, next) {
+  try {
+    const { id: videoId } = req.params;
+    const result = await videoService.getVideoDetail({ videoId });
+    res.json(result);
+  } catch (e) {
+    next(e);
+  }
+}

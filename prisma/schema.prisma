@@ -149,6 +149,7 @@ model Reaction {
   sessionId  String   @db.Char(36) @map("session_id")
   targetType TargetType @map("target_type")
   targetId   BigInt @map("target_id")
+  timestampMs Int?      @map("timestamp_ms")
   emojiType  String   @db.VarChar(32) @map("emoji_type")
   createdAt  DateTime @map("created_at") @default(now())
   isDeleted  Boolean  @map("is_deleted") @default(false) @db.TinyInt
@@ -156,7 +157,7 @@ model Reaction {
   user    User    @relation(fields: [userId], references: [id])
   session Session @relation(fields: [sessionId], references: [id])
 
-  @@unique([userId, sessionId, targetType, targetId, emojiType], name: "uq_reaction_dedup")
+  @@unique([userId, sessionId, targetType, targetId, timestampMs, emojiType])
   @@map("reaction")
 }
 
