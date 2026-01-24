@@ -30,6 +30,7 @@ export const components = {
             id: { type: "string", example: "123" },
             email: { type: "string", example: "user@example.com" },
             name: { type: "string", example: "홍길동" },
+            sessionId: { type: "string", example: "106fbf2c-3357-40f7-..." },
           },
         },
         tokens: {
@@ -77,7 +78,12 @@ export const components = {
             error: null,
             success: {
               message: "소셜 로그인 성공!",
-              user: { id: "123", email: "user@example.com", name: "홍길동" },
+              user: {
+                id: "123",
+                email: "user@example.com",
+                name: "홍길동",
+                sessionId: "106fbf2c-3357-40f7-...",
+              },
               tokens: { accessToken: "eyJhbGci...", refreshToken: "eyJhbGci..." },
             },
           },

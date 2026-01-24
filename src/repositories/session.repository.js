@@ -85,7 +85,7 @@ export const mergeDataByUserId = async (anonymousSessionId, targetUserId) => {
 };
 
 // 소셜 로그인 성공 시 세션 업데이트 또는 생성 (보안 로직용)
-export const upsertUserSession = async (userId, refreshToken) => {
+export const upsertUserSession = async (userId, refreshToken, sessionId) => {
   return await prisma.session.upsert({
     where: {
       uq_session_user_anonymous: {
@@ -98,6 +98,7 @@ export const upsertUserSession = async (userId, refreshToken) => {
       lastSeenAt: new Date(),
     },
     create: {
+      id: sessionId,
       userId: userId,
       refreshToken: refreshToken,
       isAnonymous: false,

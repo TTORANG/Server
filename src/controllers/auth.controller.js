@@ -55,12 +55,12 @@ export const handleSocialLoginCallback = async (req, res, next) => {
     const { profile, provider } = req.user;
 
     // 서비스 호출 (여기서 유저 확인 + 세션 저장 + 토큰 발급이 한 번에 일어남)
-    const { user, tokens } = await handleSocialLoginSuccess(profile, provider);
+    const { user, tokens, sessionId } = await handleSocialLoginSuccess(profile, provider);
 
     res.status(200).json({
       resultType: "SUCCESS",
       error: null,
-      success: signinResponseDTO(user, tokens),
+      success: signinResponseDTO(user, tokens, sessionId),
     });
   } catch (error) {
     next(error);
