@@ -659,6 +659,21 @@ export async function handleCreateVideoComment(req, res, next) {
   }
 }
 
+// 영상-슬라이드 동기화 조회
+export async function handleGetVideoSlideTimeline(req, res, next) {
+  try {
+    const { videoId } = req.params;
+
+    const result = await videoService.getVideoSlideTimeline({
+      videoId,
+    });
+
+    res.json(result);
+  } catch (e) {
+    next(e);
+  }
+}
+
 /**
  * @swagger
  * components:

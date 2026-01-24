@@ -497,3 +497,48 @@ export async function createVideoComment({ videoId, content, timestampMs, userId
     },
   };
 }
+
+// 영상-슬라이드 동기화 데이터 조회
+export async function getVideoSlideTimeline({ videoId }) {
+  const vid = toInt(videoId);
+  if (!Number.isInteger(vid) || vid <= 0) {
+    throw new InvalidParameterError({ videoId: String(videoId) }, "videoId가 올바르지 않습니다.");
+  }
+
+  const video = await prisma.video.findFirst({
+    where: {
+      id: vid,
+      deletedAt: null,
+    },
+    select: { id: true },
+  });
+
+  if (!video) {
+    throw new VideoNotFoundError({ videoId: String(videoId) });
+  }
+
+  const events = await prisma.videoSlideEvent.findMany({
+    where: {
+      videoId: vid,
+      eventType: "enter",
+    },
+    orderBy: {
+      timestampMs: "asc",
+    },
+    select: {
+      slideId: true,
+      timestampMs: true,
+    },
+  });
+
+  return {
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      slides: events.map((e) => ({
+        slideId: e.slideId.toString(),
+        timestampMs: e.timestampMs,
+      })),
+    },
+  };
+}
