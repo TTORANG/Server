@@ -259,6 +259,118 @@ export async function handleGetVideoDetail(req, res, next) {
 
 // 영상 타임스탬프 리액션 생성
 export async function handleToggleVideoReaction(req, res, next) {
+  /**
+   * @swagger
+   * /videos/{id}/reactions:
+   *   post:
+   *     summary: 영상 타임스탬프 리액션 생성/토글
+   *     description: |
+   *       특정 영상의 특정 시점(timestampMs)에 대해 이모지 리액션을 **생성 또는 토글(활성/비활성)** 합니다.
+   *
+   *       - 동일 사용자(userId) + 동일 세션(sessionId) + 동일 영상(videoId) + 동일 timestampMs + 동일 emojiType 조합이 이미 존재하면,
+   *         `isDeleted`를 토글하여 활성/비활성 상태를 변경합니다.
+   *       - 존재하지 않으면 새 리액션을 생성합니다.
+   *
+   *       **주의사항**
+   *       - 본 API는 인증(JWT) + 세션(sessionId)이 필요합니다.
+   *       - `timestampMs`는 0 이상의 정수(ms)만 허용합니다.
+   *       - `emojiType`은 문자열이며, 서버/클라이언트에서 합의된 타입을 사용해야 합니다.
+   *     tags: [Video]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *           example: 2
+   *         description: 비디오 ID
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: "#/components/schemas/VideoReactionCreateRequest"
+   *           examples:
+   *             thumbsUpAt2s:
+   *               summary: 2초 지점 thumbs_up 리액션
+   *               value:
+   *                 emojiType: "thumbs_up"
+   *                 timestampMs: 2000
+   *     responses:
+   *       200:
+   *         description: 토글 성공(활성/비활성 결과 반환)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/VideoReactionToggleResponse"
+   *             examples:
+   *               activated:
+   *                 summary: 새로 생성되거나 활성화됨
+   *                 value:
+   *                   resultType: "SUCCESS"
+   *                   error: null
+   *                   success:
+   *                     active: true
+   *               deactivated:
+   *                 summary: 기존 리액션 비활성화됨
+   *                 value:
+   *                   resultType: "SUCCESS"
+   *                   error: null
+   *                   success:
+   *                     active: false
+   *       400:
+   *         description: 잘못된 입력(emojiType/timestampMs 형식 오류 등)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               invalidTimestamp:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "V002"
+   *                     reason: "비디오 상태가 올바르지 않습니다."
+   *                     data:
+   *                       timestampMs: -1
+   *                   success: null
+   *       401:
+   *         description: 인증/세션 정보 누락
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               noSession:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "A004"
+   *                     reason: "인증 세션 정보가 없습니다."
+   *                     data:
+   *                       userId: "1"
+   *                       videoId: "2"
+   *                   success: null
+   *       404:
+   *         description: 영상 없음
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               notFound:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "V001"
+   *                     reason: "영상을 찾을 수 없습니다."
+   *                     data:
+   *                       videoId: "9999"
+   *                   success: null
+   */
+
   try {
     const { id: videoId } = req.params;
     const { emojiType, timestampMs } = req.body;
@@ -279,6 +391,109 @@ export async function handleToggleVideoReaction(req, res, next) {
 
 // 영상 타임스탬프 댓글 생성
 export async function handleCreateVideoComment(req, res, next) {
+  /**
+   * @swagger
+   * /videos/{id}/comments:
+   *   post:
+   *     summary: 영상 타임스탬프 댓글 생성
+   *     description: |
+   *       특정 영상의 특정 시점(timestampMs)에 댓글을 생성합니다.
+   *
+   *       **주의사항**
+   *       - 본 API는 인증(JWT) + 세션(sessionId)이 필요합니다.
+   *       - `content`는 공백만 있는 문자열은 허용하지 않습니다.
+   *       - `timestampMs`는 0 이상의 정수(ms)만 허용합니다.
+   *     tags: [Video]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *           example: 2
+   *         description: 비디오 ID
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: "#/components/schemas/VideoCommentCreateRequest"
+   *           examples:
+   *             commentAt2s:
+   *               summary: 2초 지점 댓글 생성
+   *               value:
+   *                 content: "여기 설명 좋아요"
+   *                 timestampMs: 2000
+   *     responses:
+   *       200:
+   *         description: 댓글 생성 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/VideoCommentCreateResponse"
+   *             examples:
+   *               created:
+   *                 value:
+   *                   resultType: "SUCCESS"
+   *                   error: null
+   *                   success:
+   *                     id: "15"
+   *                     content: "여기 설명 좋아요"
+   *                     timestampMs: 2000
+   *                     createdAt: "2026-01-24T12:34:56.000Z"
+   *       400:
+   *         description: 잘못된 입력(content/timestampMs 형식 오류 등)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               emptyContent:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "V002"
+   *                     reason: "비디오 상태가 올바르지 않습니다."
+   *                     data:
+   *                       content: ""
+   *                   success: null
+   *       401:
+   *         description: 인증/세션 정보 누락
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               noSession:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "A004"
+   *                     reason: "인증 세션 정보가 없습니다."
+   *                     data:
+   *                       userId: "1"
+   *                       videoId: "2"
+   *                   success: null
+   *       404:
+   *         description: 영상 없음
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               notFound:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "V001"
+   *                     reason: "영상을 찾을 수 없습니다."
+   *                     data:
+   *                       videoId: "9999"
+   *                   success: null
+   */
+
   try {
     const { id: videoId } = req.params;
     const { content, timestampMs } = req.body;
@@ -296,3 +511,108 @@ export async function handleCreateVideoComment(req, res, next) {
     next(e);
   }
 }
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     VideoReactionCreateRequest:
+ *       type: object
+ *       required:
+ *         - emojiType
+ *         - timestampMs
+ *       properties:
+ *         emojiType:
+ *           type: string
+ *           description: 리액션 이모지 타입(클라이언트/서버 합의 값)
+ *           example: "thumbs_up"
+ *         timestampMs:
+ *           type: integer
+ *           minimum: 0
+ *           description: 비디오 내 타임스탬프(ms)
+ *           example: 2000
+ *
+ *     VideoReactionToggleResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: "SUCCESS"
+ *         error:
+ *           nullable: true
+ *           example: null
+ *         success:
+ *           type: object
+ *           properties:
+ *             active:
+ *               type: boolean
+ *               description: 토글 결과 활성 여부(true=활성, false=비활성)
+ *               example: true
+ *
+ *     VideoCommentCreateRequest:
+ *       type: object
+ *       required:
+ *         - content
+ *         - timestampMs
+ *       properties:
+ *         content:
+ *           type: string
+ *           description: 댓글 내용(공백만 있는 문자열 불가)
+ *           example: "여기 설명 좋아요"
+ *         timestampMs:
+ *           type: integer
+ *           minimum: 0
+ *           description: 비디오 내 타임스탬프(ms)
+ *           example: 2000
+ *
+ *     VideoCommentCreateResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: "SUCCESS"
+ *         error:
+ *           nullable: true
+ *           example: null
+ *         success:
+ *           type: object
+ *           properties:
+ *             id:
+ *               type: string
+ *               description: 생성된 댓글 ID(BigInt -> string)
+ *               example: "15"
+ *             content:
+ *               type: string
+ *               example: "여기 설명 좋아요"
+ *             timestampMs:
+ *               type: integer
+ *               example: 2000
+ *             createdAt:
+ *               type: string
+ *               format: date-time
+ *               example: "2026-01-24T12:34:56.000Z"
+ *
+ *     ErrorResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: "FAILURE"
+ *         error:
+ *           type: object
+ *           properties:
+ *             errorCode:
+ *               type: string
+ *               example: "V001"
+ *             reason:
+ *               type: string
+ *               example: "영상을 찾을 수 없습니다."
+ *             data:
+ *               nullable: true
+ *               description: 디버깅용 부가 데이터(민감정보 금지)
+ *               example:
+ *                 videoId: "9999"
+ *         success:
+ *           nullable: true
+ *           example: null
+ */
