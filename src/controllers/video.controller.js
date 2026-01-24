@@ -694,6 +694,8 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
    *         description: 슬라이드 동기화 타임라인 조회 성공
    *         content:
    *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/VideoSlideTimelineResponse"
    *             examples:
    *               withEvents:
    *                 summary: 슬라이드 전환 이벤트 있음

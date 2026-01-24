@@ -510,11 +510,18 @@ export async function getVideoSlideTimeline({ videoId }) {
       id: vid,
       deletedAt: null,
     },
-    select: { id: true },
+    select: { id: true, status: true },
   });
 
   if (!video) {
     throw new VideoNotFoundError({ videoId: String(videoId) });
+  }
+
+  if (video.status !== "ready") {
+    throw new InvalidVideoStatusError({
+      videoId: String(videoId),
+      status: video.status,
+    });
   }
 
   const events = await prisma.videoSlideEvent.findMany({
