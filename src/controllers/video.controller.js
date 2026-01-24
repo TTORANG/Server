@@ -256,3 +256,43 @@ export async function handleGetVideoDetail(req, res, next) {
     next(e);
   }
 }
+
+// 영상 타임스탬프 리액션 생성
+export async function handleToggleVideoReaction(req, res, next) {
+  try {
+    const { id: videoId } = req.params;
+    const { emojiType, timestampMs } = req.body;
+
+    const result = await videoService.toggleVideoReaction({
+      videoId,
+      emojiType,
+      timestampMs,
+      userId: req.user.id,
+      sessionId: req.user.sessionId,
+    });
+
+    res.json(result);
+  } catch (e) {
+    next(e);
+  }
+}
+
+// 영상 타임스탬프 댓글 생성
+export async function handleCreateVideoComment(req, res, next) {
+  try {
+    const { id: videoId } = req.params;
+    const { content, timestampMs } = req.body;
+
+    const result = await videoService.createVideoComment({
+      videoId,
+      content,
+      timestampMs,
+      userId: req.user.id,
+      sessionId: req.user.sessionId,
+    });
+
+    res.json(result);
+  } catch (e) {
+    next(e);
+  }
+}

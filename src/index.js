@@ -36,8 +36,10 @@ import {
   completeVideoUpload,
   createVideo,
   createVideoChunkUploadUrl,
+  handleCreateVideoComment,
   handleGetVideoDetail,
   handleGetVideoList,
+  handleToggleVideoReaction,
 } from "./controllers/video.controller.js";
 import {
   handleGetScript,
@@ -164,6 +166,10 @@ app.post("/videos/:videoId/chunks/complete", isLogin, completeVideoChunk);
 app.post("/videos/:videoId/complete", isLogin, completeVideoUpload);
 // 영상 상세 조회
 app.get("/videos/:id", isLogin, handleGetVideoDetail);
+// 영상 타임스탬프 리액션 생성
+app.post("/videos/:id/reactions", isLogin, handleToggleVideoReaction);
+// 영상 타임스탬프 댓글 생성
+app.post("/videos/:id/comments", isLogin, handleCreateVideoComment);
 
 // Worker 엔드포인트 (Cloud Tasks에서 호출)
 app.post("/worker/process-job", handleProcessJob);
