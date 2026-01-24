@@ -37,7 +37,12 @@ export const jwtStrategy = new JwtStrategy(
       if (user.isDeleted === true || user.isDeleted === 1) {
         return done(new WithdrawUserError(), false);
       }
-      return done(null, user);
+
+      const userWithSession = {
+        ...user,
+        sessionId: payload.sessionId,
+      };
+      return done(null, userWithSession);
     } catch (err) {
       return done(err, false);
     }

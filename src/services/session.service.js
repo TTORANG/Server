@@ -16,6 +16,7 @@ export const issueAnonymousSession = async () => {
     // JWT 토큰 생성
     id: session.userId,
     email: `anon_${sessionId}@ttorang.com`,
+    sessionId: sessionId,
   });
 
   return { sessionId, tokens };
