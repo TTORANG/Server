@@ -118,6 +118,53 @@ export async function postComplete(req, res, next) {
  * @swagger
  * components:
  *   schemas:
+ *
+ *     BaseSuccessResponse:
+ *       type: object
+ *       required:
+ *         - resultType
+ *         - error
+ *         - result
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           type: object
+ *           nullable: true
+ *           example: null
+ *         result:
+ *           type: object
+ *
+ *     BaseFailureResponse:
+ *       type: object
+ *       required:
+ *         - resultType
+ *         - error
+ *         - result
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: FAILURE
+ *         error:
+ *           type: object
+ *           required:
+ *             - errorCode
+ *             - reason
+ *           properties:
+ *             errorCode:
+ *               type: string
+ *               example: F001
+ *             reason:
+ *               type: string
+ *               example: INVALID_FILE_SIZE
+ *             data:
+ *               type: object
+ *               nullable: true
+ *         result:
+ *           type: object
+ *           nullable: true
+ *
  *     FileUploadUrlRequest:
  *       type: object
  *       required:
@@ -139,8 +186,12 @@ export async function postComplete(req, res, next) {
  *           description: 파일 크기 (bytes)
  *           example: 1048576
  *
- *     FileUploadUrlResponse:
+ *     FileUploadUrlResult:
  *       type: object
+ *       required:
+ *         - objectKey
+ *         - uploadUrl
+ *         - expiresAt
  *       properties:
  *         objectKey:
  *           type: string
@@ -156,6 +207,14 @@ export async function postComplete(req, res, next) {
  *           description: Signed URL 만료 시각
  *           example: "2026-01-15T12:00:00.000Z"
  *
+ *     FileUploadUrlSuccessResponse:
+ *       allOf:
+ *         - $ref: '#/components/schemas/BaseSuccessResponse'
+ *         - type: object
+ *           properties:
+ *             result:
+ *               $ref: '#/components/schemas/FileUploadUrlResult'
+ *
  *     FileUploadCompleteRequest:
  *       type: object
  *       required:
@@ -166,8 +225,12 @@ export async function postComplete(req, res, next) {
  *           description: 업로드 완료된 파일의 object key
  *           example: dev/upload/temp/uuid.pdf
  *
- *     FileUploadCompleteResponse:
+ *     FileUploadCompleteResult:
  *       type: object
+ *       required:
+ *         - uploadedFileId
+ *         - conversionJobId
+ *         - status
  *       properties:
  *         uploadedFileId:
  *           type: string
@@ -181,4 +244,12 @@ export async function postComplete(req, res, next) {
  *           type: string
  *           description: 변환 작업 상태
  *           example: queued
+ *
+ *     FileUploadCompleteSuccessResponse:
+ *       allOf:
+ *         - $ref: '#/components/schemas/BaseSuccessResponse'
+ *         - type: object
+ *           properties:
+ *             result:
+ *               $ref: '#/components/schemas/FileUploadCompleteResult'
  */
