@@ -4,6 +4,7 @@ import { createUploadUrl, verifyUploadedObject } from "./gcs.service.js";
 import { MAX_SIZE_BYTES } from "../constants/files.js";
 import { startVideoEncodingPipeline } from "./conversionJob.service.js";
 import {
+  InvalidParameterError,
   InvalidVideoChunkError,
   InvalidVideoStatusError,
   NoVideoChunksError,
@@ -372,10 +373,10 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
     throw new VideoNotFoundError({ videoId: String(videoId) });
   }
   if (!emojiType || typeof emojiType !== "string") {
-    throw new InvalidVideoStatusError({ emojiType });
+    throw new InvalidParameterError({ emojiType }, "잘못된 이모지 타입입니다.");
   }
   if (!Number.isInteger(ts) || ts < 0) {
-    throw new InvalidVideoStatusError({ timestampMs });
+    throw new InvalidParameterError({ timestampMs }, "타임스탬프는 0 이상의 정수여야 합니다.");
   }
 
   const video = await prisma.video.findFirst({
@@ -402,15 +403,17 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
   });
 
   if (existing) {
+    const newIsDeleted = !existing.isDeleted;
+
     await prisma.reaction.update({
       where: { id: existing.id },
-      data: { isDeleted: !existing.isDeleted },
+      data: { isDeleted: newIsDeleted },
     });
 
     return {
       resultType: "SUCCESS",
       error: null,
-      success: { active: existing.isDeleted },
+      success: { active: !newIsDeleted },
     };
   }
 
@@ -448,10 +451,10 @@ export async function createVideoComment({ videoId, content, timestampMs, userId
     throw new VideoNotFoundError({ videoId: String(videoId) });
   }
   if (!content || !content.trim()) {
-    throw new InvalidVideoStatusError({ content });
+    throw new InvalidParameterError({ content }, "댓글 내용은 비워둘 수 없습니다.");
   }
   if (!Number.isInteger(ts) || ts < 0) {
-    throw new InvalidVideoStatusError({ timestampMs });
+    throw new InvalidParameterError({ timestampMs }, "타임스탬프는 0 이상의 정수여야 합니다.");
   }
 
   const video = await prisma.video.findFirst({

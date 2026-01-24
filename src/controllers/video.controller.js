@@ -478,8 +478,8 @@ export async function handleToggleVideoReaction(req, res, next) {
    *                 value:
    *                   resultType: "FAILURE"
    *                   error:
-   *                     errorCode: "V002"
-   *                     reason: "영상 상태가 올바르지 않습니다."
+   *                     errorCode: "P001"
+   *                     reason: "타임스탬프는 0 이상의 정수여야 합니다."
    *                     data:
    *                       timestampMs: -1
    *                   success: null
@@ -601,8 +601,8 @@ export async function handleCreateVideoComment(req, res, next) {
    *                 value:
    *                   resultType: "FAILURE"
    *                   error:
-   *                     errorCode: "V002"
-   *                     reason: "영상 상태가 올바르지 않습니다."
+   *                     errorCode: "P001"
+   *                     reason: "댓글 내용은 비워둘 수 없습니다."
    *                     data:
    *                       content: ""
    *                   success: null
