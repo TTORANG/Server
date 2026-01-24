@@ -7,7 +7,6 @@ import {
   findUserByEmail,
 } from "../repositories/auth.repository.js";
 import { upsertUserSession } from "../repositories/session.repository.js";
-import { uuid } from "../utils/conversion.util.js";
 import { v4 as uuidv4 } from "uuid";
 
 const secret = process.env.JWT_SECRET;

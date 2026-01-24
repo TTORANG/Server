@@ -94,7 +94,6 @@ export const upsertUserSession = async (userId, refreshToken, sessionId) => {
       },
     },
     update: {
-      id: sessionId,
       refreshToken: refreshToken,
       lastSeenAt: new Date(),
     },

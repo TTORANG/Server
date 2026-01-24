@@ -3,6 +3,7 @@ export const signinResponseDTO = (user, tokens, sessionId) => {
     message: "소셜 로그인 성공!",
     user: {
       id: user.id != null ? user.id.toString() : null,
+      email: user.email,
       name: user.name,
       sessionId,
     },
