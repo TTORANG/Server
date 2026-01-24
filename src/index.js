@@ -151,8 +151,8 @@ app.get("/presentations/slides/:slideId/versions", isLogin, handleGetScriptVersi
 app.post("/presentations/slides/:slideId/restore", isLogin, handleRestoreVersion);
 
 // 파일 업로드 API 라우팅(임시)
-app.post("/api/files/upload-url", postUploadUrl);
-app.post("/api/files/complete", postComplete);
+app.post("/files/upload-url", postUploadUrl);
+app.post("/files/complete", postComplete);
 
 // 영상 업로드 API
 app.post("/videos", isLogin, createVideo);
