@@ -659,6 +659,115 @@ export async function handleCreateVideoComment(req, res, next) {
   }
 }
 
+// 영상-슬라이드 동기화 조회
+export async function handleGetVideoSlideTimeline(req, res, next) {
+  /**
+   * @swagger
+   * /videos/{videoId}/slides:
+   *   get:
+   *     summary: 영상-슬라이드 동기화 타임라인 조회
+   *     description: |
+   *       영상 재생 시간에 따라 표시되어야 할 슬라이드 전환 타임라인을 조회합니다.
+   *
+   *       **동작 규칙**
+   *       - 슬라이드 전환 이벤트(`VideoSlideEvent`) 중 `enter` 이벤트만 반환합니다.
+   *       - `timestampMs` 오름차순으로 정렬됩니다.
+   *       - 슬라이드 이벤트가 없는 경우 빈 배열(`[]`)을 반환합니다.
+   *
+   *       **주의사항**
+   *       - `videoId`는 정수(BigInt) 형식이어야 합니다.
+   *       - 영상이 존재하지 않거나 삭제된 경우 오류를 반환합니다.
+   *
+   *     tags: [Video]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: videoId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *           example: 1
+   *         description: 영상 ID
+   *     responses:
+   *       200:
+   *         description: 슬라이드 동기화 타임라인 조회 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/VideoSlideTimelineResponse"
+   *             examples:
+   *               withEvents:
+   *                 summary: 슬라이드 전환 이벤트 있음
+   *                 value:
+   *                   resultType: "SUCCESS"
+   *                   error: null
+   *                   success:
+   *                     slides:
+   *                       - slideId: "1"
+   *                         timestampMs: 0
+   *                       - slideId: "2"
+   *                         timestampMs: 15000
+   *               noEvents:
+   *                 summary: 슬라이드 전환 이벤트 없음
+   *                 value:
+   *                   resultType: "SUCCESS"
+   *                   error: null
+   *                   success:
+   *                     slides: []
+   *       400:
+   *         description: 잘못된 videoId 파라미터
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "P001"
+   *                 reason: "videoId가 올바르지 않습니다."
+   *                 data:
+   *                   videoId: "abc"
+   *               success: null
+   *       401:
+   *         description: 인증 실패
+   *       404:
+   *         description: 영상 없음
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "V001"
+   *                 reason: "영상을 찾을 수 없습니다."
+   *                 data:
+   *                   videoId: "999"
+   *               success: null
+   *       409:
+   *         description: 영상 상태가 올바르지 않음
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "V002"
+   *                 reason: "비디오 상태가 올바르지 않습니다."
+   *                 data:
+   *                   videoId: "1"
+   *                   status: "processing"
+   *               success: null
+   */
+  try {
+    const { videoId } = req.params;
+
+    const result = await videoService.getVideoSlideTimeline({
+      videoId,
+    });
+
+    res.json(result);
+  } catch (e) {
+    next(e);
+  }
+}
+
 /**
  * @swagger
  * components:
@@ -853,7 +962,37 @@ export async function handleCreateVideoComment(req, res, next) {
  *             createdAt:
  *               type: string
  *               format: date-time
- *               example: "2026-01-24T12:34:56.000Z"
+ *
+ *     VideoSlideTimelineItem:
+ *       type: object
+ *       properties:
+ *         slideId:
+ *           type: string
+ *           description: 슬라이드 ID (BigInt → string)
+ *           example: "1"
+ *         timestampMs:
+ *           type: integer
+ *           description: 슬라이드 전환 시점 (ms)
+ *           example: 15000
+ *
+ *     VideoSlideTimelineSuccess:
+ *       type: object
+ *       properties:
+ *         slides:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/VideoSlideTimelineItem"
+ *
+ *     VideoSlideTimelineResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *         success:
+ *           $ref: "#/components/schemas/VideoSlideTimelineSuccess"
  *
  *     ErrorResponse:
  *       type: object

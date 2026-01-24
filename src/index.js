@@ -39,6 +39,7 @@ import {
   handleCreateVideoComment,
   handleGetVideoDetail,
   handleGetVideoList,
+  handleGetVideoSlideTimeline,
   handleToggleVideoReaction,
 } from "./controllers/video.controller.js";
 import {
@@ -169,6 +170,8 @@ app.get("/videos/:videoId", isLogin, handleGetVideoDetail);
 app.post("/videos/:videoId/reactions", isLogin, handleToggleVideoReaction);
 // 영상 타임스탬프 댓글 생성
 app.post("/videos/:videoId/comments", isLogin, handleCreateVideoComment);
+// 영상-슬라이드 동기화
+app.get("/videos/:videoId/slides", isLogin, handleGetVideoSlideTimeline);
 
 // Worker 엔드포인트 (Cloud Tasks에서 호출)
 app.post("/worker/process-job", handleProcessJob);
