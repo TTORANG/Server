@@ -6,7 +6,7 @@ import {
   updateVideoHlsUrl,
   deleteVideoChunks,
 } from "../../repositories/video.repository.js";
-import { getJobById } from "../../repositories/conversionJob.repository.js";
+import { getJobById } from "../../repositories/conversion-job.repository.js";
 import {
   downloadFromGCS,
   uploadToGCS,
