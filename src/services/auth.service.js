@@ -7,13 +7,21 @@ import {
   findUserByEmail,
 } from "../repositories/auth.repository.js";
 import { upsertUserSession } from "../repositories/session.repository.js";
+import { uuid } from "../utils/conversion.util.js";
+import { v4 as uuidv4 } from "uuid";
 
 const secret = process.env.JWT_SECRET;
-export const generateTokens = (user) => {
-  const accessToken = jwt.sign({ id: user.id.toString(), email: user.email }, secret, {
-    expiresIn: "1h",
-  });
-  const refreshToken = jwt.sign({ id: user.id.toString() }, secret, { expiresIn: "14d" });
+export const generateTokens = (payload) => {
+  const { id, email, sessionId } = payload;
+
+  const accessToken = jwt.sign(
+    { id: id.toString(), email: email, sessionId: sessionId || null },
+    secret,
+    {
+      expiresIn: "1h",
+    }
+  );
+  const refreshToken = jwt.sign({ id: id.toString() }, secret, { expiresIn: "14d" });
   return { accessToken, refreshToken };
 };
 
@@ -51,11 +59,18 @@ export const socialLoginVerification = async (profile, provider) => {
 
 export const handleSocialLoginSuccess = async (profile, provider) => {
   const user = await socialLoginVerification(profile, provider);
-  const tokens = generateTokens(user);
 
-  await upsertUserSession(user.id, tokens.refreshToken);
+  const sessionId = uuidv4();
 
-  return { user, tokens };
+  const tokens = generateTokens({
+    id: user.id,
+    email: user.email,
+    sessionId: sessionId,
+  });
+
+  await upsertUserSession(user.id, tokens.refreshToken, sessionId);
+
+  return { user, tokens, sessionId };
 };
 export const logoutUser = async (userId) => {
   try {
