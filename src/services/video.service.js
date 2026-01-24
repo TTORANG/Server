@@ -4,11 +4,13 @@ import { createUploadUrl, verifyUploadedObject } from "./gcs.service.js";
 import { MAX_SIZE_BYTES } from "../constants/files.js";
 import { startVideoEncodingPipeline } from "./conversionJob.service.js";
 import {
+  InvalidParameterError,
   InvalidVideoChunkError,
   InvalidVideoStatusError,
   NoVideoChunksError,
   VideoNotFoundError,
 } from "../errors/video.error.js";
+import { AuthSessionRequiredError } from "../errors/auth.error.js";
 
 function toInt(value) {
   const n = typeof value === "string" ? Number(value) : value;
@@ -70,6 +72,25 @@ export async function createVideoChunkUploadUrl(input) {
     throw new InvalidUploadError({ chunkIndex }, "비디오 청크 인덱스가 올바르지 않습니다.");
   }
 
+  const video = await prisma.video.findFirst({
+    where: {
+      id: videoId,
+      projectId,
+      deletedAt: null,
+    },
+  });
+
+  if (!video) {
+    throw new VideoNotFoundError({ videoId: String(videoId) });
+  }
+
+  if (video.status !== "uploading") {
+    throw new InvalidVideoStatusError({
+      videoId: String(videoId),
+      status: video.status,
+    });
+  }
+
   // video_chunk 목적 Signed URL 발급 (gcs.service.js가 projectId를 요구하는 상태면 그대로 통과)
   return await createUploadUrl({
     purpose: "video_chunk",
@@ -88,9 +109,29 @@ export async function completeVideoChunk(input) {
   const objectKey = input.objectKey;
 
   if (!objectKey) throw new InvalidVideoChunkError({ objectKey });
-  if (!Number.isInteger(videoId) || videoId <= 0) throw new VideoNotFoundError({ videoId });
+  if (!Number.isInteger(videoId) || videoId <= 0)
+    throw new VideoNotFoundError({ videoId: String(videoId) });
   if (!Number.isInteger(chunkIndex) || chunkIndex < 0)
     throw new InvalidVideoChunkError({ chunkIndex });
+
+  const video = await prisma.video.findFirst({
+    where: {
+      id: videoId,
+      projectId,
+      deletedAt: null,
+    },
+  });
+
+  if (!video) {
+    throw new VideoNotFoundError({ videoId: String(videoId) });
+  }
+
+  if (video.status !== "uploading") {
+    throw new InvalidVideoStatusError({
+      videoId: String(videoId),
+      status: video.status,
+    });
+  }
 
   const keyParts = objectKey.split("/");
   if (
@@ -132,7 +173,7 @@ export async function completeVideoUpload(input) {
   const videoId = toInt(input.videoId);
 
   if (!Number.isInteger(videoId) || videoId <= 0) {
-    throw new VideoNotFoundError({ videoId });
+    throw new VideoNotFoundError({ videoId: String(videoId) });
   }
 
   // video 존재 + project 소속 검증
@@ -145,13 +186,16 @@ export async function completeVideoUpload(input) {
   });
 
   if (!video) {
-    throw new VideoNotFoundError({ videoId, projectId });
+    throw new VideoNotFoundError({
+      videoId: String(videoId),
+      projectId: String(projectId),
+    });
   }
 
   // 상태 검증
   if (video.status !== "uploading") {
     throw new InvalidVideoStatusError({
-      videoId,
+      videoId: String(videoId),
       status: video.status,
     });
   }
@@ -162,7 +206,7 @@ export async function completeVideoUpload(input) {
   });
 
   if (chunkCount <= 0) {
-    throw new NoVideoChunksError({ videoId });
+    throw new NoVideoChunksError({ videoId: String(videoId) });
   }
 
   // 상태 변경
@@ -227,7 +271,7 @@ export async function getVideoList({ projectId }) {
 export async function getVideoDetail({ videoId }) {
   const vid = toInt(videoId);
   if (!Number.isInteger(vid) || vid <= 0) {
-    throw new VideoNotFoundError({ videoId });
+    throw new VideoNotFoundError({ videoId: String(videoId) });
   }
 
   // 영상 정보, 리액션, 댓글 가져옴
@@ -283,7 +327,7 @@ export async function getVideoDetail({ videoId }) {
   ]);
 
   if (!video) {
-    throw new VideoNotFoundError({ videoId: vid });
+    throw new VideoNotFoundError({ videoId: String(vid) });
   }
 
   return {
@@ -309,6 +353,147 @@ export async function getVideoDetail({ videoId }) {
           },
         })),
       },
+    },
+  };
+}
+
+// 영상 타임스탬프 리액션 생성
+export async function toggleVideoReaction({ videoId, emojiType, timestampMs, userId, sessionId }) {
+  if (!sessionId) {
+    throw new AuthSessionRequiredError({
+      userId: String(userId),
+      videoId: String(videoId),
+    });
+  }
+
+  const vid = toInt(videoId);
+  const ts = toInt(timestampMs);
+
+  if (!Number.isInteger(vid) || vid <= 0) {
+    throw new VideoNotFoundError({ videoId: String(videoId) });
+  }
+  if (!emojiType || typeof emojiType !== "string") {
+    throw new InvalidParameterError({ emojiType }, "잘못된 이모지 타입입니다.");
+  }
+  if (!Number.isInteger(ts) || ts < 0) {
+    throw new InvalidParameterError({ timestampMs }, "타임스탬프는 0 이상의 정수여야 합니다.");
+  }
+
+  const video = await prisma.video.findFirst({
+    where: {
+      id: vid,
+      deletedAt: null,
+    },
+    select: { id: true },
+  });
+
+  if (!video) {
+    throw new VideoNotFoundError({ videoId: String(videoId) });
+  }
+
+  const existing = await prisma.reaction.findFirst({
+    where: {
+      userId,
+      sessionId,
+      targetType: "video",
+      targetId: vid,
+      timestampMs: ts,
+      emojiType,
+    },
+  });
+
+  if (existing) {
+    const newIsDeleted = !existing.isDeleted;
+
+    await prisma.reaction.update({
+      where: { id: existing.id },
+      data: { isDeleted: newIsDeleted },
+    });
+
+    return {
+      resultType: "SUCCESS",
+      error: null,
+      success: { active: !newIsDeleted },
+    };
+  }
+
+  await prisma.reaction.create({
+    data: {
+      userId,
+      sessionId,
+      targetType: "video",
+      targetId: vid,
+      timestampMs: ts,
+      emojiType,
+    },
+  });
+
+  return {
+    resultType: "SUCCESS",
+    error: null,
+    success: { active: true },
+  };
+}
+
+// 영상 타임스탬프 댓글 생성
+export async function createVideoComment({ videoId, content, timestampMs, userId, sessionId }) {
+  if (!sessionId) {
+    throw new AuthSessionRequiredError({
+      userId: String(userId),
+      videoId: String(videoId),
+    });
+  }
+
+  const vid = toInt(videoId);
+  const ts = toInt(timestampMs);
+
+  if (!Number.isInteger(vid) || vid <= 0) {
+    throw new VideoNotFoundError({ videoId: String(videoId) });
+  }
+  if (!content || !content.trim()) {
+    throw new InvalidParameterError({ content }, "댓글 내용은 비워둘 수 없습니다.");
+  }
+  if (!Number.isInteger(ts) || ts < 0) {
+    throw new InvalidParameterError({ timestampMs }, "타임스탬프는 0 이상의 정수여야 합니다.");
+  }
+
+  const video = await prisma.video.findFirst({
+    where: {
+      id: vid,
+      deletedAt: null,
+    },
+    select: { id: true },
+  });
+
+  if (!video) {
+    throw new VideoNotFoundError({ videoId: String(videoId) });
+  }
+
+  const comment = await prisma.comment.create({
+    data: {
+      userId,
+      sessionId,
+      targetType: "video",
+      targetId: vid,
+      timestampMs: ts,
+      content,
+    },
+    select: {
+      id: true,
+      content: true,
+      timestampMs: true,
+      createdAt: true,
+    },
+  });
+
+  return {
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      id: comment.id.toString(),
+      content: comment.content,
+      timestampMs: comment.timestampMs,
+      createdAt: comment.createdAt,
     },
   };
 }

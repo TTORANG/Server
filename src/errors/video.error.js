@@ -29,3 +29,9 @@ export class VideoEncodingFailedError extends BaseError {
     super("영상 인코딩에 실패했습니다.", 500, "V005", data);
   }
 }
+
+export class InvalidParameterError extends BaseError {
+  constructor(data = null, message = "요청 파라미터가 올바르지 않습니다.") {
+    super(message, 400, "P001", data);
+  }
+}

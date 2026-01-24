@@ -29,3 +29,9 @@ export class WithdrawUserError extends BaseError {
     super("탈퇴한 계정입니다. 고객 센터에 문의하세요", 400, "U002", data);
   }
 }
+
+export class AuthSessionRequiredError extends BaseError {
+  constructor(data = null) {
+    super("인증 세션 정보가 없습니다.", 401, "A004", data);
+  }
+}

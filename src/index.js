@@ -36,8 +36,10 @@ import {
   completeVideoUpload,
   createVideo,
   createVideoChunkUploadUrl,
+  handleCreateVideoComment,
   handleGetVideoDetail,
   handleGetVideoList,
+  handleToggleVideoReaction,
 } from "./controllers/video.controller.js";
 import {
   handleGetScript,
@@ -147,9 +149,6 @@ app.get("/presentations/slides/:slideId/versions", isLogin, handleGetScriptVersi
 // 대본 버전 복원
 app.post("/presentations/slides/:slideId/restore", isLogin, handleRestoreVersion);
 
-// 프로젝트의 영상 목록 조회
-app.get("/presentations/:id/videos", isLogin, handleGetVideoList);
-
 // 파일 업로드 API 라우팅(임시)
 app.post("/api/files/upload-url", postUploadUrl);
 app.post("/api/files/complete", postComplete);
@@ -162,8 +161,14 @@ app.post("/videos/:videoId/chunks/upload-url", isLogin, createVideoChunkUploadUr
 app.post("/videos/:videoId/chunks/complete", isLogin, completeVideoChunk);
 // 비디오 업로드 검증
 app.post("/videos/:videoId/complete", isLogin, completeVideoUpload);
+// 영상 목록 조회
+app.get("/videos/:projectId", isLogin, handleGetVideoList);
 // 영상 상세 조회
-app.get("/videos/:id", isLogin, handleGetVideoDetail);
+app.get("/videos/:videoId", isLogin, handleGetVideoDetail);
+// 영상 타임스탬프 리액션 생성
+app.post("/videos/:videoId/reactions", isLogin, handleToggleVideoReaction);
+// 영상 타임스탬프 댓글 생성
+app.post("/videos/:videoId/comments", isLogin, handleCreateVideoComment);
 
 // Worker 엔드포인트 (Cloud Tasks에서 호출)
 app.post("/worker/process-job", handleProcessJob);
