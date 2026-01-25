@@ -19,7 +19,7 @@ import {
   handleUpdateAnonymousProject,
 } from "./controllers/session.controller.js";
 
-import { handleProcessJob } from "./controllers/conversionJob.controller.js";
+import { handleProcessJob } from "./controllers/conversion-job.controller.js";
 import {
   handleCreateProject,
   handleDeleteProject,
