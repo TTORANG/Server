@@ -53,7 +53,10 @@ export async function uploadToGCS({ bucketName, srcPath, objectKey, contentType 
   const bucket = bucketName ? storage.bucket(bucketName) : getBucket();
   await bucket.upload(srcPath, {
     destination: objectKey,
-    metadata: contentType ? { contentType } : undefined,
+    metadata: {
+      contentType,
+      cacheControl: 'public, max-age=31536000',
+    }
   });
 
   // public URL 전략은 프로젝트 정책에 따라 다름. 현재는 gs://만 반환

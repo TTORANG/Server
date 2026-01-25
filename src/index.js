@@ -36,7 +36,18 @@ import {
   completeVideoUpload,
   createVideo,
   createVideoChunkUploadUrl,
+  handleCreateVideoComment,
+  handleGetVideoDetail,
+  handleGetVideoList,
+  handleGetVideoSlideTimeline,
+  handleToggleVideoReaction,
 } from "./controllers/video.controller.js";
+import {
+  handleGetScript,
+  handleGetScriptVersion,
+  handleRestoreVersion,
+  handleUploadScript,
+} from "./controllers/script.controller.js";
 
 dotenv.config();
 
@@ -127,9 +138,21 @@ app.patch("/presentations/slides/:slideId", isLogin, handlePatchSlideTitle);
 // 슬라이드 네비게이션 기능
 app.get("/presentations/slides/:slideId", isLogin, handleGetSlideDetail);
 
+// 대본 저장
+app.patch("/presentations/slides/:slideId/script", isLogin, handleUploadScript);
+
+// 대본 조회
+app.get("/presentations/slides/:slideId/script", isLogin, handleGetScript);
+
+// 대본 버전 목록 조회
+app.get("/presentations/slides/:slideId/versions", isLogin, handleGetScriptVersion);
+
+// 대본 버전 복원
+app.post("/presentations/slides/:slideId/restore", isLogin, handleRestoreVersion);
+
 // 파일 업로드 API 라우팅(임시)
-app.post("/api/files/upload-url", postUploadUrl);
-app.post("/api/files/complete", postComplete);
+app.post("/files/upload-url", postUploadUrl);
+app.post("/files/complete", postComplete);
 
 // 영상 업로드 API
 app.post("/videos", isLogin, createVideo);
@@ -139,6 +162,16 @@ app.post("/videos/:videoId/chunks/upload-url", isLogin, createVideoChunkUploadUr
 app.post("/videos/:videoId/chunks/complete", isLogin, completeVideoChunk);
 // 비디오 업로드 검증
 app.post("/videos/:videoId/complete", isLogin, completeVideoUpload);
+// 영상 목록 조회
+app.get("/videos/:projectId", isLogin, handleGetVideoList);
+// 영상 상세 조회
+app.get("/videos/:videoId", isLogin, handleGetVideoDetail);
+// 영상 타임스탬프 리액션 생성
+app.post("/videos/:videoId/reactions", isLogin, handleToggleVideoReaction);
+// 영상 타임스탬프 댓글 생성
+app.post("/videos/:videoId/comments", isLogin, handleCreateVideoComment);
+// 영상-슬라이드 동기화
+app.get("/videos/:videoId/slides", isLogin, handleGetVideoSlideTimeline);
 
 // Worker 엔드포인트 (Cloud Tasks에서 호출)
 app.post("/worker/process-job", handleProcessJob);

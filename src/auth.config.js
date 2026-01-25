@@ -4,7 +4,7 @@ import { Strategy as NaverStrategy } from "passport-naver";
 import { Strategy as JwtStrategy, ExtractJwt } from "passport-jwt";
 import * as authService from "./services/auth.service.js";
 import * as authRepository from "./repositories/auth.repository.js";
-import { UserNotFoundError } from "./errors/auth.error.js";
+import { UserNotFoundError, WithdrawUserError } from "./errors/auth.error.js";
 
 export const googleStrategy = new GoogleStrategy(
   {
@@ -23,11 +23,26 @@ export const googleStrategy = new GoogleStrategy(
 );
 
 export const jwtStrategy = new JwtStrategy(
-  { jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(), secretOrKey: process.env.JWT_SECRET },
+  {
+    jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+    secretOrKey: process.env.JWT_SECRET,
+  },
   async (payload, done) => {
     try {
       const user = await authRepository.findUserById(payload.id);
-      return user ? done(null, user) : done(new UserNotFoundError({ id: payload.id }), false);
+      if (!user) {
+        return done(new UserNotFoundError({ id: payload.id }), false);
+      }
+      // 유저가 있지만 탈퇴된 계정인 경우
+      if (user.isDeleted === true || user.isDeleted === 1) {
+        return done(new WithdrawUserError(), false);
+      }
+
+      const userWithSession = {
+        ...user,
+        sessionId: payload.sessionId,
+      };
+      return done(null, userWithSession);
     } catch (err) {
       return done(err, false);
     }

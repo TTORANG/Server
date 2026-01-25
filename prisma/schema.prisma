@@ -149,6 +149,7 @@ model Reaction {
   sessionId  String   @db.Char(36) @map("session_id")
   targetType TargetType @map("target_type")
   targetId   BigInt @map("target_id")
+  timestampMs Int?      @map("timestamp_ms")
   emojiType  String   @db.VarChar(32) @map("emoji_type")
   createdAt  DateTime @map("created_at") @default(now())
   isDeleted  Boolean  @map("is_deleted") @default(false) @db.TinyInt
@@ -156,7 +157,7 @@ model Reaction {
   user    User    @relation(fields: [userId], references: [id])
   session Session @relation(fields: [sessionId], references: [id])
 
-  @@unique([userId, sessionId, targetType, targetId, emojiType], name: "uq_reaction_dedup")
+  @@unique([userId, sessionId, targetType, targetId, timestampMs, emojiType], name: "uq_reaction_dedup_with_timestamp")
   @@map("reaction")
 }
 
@@ -170,7 +171,7 @@ model Slide {
   updatedAt   DateTime? @map("updated_at") @updatedAt
   isDeleted   Boolean @db.TinyInt @map("is_deleted") @default(false)
 
-  project     Project          @relation(fields: [projectId], references: [id])
+  project     Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
   script      Script?
   assets      SlideAsset[]
   videoEvents VideoSlideEvent[]
@@ -200,6 +201,7 @@ model ScriptVersion {
   scriptId      BigInt   @map("script_id")
   scriptText    String   @db.LongText @map("script_text") // 히스토리이므로 필수값
   charCount     Int      @map("char_count")
+  estimatedDurationSeconds Int       @default(0) @map("estimated_duration_seconds")
   versionNumber Int      @map("version_number")
   createdAt     DateTime @default(now()) @map("created_at")
 
@@ -230,7 +232,7 @@ model UploadedFile {
   createdAt        DateTime @map("created_at") @default(now())
   isDeleted        Boolean  @db.TinyInt @map("is_deleted") @default(false)
 
-  project        Project?          @relation(fields: [projectId], references: [id])
+  project        Project?          @relation(fields: [projectId], references: [id], onDelete: Cascade)
   conversionJobs ConversionJob[]
   materials      ProjectMaterial[]
 
