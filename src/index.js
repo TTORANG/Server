@@ -173,7 +173,7 @@ app.post("/videos/:videoId/comments", isLogin, handleCreateVideoComment);
 // 영상-슬라이드 동기화
 app.get("/videos/:videoId/slides", isLogin, handleGetVideoSlideTimeline);
 
-// Worker 엔드포인트 (Cloud Tasks에서 호출)
+// Worker 엔드포인트 (pdf,ppt,동영상 변환)
 app.post("/worker/process-job", handleProcessJob);
 
 app.use((err, req, res, next) => {
