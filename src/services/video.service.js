@@ -2,7 +2,7 @@ import { prisma } from "../db.config.js";
 import { InvalidUploadError } from "../errors/files.error.js";
 import { createUploadUrl, verifyUploadedObject } from "./gcs.service.js";
 import { MAX_SIZE_BYTES } from "../constants/files.js";
-import { startVideoEncodingPipeline } from "./conversionJob.service.js";
+import { startVideoEncodingPipeline } from "./conversion-job.service.js";
 import {
   InvalidParameterError,
   InvalidVideoChunkError,

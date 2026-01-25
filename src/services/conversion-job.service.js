@@ -5,7 +5,7 @@ import {
   updateJobToFailed,
   getJobById,
 } from "../repositories/conversion-job.repository.js";
-import { enqueueConversionTask } from "../queues/conversionJob.queue.js";
+import { enqueueConversionTask } from "../queues/conversion-job.queue.js";
 import { pptxToImages } from "./conversion/pptx-to-images.service.js";
 import { pdfToImages } from "./conversion/pdf-to-images.service.js";
 import { generateThumbnail } from "./conversion/thumbnail.service.js";
