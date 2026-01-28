@@ -49,6 +49,10 @@ import {
   handleUploadScript,
 } from "./controllers/script.controller.js";
 
+// Pub/Sub 이벤트 시스템
+import eventBus from "./events/eventBus.js";
+import { registerSubscribers } from "./events/subscribers/index.js";
+
 dotenv.config();
 
 const app = express();
@@ -192,6 +196,26 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
-});
+// 서버 시작
+const startServer = async () => {
+  try {
+    // Redis Pub/Sub 연결
+    await eventBus.connect();
+
+    // 이벤트 구독자 등록
+    await registerSubscribers();
+
+    // Express 서버 시작
+    app.listen(port, () => {
+      console.log(`Example app listening on port ${port}`);
+    });
+  } catch (error) {
+    console.error("Server startup error:", error);
+    // Redis 연결 실패해도 서버는 시작 (graceful degradation)
+    app.listen(port, () => {
+      console.log(`Example app listening on port ${port} (without Redis)`);
+    });
+  }
+};
+
+startServer();

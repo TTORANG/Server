@@ -17,10 +17,12 @@
   "dependencies": {
     "@google-cloud/storage": "^7.18.0",
     "@google-cloud/tasks": "^6.2.1",
+    "@socket.io/redis-adapter": "^8.3.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.0.0",
     "http-status-code": "^2.1.0",
+    "ioredis": "^5.9.2",
     "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.16.0",
     "p-limit": "^7.2.0",
@@ -29,6 +31,7 @@
     "passport-jwt": "^4.0.1",
     "passport-kakao": "^1.0.1",
     "passport-naver": "^1.0.6",
+    "socket.io": "^4.8.3",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^9.0.1"
