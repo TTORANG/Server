@@ -150,6 +150,9 @@ app.get("/presentations/slides/:slideId/versions", isLogin, handleGetScriptVersi
 // 대본 버전 복원
 app.post("/presentations/slides/:slideId/restore", isLogin, handleRestoreVersion);
 
+// 공유 링크 생성
+app.post("/presentations/:projectId/shares", isLogin, handleCreateShareLink);
+
 // 파일 업로드 API 라우팅(임시)
 app.post("/files/upload-url", postUploadUrl);
 app.post("/files/complete", postComplete);
