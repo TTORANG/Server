@@ -7,4 +7,4 @@ export const ALLOWED_CONTENT_TYPES = new Set([
   "video/webm",
 ]);
 
-export const MAX_SIZE_BYTES = 50 * 1024 * 1024;
+export const MAX_SIZE_BYTES = 1024 * 1024 * 1024;

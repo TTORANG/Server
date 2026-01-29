@@ -86,12 +86,12 @@ export async function uploadPresentationAndCreateProject({ userId, title, file }
   });
 
   if (ext === "pptx" || ext === "pdf") {
-    pipeline = await startConversionPipeline({
+    await startConversionPipeline({
       uploadedFileId: uf.id,
       fileExt: ext,
     });
   } else if (ext === "mp4" || ext === "webm") {
-    pipeline = await startVideoEncodingPipeline({
+    await startVideoEncodingPipeline({
       videoId: video.id,
       uploadedFileId: uf.id,
     });
