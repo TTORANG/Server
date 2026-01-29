@@ -11,6 +11,7 @@ import {
 import { AuthSessionRequiredError } from "../errors/auth.error.js";
 import { uploadBufferToGCS } from "./gcs.service.js";
 import crypto from "crypto";
+import { ALLOWED_VIDEO_MIME } from "../constants/files.js";
 
 function toInt(value) {
   const n = typeof value === "string" ? Number(value) : value;
@@ -45,7 +46,7 @@ export async function createVideo({ projectId, title }) {
     data: {
       projectId: pid,
       title,
-      status: "uploading",
+      status: "recording",
     },
   });
 
@@ -70,23 +71,51 @@ export async function uploadVideoChunk({ videoId, chunkIndex, file }) {
   if (!file || !file.buffer || !file.mimetype) {
     throw new InvalidVideoChunkError({ reason: "chunk 파일이 필요합니다." });
   }
-  if (file.mimetype !== "video/webm") {
+  if (!ALLOWED_VIDEO_MIME.includes(file.mimetype)) {
     throw new InvalidVideoChunkError({ contentType: file.mimetype });
   }
 
   const video = await prisma.video.findFirst({
     where: { id: vid, deletedAt: null },
-    select: { id: true, status: true, projectId: true },
+    select: {
+      id: true,
+      status: true,
+      projectId: true,
+      container: true,
+    },
   });
 
   if (!video) throw new VideoNotFoundError({ videoId: String(vid) });
-  if (video.status !== "uploading") {
+  if (!["recording", "uploading"].includes(video.status)) {
     throw new InvalidVideoStatusError({ videoId: String(vid), status: video.status });
+  }
+
+  const ext = file.mimetype === "video/mp4" ? "mp4" : "webm";
+
+  // mp4 + webm 혼합 업로드 방지
+  if (video.container && video.container !== ext) {
+    throw new InvalidVideoChunkError({
+      reason: "동일한 영상은 하나의 포맷(mp4 또는 webm)만 업로드할 수 있습니다.",
+      videoId: String(vid),
+      current: video.container,
+      incoming: ext,
+    });
+  }
+
+  // 첫 청크면 Video.container 저장
+  if (video.status === "recording" && !video.container) {
+    await prisma.video.update({
+      where: { id: vid },
+      data: {
+        status: "uploading",
+        container: ext,
+      },
+    });
   }
 
   const env = process.env.NODE_ENV || "dev";
   const projectPart = video.projectId ? `project/${video.projectId}` : "orphan";
-  const objectKey = `${env}/${projectPart}/video/${vid}/chunks/${chunkIndex}.webm`;
+  const objectKey = `${env}/${projectPart}/video/${vid}/chunks/${chunkIndex}.${ext}`;
 
   // GCS 업로드 (서버가 받은 buffer로 직접 업로드)
   const uploaded = await uploadBufferToGCS({
@@ -110,42 +139,82 @@ export async function uploadVideoChunk({ videoId, chunkIndex, file }) {
     },
   });
 
-  return { ok: true };
+  return {
+    resultType: "SUCCESS",
+    error: null,
+    success: { ok: true },
+  };
 }
 
 // 영상 업로드 성공 검증
-export async function completeVideoUpload({ videoId }) {
+export async function finishRecording({ videoId, slideLogs }) {
   const vid = toInt(videoId);
 
   if (!Number.isInteger(vid) || vid <= 0) {
-    throw new VideoNotFoundError({ videoId: String(vid) });
+    throw new VideoNotFoundError({ videoId: String(videoId) });
+  }
+  if (!Array.isArray(slideLogs)) {
+    throw new InvalidParameterError({ slideLogs }, "slideLogs가 필요합니다.");
   }
 
-  // video 소속 검증
   const video = await prisma.video.findFirst({
     where: { id: vid, deletedAt: null },
+    select: { id: true, status: true },
   });
 
-  // 상태 검증
-  if (!video) throw new VideoNotFoundError({ videoId: String(vid) });
-  if (video.status !== "uploading") {
-    throw new InvalidVideoStatusError({ videoId: String(vid), status: video.status });
+  if (!video) {
+    throw new VideoNotFoundError({ videoId: String(videoId) });
+  }
+  if (!["recording", "uploading"].includes(video.status)) {
+    throw new InvalidVideoStatusError({
+      videoId: String(videoId),
+      status: video.status,
+    });
   }
 
-  // 청크 존재
-  const chunkCount = await prisma.videoChunk.count({ where: { videoId: vid } });
-  if (chunkCount <= 0) throw new NoVideoChunksError({ videoId: String(vid) });
-
-  // 상태 변경
-  await prisma.video.update({
-    where: { id: vid },
-    data: { status: "processing" },
+  // 업로드 검증
+  const chunkCount = await prisma.videoChunk.count({
+    where: { videoId: vid },
   });
+  if (chunkCount <= 0) {
+    throw new NoVideoChunksError({ videoId: String(videoId) });
+  }
+  for (const l of slideLogs) {
+    if (!Number.isInteger(toInt(l.slideId))) {
+      throw new InvalidParameterError({ slideId: l.slideId });
+    }
+    if (!Number.isInteger(toInt(l.timestampMs)) || l.timestampMs < 0) {
+      throw new InvalidParameterError({ timestampMs: l.timestampMs });
+    }
+  }
 
-  // 변환 Job 생성
+  // 트랜잭션: 슬라이드 로그 저장 + 상태 변경
+  await prisma.$transaction([
+    prisma.videoSlideEvent.deleteMany({
+      where: { videoId: vid },
+    }),
+    prisma.videoSlideEvent.createMany({
+      data: slideLogs.map((l) => ({
+        videoId: vid,
+        slideId: toInt(l.slideId),
+        timestampMs: toInt(l.timestampMs),
+        eventType: "enter",
+      })),
+    }),
+    prisma.video.update({
+      where: { id: vid },
+      data: { status: "processing" },
+    }),
+  ]);
+
+  // 인코딩 파이프라인 시작
   await startVideoEncodingPipeline({ videoId: vid });
 
-  return { ok: true };
+  return {
+    resultType: "SUCCESS",
+    error: null,
+    success: { ok: true },
+  };
 }
 
 // 영상 목록 조회

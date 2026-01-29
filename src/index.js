@@ -11,11 +11,7 @@ import {
   handleLogout,
   handleWithdrawal,
 } from "./controllers/auth.controller.js";
-import {
-  // postComplete,
-  postUploadPresentationFile,
-  // postUploadUrl,
-} from "./controllers/files.controller.js";
+import { postUploadPresentationFile } from "./controllers/files.controller.js";
 import {
   handleCreateAnonymousProject,
   handleCreateAnonymousSession,
@@ -36,13 +32,14 @@ import {
   handlePatchSlideTitle,
 } from "./controllers/slide.controller.js";
 import {
-  completeVideoUpload,
-  createVideo,
+  finishRecording,
   handleCreateVideoComment,
   handleGetVideoDetail,
   handleGetVideoList,
   handleGetVideoSlideTimeline,
   handleToggleVideoReaction,
+  startRecording,
+  uploadVideoChunk,
 } from "./controllers/video.controller.js";
 import {
   handleGetScript,
@@ -166,11 +163,13 @@ app.get("/presentations/:projectId/videos", isLogin, handleGetVideoList);
 app.post("/files/upload", isLogin, upload.single("file"), postUploadPresentationFile);
 
 // 영상 녹화 관련 라우팅
-app.post("/videos", isLogin, createVideo); // 영상 업로드
-app.post("/videos/:videoId/complete", isLogin, completeVideoUpload); // 비디오 업로드 검증
+app.post("/videos/start", isLogin, startRecording); // 영상 업로드
+app.post("/videos/:videoId/finish", isLogin, finishRecording); // 비디오 업로드 검증
 
 // 영상 상세 조회
 app.get("/videos/:videoId", isLogin, handleGetVideoDetail);
+// 영상 청크 업로드
+app.post("/videos/:videoId/chunks/:chunkIndex", isLogin, upload.single("file"), uploadVideoChunk);
 // 영상 타임스탬프 리액션 생성
 app.post("/videos/:videoId/reactions", isLogin, handleToggleVideoReaction);
 // 영상 타임스탬프 댓글 생성
