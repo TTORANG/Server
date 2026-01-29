@@ -13,6 +13,7 @@ export const createShareLink = async (data) => {
       project: {
         select: { title: true },
       },
+      video: { select: { title: true, createdAt: true } },
     },
   });
 };
@@ -57,6 +58,16 @@ export const incrementViewCount = async (linkId) => {
     where: { id: linkId },
     data: {
       viewCount: { increment: 1 },
+    },
+  });
+};
+
+export const getShareLinkList = async (proejctId) => {
+  return await prisma.shareLink.findMany({
+    where: { proejctId: BigInt(proejctId) },
+    orderBy: { createdAt: "desc" },
+    include: {
+      video: { select: { title: true, createdAt: true } },
     },
   });
 };

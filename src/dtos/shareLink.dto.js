@@ -2,13 +2,16 @@ export const shareLinkResponseDTO = (link) => {
   return {
     shareId: link.id.toString(),
     projectId: link.projectId.toString(),
-    videoId: link.videoId ? link.videoId.toString() : null,
     scope: link.scope,
     shareToken: link.shareToken,
     shareUrl: link.shareUrl,
-    expiredAt: link.expiredAt,
+
+    sharedContentSummary: {
+      scope: link.scope,
+      videoTitle: link.video?.title || null,
+      videoCreatedAt: link.video?.createdAt || null,
+    },
     createdAt: link.createdAt,
-    updatedAt: link.updatedAt,
   };
 };
 
@@ -29,4 +32,16 @@ export const getShareLinkResponseDTO = (data) => {
       video: content.video || null,
     },
   };
+};
+
+export const GetShareLinkListResponseDTO = (links) => {
+  return links.map((link) => ({
+    shareId: link.id.toString(),
+    scope: link.scope,
+    shareToken: link.shareToken,
+    isActive: link.isActive,
+    viewCount: link.viewCount,
+    videoTitle: link.video?.title || null,
+    createdAt: link.createdAt,
+  }));
 };

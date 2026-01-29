@@ -8,6 +8,7 @@ import {
   createShareLink,
   findShareLinkWithContent,
   findVideoInProject,
+  getShareLinkList,
   incrementViewCount,
 } from "../repositories/shareLink.repository.js";
 import { v4 as uuidv4 } from "uuid";
@@ -80,4 +81,10 @@ export const processGetShareContent = async (token) => {
   }
 
   return { scope, content, shareLink };
+};
+
+export const processGetShareLinkList = async (projectId) => {
+  const links = await getShareLinkList(projectId);
+
+  return links;
 };
