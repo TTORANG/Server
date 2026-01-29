@@ -1,6 +1,5 @@
 export const shareLinkResponseDTO = (link) => {
   return {
-    shareId: link.id.toString(),
     projectId: link.projectId.toString(),
     scope: link.scope,
     shareToken: link.shareToken,
@@ -36,12 +35,18 @@ export const getShareLinkResponseDTO = (data) => {
 
 export const GetShareLinkListResponseDTO = (links) => {
   return links.map((link) => ({
-    shareId: link.id.toString(),
     scope: link.scope,
     shareToken: link.shareToken,
     isActive: link.isActive,
     viewCount: link.viewCount,
     videoTitle: link.video?.title || null,
     createdAt: link.createdAt,
+  }));
+};
+
+export const getVideoListResponseDTO = (videos) => {
+  return videos.map((video) => ({
+    ...video,
+    id: video.id.toString(),
   }));
 };

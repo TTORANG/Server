@@ -52,6 +52,7 @@ import {
   handleCreateShareLink,
   handleGetShareContent,
   handleGetShareLinkList,
+  handleGetVideoListForSharing,
 } from "./controllers/shareLink.controller.js";
 
 dotenv.config();
@@ -163,6 +164,9 @@ app.get("/shares/:token", handleGetShareContent);
 
 // 공유 링크 목록 조회
 app.get("/presentations/:projectId/shares", isLogin, handleGetShareLinkList);
+
+// 공유 가능 영상 목록 조회
+app.get("/presentations/:projectId/shares/videos", isLogin, handleGetVideoListForSharing);
 
 // 파일 업로드 API 라우팅(임시)
 app.post("/files/upload-url", postUploadUrl);

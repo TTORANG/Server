@@ -18,7 +18,7 @@ export const createShareLink = async (data) => {
   });
 };
 
-export const findVideoInProject = async (proejctId, videoId) => {
+export const findVideoInProject = async (projectId, videoId) => {
   return await prisma.video.findFirst({
     where: {
       id: BigInt(videoId),
@@ -62,12 +62,28 @@ export const incrementViewCount = async (linkId) => {
   });
 };
 
-export const getShareLinkList = async (proejctId) => {
+export const getShareLinkList = async (projectId) => {
   return await prisma.shareLink.findMany({
-    where: { proejctId: BigInt(proejctId) },
+    where: { projectId: BigInt(projectId) },
     orderBy: { createdAt: "desc" },
     include: {
-      video: { select: { title: true, createdAt: true } },
+      video: { select: { title: true, createdAt: true, thumbnailUrl: true } },
     },
+  });
+};
+
+export const getVideoList = async (projectId) => {
+  return await prisma.video.findMany({
+    where: {
+      projectId: BigInt(projectId),
+      status: "ready",
+    },
+    select: {
+      id: true,
+      title: true,
+      createdAt: true,
+      thumbnailUrl: true,
+    },
+    orderBy: { createdAt: "desc" },
   });
 };

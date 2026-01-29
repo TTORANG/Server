@@ -9,31 +9,38 @@ import {
   findShareLinkWithContent,
   findVideoInProject,
   getShareLinkList,
+  getVideoList,
   incrementViewCount,
 } from "../repositories/shareLink.repository.js";
 import { v4 as uuidv4 } from "uuid";
 
-export const processCreateShareLink = async (projectId, shareDate) => {
-  const { scope, videoId } = shareDate;
-  const SCOPE_VIDEO = "slides_script_video";
+const SCOPE_VIDEO = "slides_script_video";
+
+export const processCreateShareLink = async (projectId, shareData) => {
+  const { scope, videoId } = shareData;
 
   if (scope === SCOPE_VIDEO) {
     if (!videoId) {
-      throw new VideoNotFoundError();
-    }
-    const video = await findVideoInProject(projectId, videoId);
-    if (!video) {
       throw new VideoIdRequiredError();
+    }
+    const video = await findVideoInProject(projectId, videoId); // 공유 가능한 비디오가 1개 이상 존재하는지 검색
+    if (!video) {
+      throw new VideoNotFoundError();
     }
   }
 
-  const shareToken = uuidv4();
+  const shareToken = uuidv4(); // 공유 링크에 사용할 토큰
+
+  // 기본 만료일 : 7일
+  const defaultExpiredAt = new Date();
+  defaultExpiredAt.setDate(defaultExpiredAt.getDate() + 7);
 
   const newLink = await createShareLink({
     projectId,
     videoId: scope === SCOPE_VIDEO ? videoId : null,
     scope,
     shareToken,
+    expiredAt: shareData.expiredAt || defaultExpiredAt,
   });
 
   const baseUrl = process.env.BASE_URL || process.env.LOCAL_URL;
@@ -70,7 +77,6 @@ export const processGetShareContent = async (token) => {
       scriptText: slide.script?.scriptText || "",
     })),
   };
-  const SCOPE_VIDEO = "slides_script_video";
 
   if (scope === SCOPE_VIDEO && video) {
     content.video = {
@@ -84,7 +90,9 @@ export const processGetShareContent = async (token) => {
 };
 
 export const processGetShareLinkList = async (projectId) => {
-  const links = await getShareLinkList(projectId);
+  return await getShareLinkList(projectId);
+};
 
-  return links;
+export const processGetVideoList = async (projectId) => {
+  return await getVideoList(projectId);
 };
