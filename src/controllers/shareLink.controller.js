@@ -1,5 +1,5 @@
-import { shareLinkResponseDTO } from "../dtos/shareLink.dto.js";
-import { processCreateShareLink } from "../services/shareLink.service.js";
+import { getShareLinkResponseDTO, shareLinkResponseDTO } from "../dtos/shareLink.dto.js";
+import { processCreateShareLink, processGetShareContent } from "../services/shareLink.service.js";
 export const handleCreateShareLink = async (req, res, next) => {
   try {
     const { projectId } = req.params;
@@ -10,6 +10,21 @@ export const handleCreateShareLink = async (req, res, next) => {
       resultType: "SUCCESS",
       error: null,
       success: shareLinkResponseDTO(shareLink),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const handleGetShareContent = async (req, res, next) => {
+  try {
+    const { token } = req.params;
+    const result = await processGetShareContent(token);
+
+    res.status(200).json({
+      resultType: "SUCCESS",
+      error: null,
+      success: getShareLinkResponseDTO(result),
     });
   } catch (error) {
     next(error);

@@ -11,3 +11,22 @@ export const shareLinkResponseDTO = (link) => {
     updatedAt: link.updatedAt,
   };
 };
+
+export const getShareLinkResponseDTO = (data) => {
+  const { scope, content, shareLink } = data;
+
+  return {
+    message: "공유된 프로젝트에 접속했습니다.",
+
+    shareInfo: {
+      shareToken: shareLink.shareToken,
+      scope: scope,
+      createdAt: shareLink.createdAt,
+    },
+    projectContent: {
+      title: content.title,
+      slides: content.slides,
+      video: content.video || null,
+    },
+  };
+};

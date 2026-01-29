@@ -26,3 +26,37 @@ export const findVideoInProject = async (proejctId, videoId) => {
     },
   });
 };
+
+export const findShareLinkWithContent = async (token) => {
+  return await prisma.shareLink.findUnique({
+    where: { shareToken: token },
+    include: {
+      project: {
+        include: {
+          slides: {
+            where: {
+              isDeleted: false,
+            },
+            orderBy: {
+              slideNum: "asc",
+            },
+            include: {
+              script: true,
+              assets: { where: { assetType: "image" } },
+            },
+          },
+        },
+      },
+      video: true,
+    },
+  });
+};
+
+export const incrementViewCount = async (linkId) => {
+  await prisma.shareLink.update({
+    where: { id: linkId },
+    data: {
+      viewCount: { increment: 1 },
+    },
+  });
+};
