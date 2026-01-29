@@ -1,7 +1,5 @@
 import { prisma } from "../db.config.js";
 import { InvalidUploadError } from "../errors/files.error.js";
-// import { createUploadUrl, verifyUploadedObject } from "./gcs.service.js";
-import { MAX_SIZE_BYTES } from "../constants/files.js";
 import { startVideoEncodingPipeline } from "./conversion-job.service.js";
 import {
   InvalidParameterError,
@@ -11,6 +9,8 @@ import {
   VideoNotFoundError,
 } from "../errors/video.error.js";
 import { AuthSessionRequiredError } from "../errors/auth.error.js";
+import { uploadBufferToGCS } from "./gcs.service.js";
+import crypto from "crypto";
 
 function toInt(value) {
   const n = typeof value === "string" ? Number(value) : value;
@@ -20,26 +20,24 @@ function toInt(value) {
 function requireProjectId(projectId) {
   const pid = toInt(projectId);
   if (!Number.isInteger(pid) || pid <= 0) {
-    throw new InvalidUploadError({ projectId }, "프로젝트 ID가 올바르지 않습니다.");
+    throw new InvalidParameterError({ projectId }, "프로젝트 ID가 올바르지 않습니다.");
   }
   return pid;
 }
 
 export async function createVideo({ projectId, title }) {
-  // projectId 형식 검증
-  const pid = requireProjectId(projectId);
+  let pid = null;
 
-  // 프로젝트 존재 + 미삭제 여부 검증 (핵심)
-  const project = await prisma.project.findFirst({
-    where: {
-      id: pid,
-      isDeleted: false,
-    },
-    select: { id: true },
-  });
+  if (projectId !== undefined) {
+    pid = requireProjectId(projectId);
 
-  if (!project) {
-    throw new InvalidUploadError({ projectId: pid }, "존재하지 않는 프로젝트입니다.");
+    const project = await prisma.project.findFirst({
+      where: { id: pid, isDeleted: false },
+      select: { id: true },
+    });
+    if (!project) {
+      throw new InvalidUploadError({ projectId: pid }, "존재하지 않는 프로젝트입니다.");
+    }
   }
 
   // 비디오 생성
@@ -60,163 +58,92 @@ export async function createVideo({ projectId, title }) {
   };
 }
 
-export async function createVideoChunkUploadUrl(input) {
-  const projectId = requireProjectId(input.projectId);
-  const videoId = toInt(input.videoId);
-  const chunkIndex = toInt(input.chunkIndex);
+// 영상 청크 업로드
+export async function uploadVideoChunk({ videoId, chunkIndex, file }) {
+  const vid = toInt(videoId);
+  const idx = toInt(chunkIndex);
 
-  if (!Number.isInteger(videoId) || videoId <= 0) {
-    throw new InvalidUploadError({ videoId }, "비디오 ID가 올바르지 않습니다.");
+  if (!Number.isInteger(vid) || vid <= 0)
+    throw new VideoNotFoundError({ videoId: String(videoId) });
+  if (!Number.isInteger(idx) || idx < 0) throw new InvalidVideoChunkError({ chunkIndex });
+
+  if (!file || !file.buffer || !file.mimetype) {
+    throw new InvalidVideoChunkError({ reason: "chunk 파일이 필요합니다." });
   }
-  if (!Number.isInteger(chunkIndex) || chunkIndex < 0) {
-    throw new InvalidUploadError({ chunkIndex }, "비디오 청크 인덱스가 올바르지 않습니다.");
+  if (file.mimetype !== "video/webm") {
+    throw new InvalidVideoChunkError({ contentType: file.mimetype });
   }
 
   const video = await prisma.video.findFirst({
-    where: {
-      id: videoId,
-      projectId,
-      deletedAt: null,
-    },
+    where: { id: vid, deletedAt: null },
+    select: { id: true, status: true, projectId: true },
   });
 
-  if (!video) {
-    throw new VideoNotFoundError({ videoId: String(videoId) });
-  }
-
+  if (!video) throw new VideoNotFoundError({ videoId: String(vid) });
   if (video.status !== "uploading") {
-    throw new InvalidVideoStatusError({
-      videoId: String(videoId),
-      status: video.status,
-    });
+    throw new InvalidVideoStatusError({ videoId: String(vid), status: video.status });
   }
 
-  // video_chunk 목적 Signed URL 발급 (gcs.service.js가 projectId를 요구하는 상태면 그대로 통과)
-  return await createUploadUrl({
-    purpose: "video_chunk",
-    projectId,
-    videoId,
-    chunkIndex,
-    size: input.size,
-    contentType: input.contentType,
-  });
-}
+  const env = process.env.NODE_ENV || "dev";
+  const projectPart = video.projectId ? `project/${video.projectId}` : "orphan";
+  const objectKey = `${env}/${projectPart}/video/${vid}/chunks/${chunkIndex}.webm`;
 
-export async function completeVideoChunk(input) {
-  const projectId = requireProjectId(input.projectId);
-  const videoId = toInt(input.videoId);
-  const chunkIndex = toInt(input.chunkIndex);
-  const objectKey = input.objectKey;
-
-  if (!objectKey) throw new InvalidVideoChunkError({ objectKey });
-  if (!Number.isInteger(videoId) || videoId <= 0)
-    throw new VideoNotFoundError({ videoId: String(videoId) });
-  if (!Number.isInteger(chunkIndex) || chunkIndex < 0)
-    throw new InvalidVideoChunkError({ chunkIndex });
-
-  const video = await prisma.video.findFirst({
-    where: {
-      id: videoId,
-      projectId,
-      deletedAt: null,
-    },
+  // GCS 업로드 (서버가 받은 buffer로 직접 업로드)
+  const uploaded = await uploadBufferToGCS({
+    objectKey,
+    buffer: file.buffer,
+    contentType: file.mimetype,
   });
 
-  if (!video) {
-    throw new VideoNotFoundError({ videoId: String(videoId) });
-  }
-
-  if (video.status !== "uploading") {
-    throw new InvalidVideoStatusError({
-      videoId: String(videoId),
-      status: video.status,
-    });
-  }
-
-  const keyParts = objectKey.split("/");
-  if (
-    keyParts.length < 7 ||
-    toInt(keyParts[2]) !== projectId ||
-    toInt(keyParts[4]) !== videoId ||
-    toInt(keyParts[6]) !== chunkIndex
-  ) {
-    throw new InvalidVideoChunkError({ reason: "objectKey가 요청 파라미터와 일치하지 않습니다." });
-  }
-
-  const meta = await verifyUploadedObject({ objectKey });
-
-  if (meta.contentType !== "video/webm") {
-    throw new InvalidVideoChunkError({ contentType: meta.contentType });
-  }
-  const sizeBytes = Number(meta.size);
-
-  if (!Number.isFinite(sizeBytes) || sizeBytes <= 0 || sizeBytes > MAX_SIZE_BYTES) {
-    throw new InvalidVideoChunkError({ size: meta.size, max: MAX_SIZE_BYTES });
-  }
+  const sha256 = crypto.createHash("sha256").update(file.buffer).digest("hex");
+  const sizeBytes = BigInt(file.size);
 
   await prisma.videoChunk.create({
     data: {
-      videoId,
-      chunkIndex,
-      sizeBytes: meta.size,
-      storageBucket: process.env.GCS_BUCKET_NAME,
-      storageKey: objectKey,
-      url: `https://storage.googleapis.com/${process.env.GCS_BUCKET_NAME}/${objectKey}`,
+      videoId: vid,
+      chunkIndex: idx,
+      sizeBytes,
+      sha256,
+      storageBucket: uploaded.storageBucket,
+      storageKey: uploaded.storageKey,
+      url: uploaded.url,
     },
   });
 
   return { ok: true };
 }
 
-export async function completeVideoUpload(input) {
-  const projectId = requireProjectId(input.projectId);
-  const videoId = toInt(input.videoId);
+// 영상 업로드 성공 검증
+export async function completeVideoUpload({ videoId }) {
+  const vid = toInt(videoId);
 
-  if (!Number.isInteger(videoId) || videoId <= 0) {
-    throw new VideoNotFoundError({ videoId: String(videoId) });
+  if (!Number.isInteger(vid) || vid <= 0) {
+    throw new VideoNotFoundError({ videoId: String(vid) });
   }
 
-  // video 존재 + project 소속 검증
+  // video 소속 검증
   const video = await prisma.video.findFirst({
-    where: {
-      id: videoId,
-      projectId,
-      deletedAt: null,
-    },
+    where: { id: vid, deletedAt: null },
   });
 
-  if (!video) {
-    throw new VideoNotFoundError({
-      videoId: String(videoId),
-      projectId: String(projectId),
-    });
-  }
-
   // 상태 검증
+  if (!video) throw new VideoNotFoundError({ videoId: String(vid) });
   if (video.status !== "uploading") {
-    throw new InvalidVideoStatusError({
-      videoId: String(videoId),
-      status: video.status,
-    });
+    throw new InvalidVideoStatusError({ videoId: String(vid), status: video.status });
   }
 
   // 청크 존재
-  const chunkCount = await prisma.videoChunk.count({
-    where: { videoId },
-  });
-
-  if (chunkCount <= 0) {
-    throw new NoVideoChunksError({ videoId: String(videoId) });
-  }
+  const chunkCount = await prisma.videoChunk.count({ where: { videoId: vid } });
+  if (chunkCount <= 0) throw new NoVideoChunksError({ videoId: String(vid) });
 
   // 상태 변경
   await prisma.video.update({
-    where: { id: videoId },
+    where: { id: vid },
     data: { status: "processing" },
   });
 
   // 변환 Job 생성
-  await startVideoEncodingPipeline({ videoId });
+  await startVideoEncodingPipeline({ videoId: vid });
 
   return { ok: true };
 }

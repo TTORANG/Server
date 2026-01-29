@@ -48,128 +48,6 @@ export async function createVideo(req, res, next) {
   }
 }
 
-// Video Chunk 업로드 API
-export async function createVideoChunkUploadUrl(req, res, next) {
-  /**
-   * @swagger
-   * /videos/{videoId}/chunks/upload-url:
-   *   post:
-   *     summary: 영상 청크 업로드 URL 발급
-   *     description: |
-   *       영상 녹화 중 생성된 청크(WebM)를 업로드하기 위한
-   *       Google Cloud Storage Signed URL을 발급합니다.
-   *
-   *       ⚠️ 중요
-   *       - 이 API는 **업로드 URL만 발급**합니다.
-   *       - 실제 파일 업로드는 **백엔드를 거치지 않고**
-   *         **반환된 uploadUrl로 직접 PUT 요청**해야 합니다.
-   *       - Content-Type은 반드시 `video/webm` 이어야 합니다.
-   *     tags: [Video]
-   *     security:
-   *       - bearerAuth: []
-   *     parameters:
-   *       - in: path
-   *         name: videoId
-   *         required: true
-   *         schema:
-   *           type: integer
-   *           example: 4
-   *         description: 영상 ID
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           example:
-   *             projectId: 2
-   *             chunkIndex: 0
-   *             size: 1048576
-   *             contentType: "video/webm"
-   *     responses:
-   *       200:
-   *         description: 업로드 URL 발급 성공
-   *         content:
-   *           application/json:
-   *             example:
-   *               resultType: "SUCCESS"
-   *               error: null
-   *               success:
-   *                 objectKey: "dev/project/2/video/4/chunks/0/uuid.webm"
-   *                 uploadUrl: "https://storage.googleapis.com/..."
-   *                 expiresAt: "2026-01-18T21:03:15.164Z"
-   *       400:
-   *         description: 잘못된 요청
-   *         content:
-   *           application/json:
-   *             example:
-   *               resultType: "FAILURE"
-   *               error:
-   *                 errorCode: "V003"
-   *                 reason: "영상 청크는 webm 형식만 업로드할 수 있습니다."
-   *               success: null
-   */
-  try {
-    const result = await videoService.createVideoChunkUploadUrl({
-      videoId: req.params.videoId,
-      ...req.body,
-    });
-    res.json(result);
-  } catch (e) {
-    next(e);
-  }
-}
-
-// chunk complete API
-export async function completeVideoChunk(req, res, next) {
-  /**
-   * @swagger
-   * /videos/{videoId}/chunks/complete:
-   *   post:
-   *     summary: 영상 청크 업로드 완료 처리
-   *     description: |
-   *       GCS에 업로드된 영상 청크를 검증하고
-   *       서버에 청크 정보를 기록합니다.
-   *
-   *       - 반드시 **PUT 업로드 성공 후** 호출해야 합니다.
-   *     tags: [Video]
-   *     security:
-   *       - bearerAuth: []
-   *     parameters:
-   *       - in: path
-   *         name: videoId
-   *         required: true
-   *         schema:
-   *           type: integer
-   *           example: 4
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           example:
-   *             projectId: 2
-   *             chunkIndex: 0
-   *             objectKey: "dev/project/2/video/4/chunks/0/uuid.webm"
-   *     responses:
-   *       200:
-   *         description: 청크 처리 성공
-   *         content:
-   *           application/json:
-   *             example:
-   *               resultType: "SUCCESS"
-   *               error: null
-   *               success:
-   *                 ok: true
-   */
-  try {
-    const result = await videoService.completeVideoChunk({
-      videoId: req.params.videoId,
-      ...req.body,
-    });
-    res.json(result);
-  } catch (e) {
-    next(e);
-  }
-}
-
 // 업로드 완료 → 인코딩 Job 생성
 export async function completeVideoUpload(req, res, next) {
   /**
@@ -239,61 +117,80 @@ export async function completeVideoUpload(req, res, next) {
 export async function handleGetVideoList(req, res, next) {
   /**
    * @swagger
-   * /videos/{projectId}:
+   * /presentations/{projectId}/videos:
    *   get:
-   *     summary: 프로젝트 내 영상 목록 조회
-   *     description: |
-   *       특정 프로젝트에 속한 영상 목록을 조회합니다.
-   *
-   *       **조회 조건**
-   *       - 프로젝트는 존재해야 하며 삭제되지 않은 상태여야 합니다.
-   *       - 영상은 삭제되지 않은 상태(`deletedAt = null`)만 조회됩니다.
-   *
-   *       **정렬 기준**
-   *       - 생성일(`createdAt`) 기준 내림차순
-   *
-   *       **주의사항**
-   *       - 본 API는 인증(JWT)이 필요합니다.
-   *       - 반환되는 `id`는 BigInt이므로 문자열(string)로 변환되어 반환됩니다.
-   *     tags: [Video]
+   *     summary: 프로젝트 녹화 영상 목록 조회
+   *     description: >
+   *       특정 프로젝트에 속한 모든 녹화 영상을 최신순으로 조회합니다.
+   *       영상이 없는 경우에도 오류가 아닌 빈 목록을 반환합니다.
+   *     tags:
+   *       - Presentation
    *     security:
    *       - bearerAuth: []
    *     parameters:
    *       - in: path
    *         name: projectId
    *         required: true
-   *         schema:
-   *           type: integer
-   *           example: 2
    *         description: 프로젝트 ID
+   *         schema:
+   *           type: string
+   *           example: "1"
    *     responses:
    *       200:
    *         description: 영상 목록 조회 성공
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/VideoListResponse"
-   *             examples:
-   *               success:
-   *                 value:
-   *                   resultType: "SUCCESS"
-   *                   error: null
-   *                   success:
+   *               type: object
+   *               properties:
+   *                 resultType:
+   *                   type: string
+   *                   example: SUCCESS
+   *                 error:
+   *                   type: object
+   *                   nullable: true
+   *                   example: null
+   *                 success:
+   *                   type: object
+   *                   properties:
    *                     videos:
-   *                       - id: "10"
-   *                         title: "발표 영상 1"
-   *                         status: "ready"
-   *                         durationSeconds: 120
-   *                         thumbnailUrl: "https://example.com/thumb.jpg"
-   *                         createdAt: "2026-01-24T10:00:00.000Z"
-   *       401:
-   *         description: 인증 실패
+   *                       type: array
+   *                       description: 프로젝트에 속한 영상 목록 (최신순)
+   *                       items:
+   *                         type: object
+   *                         properties:
+   *                           id:
+   *                             type: string
+   *                             description: 영상 ID (BigInt → string)
+   *                             example: "45"
+   *                           title:
+   *                             type: string
+   *                             nullable: true
+   *                             example: "발표 연습 영상"
+   *                           status:
+   *                             type: string
+   *                             enum: [recording, uploading, processing, ready, failed]
+   *                             example: ready
+   *                           durationSeconds:
+   *                             type: integer
+   *                             nullable: true
+   *                             example: 320
+   *                           thumbnailUrl:
+   *                             type: string
+   *                             nullable: true
+   *                             example: https://cdn.example.com/thumb.jpg
+   *                           createdAt:
+   *                             type: string
+   *                             format: date-time
+   *                             example: "2026-01-29T12:30:00Z"
+   *       400:
+   *         description: 잘못된 요청 (유효하지 않은 프로젝트 ID)
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
    *       404:
-   *         description: 프로젝트 없음
+   *         description: 존재하지 않는 프로젝트
    *         content:
    *           application/json:
    *             schema:
@@ -301,7 +198,7 @@ export async function handleGetVideoList(req, res, next) {
    */
 
   try {
-    const { id: projectId } = req.params;
+    const { projectId } = req.params;
     const result = await videoService.getVideoList({ projectId });
     res.json(result);
   } catch (e) {
@@ -396,7 +293,7 @@ export async function handleGetVideoDetail(req, res, next) {
    */
 
   try {
-    const { id: videoId } = req.params;
+    const { videoId } = req.params;
     const result = await videoService.getVideoDetail({ videoId });
     res.json(result);
   } catch (e) {
