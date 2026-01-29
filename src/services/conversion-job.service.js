@@ -168,48 +168,17 @@ export const startConversionPipeline = async ({ uploadedFileId, fileExt }) => {
  *
  * - video_transcode: 청크 병합 → HLS 변환 → GCS 업로드
  */
-export async function startVideoEncodingPipeline({ projectId, uploadedFileId }) {
-  // uploaded_file 조회
-  const uploadedFile = await prisma.uploadedFile.findUnique({
-    where: { id: uploadedFileId },
+export const startVideoEncodingPipeline = async ({ videoId }) => {
+  const job = await createAndEnqueueJob({
+    videoId,
+    jobType: "video_transcode",
   });
 
-  if (!uploadedFile) {
-    throw new Error("Uploaded file not found");
-  }
-
-  // Video 엔티티 생성
-  const video = await prisma.video.create({
-    data: {
-      projectId,
-      status: "processing",
-      sourceStorageBucket: uploadedFile.storageBucket,
-      sourceStorageKey: uploadedFile.storageKey,
-      sourceUrl: uploadedFile.storageUrl,
-      container: uploadedFile.fileExt,
-    },
-  });
-
-  // ConversionJob 생성
-  const job = await prisma.conversionJob.create({
-    data: {
-      videoId: video.id,
-      jobType: "video_transcode",
-      status: "queued",
-    },
-  });
-
-  // Cloud Tasks enqueue (로컬이면 자동 skip)
-  await enqueueConversionTask(job);
-
-  // 로그 (디버깅용)
-  console.log(`[Pipeline] Video encoding started for video ${video.id.toString()}`, {
+  console.log(`[Pipeline] Video encoding started for video ${videoId}:`, {
     jobId: job.id.toString(),
   });
 
-  // 반환
   return {
-    videoId: video.id,
-    conversionJobId: job.id,
+    job: { id: job.id.toString(), jobType: "video_transcode" },
   };
-}
+};
