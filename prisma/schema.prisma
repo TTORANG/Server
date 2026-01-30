@@ -97,9 +97,16 @@ model Project {
   @@map("project")
 }
 
+enum ShareScope {
+  slides_script
+  slides_script_video
+}
+
 model ShareLink {
   id         BigInt   @id @default(autoincrement()) @map("id")
   projectId  BigInt   @map("project_id")
+  videoId    BigInt?   @map("video_id")
+  scope      ShareScope  @default(slides_script) @map("scope")
   shareToken String    @db.VarChar(255) @map("share_token")
   isActive   Boolean   @default(true) @db.TinyInt @map("is_active")
   expiredAt  DateTime? @map("expired_at")
@@ -108,7 +115,8 @@ model ShareLink {
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
   project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
+  video      Video?    @relation(fields: [videoId], references: [id], onDelete: SetNull)
+  
   @@unique([shareToken], name: "uq_share_token_unique")
   @@index([projectId], name: "idx_share_project")
   @@index([isActive, expiredAt], name: "idx_share_active_expired")
@@ -302,7 +310,8 @@ model Video {
   chunks         VideoChunk[]
   slideEvents    VideoSlideEvent[]
   conversionJobs ConversionJob[]
-
+  shareLinks          ShareLink[]
+  
   @@map("video")
 }
 
