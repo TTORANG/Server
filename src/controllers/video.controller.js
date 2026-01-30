@@ -185,7 +185,7 @@ export async function finishRecording(req, res, next) {
 
   try {
     const result = await videoService.finishRecording({
-      videoId: req.params.recordingId,
+      videoId: req.params.videoId,
       slideLogs: req.body.slideLogs,
     });
     res.json(result);
