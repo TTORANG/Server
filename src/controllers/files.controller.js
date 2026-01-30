@@ -47,7 +47,7 @@ export async function postUploadPresentationFile(req, res, next) {
    *   post:
    *     summary: 파일 업로드 (발표자료/발표영상)
    *     description: >
-   *       발표 자료(PPT/PDF) 또는 발표 영상(MP4/WEBM)을 업로드합니다./n
+   *       발표 자료(PPT/PDF) 또는 발표 영상(MP4/WEBM)을 업로드합니다.
    *       업로드 완료 시 프로젝트가 자동 생성되며, 파일 타입에 따라 변환 파이프라인이 자동으로 시작됩니다.
    *     tags: [File]
    *     security:
