@@ -47,6 +47,13 @@ import {
   handleRestoreVersion,
   handleUploadScript,
 } from "./controllers/script.controller.js";
+import {
+  handleCreateShareLink,
+  handleGetShareContent,
+  handleGetShareLinkList,
+  handleGetVideoListForSharing,
+} from "./controllers/shareLink.controller.js";
+
 import multer from "multer";
 import { MAX_SIZE_BYTES } from "./constants/files.js";
 
@@ -158,6 +165,18 @@ app.post("/presentations/slides/:slideId/restore", isLogin, handleRestoreVersion
 
 // 프로젝트 하위 녹화 영상 목록 조회
 app.get("/presentations/:projectId/videos", isLogin, handleGetVideoList);
+
+// 공유 링크 생성
+app.post("/presentations/:projectId/shares", isLogin, handleCreateShareLink);
+
+// 공유 링크 조회 (인증 없이 접근 가능)
+app.get("/shares/:token", handleGetShareContent);
+
+// 공유 링크 목록 조회
+app.get("/presentations/:projectId/shares", isLogin, handleGetShareLinkList);
+
+// 공유 가능 영상 목록 조회
+app.get("/presentations/:projectId/shares/videos", isLogin, handleGetVideoListForSharing);
 
 // 파일 업로드 관련 라우팅
 app.post("/files/upload", isLogin, upload.single("file"), postUploadPresentationFile);
