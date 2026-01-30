@@ -14,7 +14,11 @@ import {
   createSlideAsset,
   uuid,
 } from "../../utils/conversion.util.js";
-import { InvalidFileExtError, NoSlidesGeneratedError } from "../../errors/conversion.error.js";
+import {
+  ConversionFailedError,
+  InvalidFileExtError,
+  NoSlidesGeneratedError,
+} from "../../errors/conversion.error.js";
 import pLimit from "p-limit";
 
 /**
@@ -41,6 +45,8 @@ export async function pptxToImages(jobOrId) {
   let pdfPath = path.join(workDir, "converted.pdf");
 
   try {
+    await fs.mkdir(path.dirname(input), { recursive: true });
+    await fs.mkdir(workDir, { recursive: true });
     await fs.mkdir(outDir, { recursive: true });
 
     // GCS → 로컬 다운로드
@@ -50,8 +56,13 @@ export async function pptxToImages(jobOrId) {
       destPath: input,
     });
 
+    const SOFFICE =
+      process.platform === "win32"
+        ? "soffice" // 로컬 Windows (PATH)
+        : "/usr/bin/soffice"; // 배포 환경
+
     // libreoffice 등으로 슬라이드 이미지 변환
-    await runCmd("soffice", [
+    await runCmd(SOFFICE, [
       "--headless",
       "--nologo",
       "--nofirststartwizard",
@@ -63,24 +74,26 @@ export async function pptxToImages(jobOrId) {
     ]);
 
     // 생성된 PDF 경로 정리
-    const generatedPdf = path.join(workDir, path.basename(input, ".pptx") + ".pdf");
-    try {
-      await fs.rename(generatedPdf, pdfPath);
-    } catch {
-      // rename 실패 시, 실제 생성된 PDF 경로 사용
-      const exists = await fs.stat(generatedPdf).catch(() => null);
-      if (!exists) {
-        throw new ConversionFailedError({
-          jobId: job.id,
-          step: "pptx_to_pdf",
-        });
-      }
-      pdfPath = generatedPdf;
+    const pdfFiles = (await listFiles(workDir)).filter((f) => f.toLowerCase().endsWith(".pdf"));
+
+    if (pdfFiles.length === 0) {
+      throw new ConversionFailedError({
+        jobId: job.id,
+        step: "pptx_to_pdf",
+      });
     }
+
+    pdfPath = pdfFiles[0];
 
     // PDF → PNG (슬라이드 이미지 생성)
     const prefix = path.join(outDir, "slide");
-    await runCmd("pdftoppm", ["-png", "-r", "150", pdfPath, prefix]);
+
+    const PDFTOPPM =
+      process.platform === "win32"
+        ? "C:\\poppler\\Library\\bin\\pdftoppm.exe" // 로컬 Windows
+        : "/usr/bin/pdftoppm"; // 배포 환경
+
+    await runCmd(PDFTOPPM, ["-png", "-r", "150", pdfPath, prefix]);
 
     // 생성된 슬라이드 이미지 정렬
     const files = (await listFiles(outDir))

@@ -19,10 +19,15 @@ import { prisma } from "../db.config.js";
 const createAndEnqueueJob = async ({ uploadedFileId, videoId, jobType }) => {
   const job = await createConversionJob({ uploadedFileId, videoId, jobType });
 
-  await enqueueConversionTask({
-    conversionJobId: job.id.toString(),
-    jobType,
-  });
+  if (!process.env.GCP_PROJECT_ID || !process.env.CLOUD_RUN_SERVICE_URL) {
+    // 로컬 테스트용
+    await processJob(job.id.toString(), jobType);
+  } else {
+    await enqueueConversionTask({
+      conversionJobId: job.id.toString(),
+      jobType,
+    });
+  }
 
   return job;
 };
@@ -100,6 +105,11 @@ const chainMetadataJob = async (parentJobId) => {
  * - 체이닝 처리
  */
 export const processJob = async (conversionJobId, jobType) => {
+  const existingJob = await getJobById(conversionJobId);
+  if (existingJob.status === "completed") {
+    return { success: true };
+  }
+
   try {
     await updateJobToProcessing(conversionJobId);
 
