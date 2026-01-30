@@ -168,9 +168,10 @@ export const startConversionPipeline = async ({ uploadedFileId, fileExt }) => {
  *
  * - video_transcode: 청크 병합 → HLS 변환 → GCS 업로드
  */
-export const startVideoEncodingPipeline = async ({ videoId }) => {
+export const startVideoEncodingPipeline = async ({ videoId, uploadedFileId }) => {
   const job = await createAndEnqueueJob({
     videoId,
+    uploadedFileId,
     jobType: "video_transcode",
   });
 
