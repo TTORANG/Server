@@ -93,7 +93,10 @@ const downloadChunks = async (chunks, destDir) => {
   await Promise.all(
     chunks.map((chunk) =>
       limit(async () => {
-        const destPath = path.join(destDir, `chunk_${String(chunk.chunkIndex).padStart(5, "0")}.webm`);
+        const destPath = path.join(
+          destDir,
+          `chunk_${String(chunk.chunkIndex).padStart(5, "0")}.webm`
+        );
         await downloadFromGCS({
           bucketName: chunk.storageBucket,
           objectKey: chunk.storageKey,

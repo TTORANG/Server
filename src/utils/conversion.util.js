@@ -3,9 +3,9 @@ import crypto from "crypto";
 import fs from "fs/promises";
 import path from "path";
 import { spawn } from "child_process";
-import { PrismaClient } from "@prisma/client";
+import os from "os";
+import { prisma } from "../db.config.js";
 
-const prisma = new PrismaClient();
 const storage = new Storage();
 
 function getBucket() {
@@ -15,7 +15,7 @@ function getBucket() {
 }
 
 export function tmpPath(filename) {
-  return path.join("/tmp", filename);
+  return path.join(os.tmpdir(), "server", filename);
 }
 
 export function uuid() {
@@ -55,8 +55,8 @@ export async function uploadToGCS({ bucketName, srcPath, objectKey, contentType 
     destination: objectKey,
     metadata: {
       contentType,
-      cacheControl: 'public, max-age=31536000',
-    }
+      cacheControl: "public, max-age=31536000",
+    },
   });
 
   // public URL 전략은 프로젝트 정책에 따라 다름. 현재는 gs://만 반환
@@ -69,7 +69,10 @@ export async function uploadToGCS({ bucketName, srcPath, objectKey, contentType 
 
 export function runCmd(cmd, args, { cwd } = {}) {
   return new Promise((resolve, reject) => {
-    const p = spawn(cmd, args, { cwd });
+    const p = spawn(cmd, args, {
+      cwd,
+      env: process.env,
+    });
     let stderr = "";
     p.stderr.on("data", (d) => (stderr += d.toString()));
     p.on("error", reject);

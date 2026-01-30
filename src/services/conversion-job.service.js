@@ -6,11 +6,11 @@ import {
   getJobById,
 } from "../repositories/conversion-job.repository.js";
 import { enqueueConversionTask } from "../queues/conversion-job.queue.js";
-import { pptxToImages } from "./conversion/pptx-to-images.service.js";
-import { pdfToImages } from "./conversion/pdf-to-images.service.js";
+import { pptxToImages } from "./conversion/pptxToImages.service.js";
+import { pdfToImages } from "./conversion/pdfToImages.service.js";
 import { generateThumbnail } from "./conversion/thumbnail.service.js";
 import { extractMetadata } from "./conversion/metadata.service.js";
-import { videoTranscode } from "./conversion/video-transcode.service.js";
+import { videoTranscode } from "./conversion/videoTranscode.service.js";
 import { prisma } from "../db.config.js";
 
 /**
@@ -19,10 +19,17 @@ import { prisma } from "../db.config.js";
 const createAndEnqueueJob = async ({ uploadedFileId, videoId, jobType }) => {
   const job = await createConversionJob({ uploadedFileId, videoId, jobType });
 
-  await enqueueConversionTask({
-    conversionJobId: job.id.toString(),
-    jobType,
-  });
+  if (!process.env.GCP_PROJECT_ID || !process.env.CLOUD_RUN_SERVICE_URL) {
+    // 로컬 테스트용
+    processJob(job.id.toString(), jobType).catch((error) => {
+      console.error(`[Local-Job-Runner] Job ${job.id} failed:`, error);
+    });
+  } else {
+    await enqueueConversionTask({
+      conversionJobId: job.id.toString(),
+      jobType,
+    });
+  }
 
   return job;
 };
@@ -100,6 +107,11 @@ const chainMetadataJob = async (parentJobId) => {
  * - 체이닝 처리
  */
 export const processJob = async (conversionJobId, jobType) => {
+  const existingJob = await getJobById(conversionJobId);
+  if (existingJob.status === "completed") {
+    return { success: true };
+  }
+
   try {
     await updateJobToProcessing(conversionJobId);
 

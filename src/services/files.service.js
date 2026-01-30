@@ -90,11 +90,6 @@ export async function uploadPresentationAndCreateProject({ userId, title, file }
       uploadedFileId: uf.id,
       fileExt: ext,
     });
-  } else if (ext === "mp4" || ext === "webm") {
-    await startVideoEncodingPipeline({
-      videoId: video.id,
-      uploadedFileId: uf.id,
-    });
   }
 
   return {
