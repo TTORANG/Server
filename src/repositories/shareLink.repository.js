@@ -72,18 +72,33 @@ export const getShareLinkList = async (projectId) => {
   });
 };
 
-export const getVideoList = async (projectId) => {
-  return await prisma.video.findMany({
-    where: {
-      projectId: BigInt(projectId),
-      status: "ready",
-    },
-    select: {
-      id: true,
-      title: true,
-      createdAt: true,
-      thumbnailUrl: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
+export const getVideoList = async (projectId, page, pageSize) => {
+  const skip = (page - 1) * pageSize;
+
+  // 전체 개수와 페이지 조회를 Promise를 이용해 병렬로 처리
+  const [totalCount, videos] = await Promise.all([
+    prisma.video.count({
+      where: {
+        projectId: BigInt(projectId),
+        status: "ready",
+      },
+    }),
+    prisma.video.findMany({
+      where: {
+        projectId: BigInt(projectId),
+        status: "ready",
+      },
+      select: {
+        id: true,
+        title: true,
+        createdAt: true,
+        thumbnailUrl: true,
+      },
+      orderBy: { createdAt: "desc" },
+      skip: skip,
+      take: pageSize,
+    }),
+  ]);
+
+  return { totalCount, videos };
 };

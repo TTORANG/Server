@@ -23,3 +23,9 @@ export class ShareLinkExpiredError extends BaseError {
     super("만료된 공유 링크입니다.", 403, "L004", data);
   }
 }
+
+export class ProjectDeletedError extends BaseError {
+  constructor(data) {
+    super("삭제된 발표입니다.", 403, "L005", data);
+  }
+}

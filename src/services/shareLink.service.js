@@ -1,4 +1,5 @@
 import {
+  ProjectDeletedError,
   ShareLinkExpiredError,
   ShareLinkNotActiveError,
   VideoIdRequiredError,
@@ -60,6 +61,11 @@ export const processGetShareContent = async (token) => {
     throw new ShareLinkNotActiveError();
   }
 
+  // 프로젝트 삭제여부 확인
+  if (shareLink.project.isDeleted) {
+    throw new ProjectDeletedError();
+  }
+
   // 링크 만료일 확인
   if (shareLink.expiredAt && new Date() > shareLink.expiredAt) {
     throw new ShareLinkExpiredError();
@@ -93,6 +99,20 @@ export const processGetShareLinkList = async (projectId) => {
   return await getShareLinkList(projectId);
 };
 
-export const processGetVideoList = async (projectId) => {
-  return await getVideoList(projectId);
+export const processGetVideoList = async (projectId, page, pageSize) => {
+  const p = parseInt(page) || 1;
+  const rawSize = parseInt(pageSize) || 10;
+
+  const pSize = rawSize > 50 ? 50 : rawSize; // 최대 50개 까지만 가져오도록 제한 (서버 부하 방지)
+
+  const { totalCount, videos } = await getVideoList(projectId, p, pSize);
+
+  const hasNext = totalCount > p * pSize;
+
+  return {
+    videos,
+    totalCount,
+    hasNext,
+    currentPage: p,
+  };
 };
