@@ -29,7 +29,7 @@ export const findVideoInProject = async (projectId, videoId) => {
 };
 
 export const findShareLinkWithContent = async (token) => {
-  return await prisma.shareLink.findUnique({
+  return await prisma.shareLink.findFirst({
     where: { shareToken: token },
     include: {
       project: {
