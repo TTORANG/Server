@@ -7,6 +7,7 @@ import {
 } from "../errors/shareLink.error.js";
 import {
   createShareLink,
+  findProjectById,
   findShareLinkWithContent,
   findVideoInProject,
   getShareLinkList,
@@ -19,6 +20,13 @@ const SCOPE_VIDEO = "slides_script_video";
 
 export const processCreateShareLink = async (projectId, shareData) => {
   const { scope, videoId } = shareData;
+
+  const project = await findProjectById(projectId);
+
+  // 프로젝트 삭제여부 확인
+  if (!project || project.isDeleted) {
+    throw new ProjectDeletedError();
+  }
 
   if (scope === SCOPE_VIDEO) {
     if (!videoId) {

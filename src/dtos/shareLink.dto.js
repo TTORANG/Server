@@ -7,8 +7,10 @@ export const shareLinkResponseDTO = (link) => {
 
     sharedContentSummary: {
       scope: link.scope,
+      projectTitle: link.project?.title || "발표 자료",
       videoTitle: link.video?.title || null,
       videoCreatedAt: link.video?.createdAt || null,
+      thumbnailUrl: link.video?.thumbnailUrl || null,
     },
     createdAt: link.createdAt,
   };

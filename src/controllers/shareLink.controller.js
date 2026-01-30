@@ -63,8 +63,10 @@ import {
  *                 shareUrl: "https://ttorang.app/share/abc-123-uuid"
  *                 sharedContentSummary:
  *                   scope: "slides_script_video"
+ *                   projectTitle: "가말고사 발표자료"
  *                   videoTitle: "새로운 연습 1"
  *                   videoCreatedAt: "2024-11-15T14:30:00.000Z"
+ *                   thumbnailUrl: "https://storage.googleapis.com/..."
  *                 createdAt: "2026-01-30T10:00:00.000Z"
  *       400:
  *         description: 영상 ID 누락 (L002)
@@ -75,6 +77,7 @@ import {
  *               error:
  *                 errorCode: "L002"
  *                 reason: "영상을 포함하려면 영상 ID가 필수입니다."
+ *                 data: null
  *               success: null
  *       404:
  *         description: 유효한 영상을 찾을 수 없음 (L001)
@@ -85,6 +88,18 @@ import {
  *               error:
  *                 errorCode: "L001"
  *                 reason: "해당 프로젝트에서 유효한 영상을 찾을 수 없습니다."
+ *                 data: null
+ *               success: null
+ *       403:
+ *         description: 프로젝트가 삭제된 링크 (L005)
+ *         content:
+ *           application/json:
+ *             example:
+ *               resultType: "FAILURE"
+ *               error:
+ *                 errorCode: "L005"
+ *                 reason: "삭제된 발표입니다."
+ *                 data: null
  *               success: null
  */
 export const handleCreateShareLink = async (req, res, next) => {
@@ -152,6 +167,7 @@ export const handleCreateShareLink = async (req, res, next) => {
  *               error:
  *                 errorCode: "L004"
  *                 reason: "만료된 공유 링크입니다."
+ *                 data: null
  *               success: null
  */
 export const handleGetShareContent = async (req, res, next) => {

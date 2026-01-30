@@ -13,7 +13,7 @@ export const createShareLink = async (data) => {
       project: {
         select: { title: true },
       },
-      video: { select: { title: true, createdAt: true } },
+      video: { select: { title: true, createdAt: true, thumbnailUrl: true } },
     },
   });
 };
@@ -101,4 +101,12 @@ export const getVideoList = async (projectId, page, pageSize) => {
   ]);
 
   return { totalCount, videos };
+};
+
+// 삭제된 프로젝트인지 확인
+export const findProjectById = async (projectId) => {
+  return await prisma.project.findUnique({
+    where: { id: BigInt(projectId) },
+    select: { id: true, isDeleted: true },
+  });
 };
