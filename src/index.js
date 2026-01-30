@@ -11,7 +11,11 @@ import {
   handleLogout,
   handleWithdrawal,
 } from "./controllers/auth.controller.js";
-import { postComplete, postUploadUrl } from "./controllers/files.controller.js";
+import {
+  // postComplete,
+  postUploadPresentationFile,
+  // postUploadUrl,
+} from "./controllers/files.controller.js";
 import {
   handleCreateAnonymousProject,
   handleCreateAnonymousSession,
@@ -55,6 +59,8 @@ import {
   handleGetVideoListForSharing,
 } from "./controllers/shareLink.controller.js";
 
+import multer from "multer";
+
 dotenv.config();
 
 const app = express();
@@ -75,6 +81,11 @@ app.get("/", (req, res) => {
 });
 
 const isLogin = passport.authenticate("jwt", { session: false });
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB (명세)
+});
 
 // swagger 문서
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
@@ -168,18 +179,17 @@ app.get("/presentations/:projectId/shares", isLogin, handleGetShareLinkList);
 // 공유 가능 영상 목록 조회
 app.get("/presentations/:projectId/shares/videos", isLogin, handleGetVideoListForSharing);
 
-// 파일 업로드 API 라우팅(임시)
-app.post("/files/upload-url", postUploadUrl);
-app.post("/files/complete", postComplete);
+// 파일 업로드 관련 라우팅
+// app.post("/files/upload-url", postUploadUrl);
+// app.post("/files/complete", postComplete);
+app.post("/files/upload", isLogin, upload.single("file"), postUploadPresentationFile);
 
-// 영상 업로드 API
-app.post("/videos", isLogin, createVideo);
-// 비디오 청크 업로드 url 발급
-app.post("/videos/:videoId/chunks/upload-url", isLogin, createVideoChunkUploadUrl);
-// 비디오 청크 업로드 검증
-app.post("/videos/:videoId/chunks/complete", isLogin, completeVideoChunk);
-// 비디오 업로드 검증
-app.post("/videos/:videoId/complete", isLogin, completeVideoUpload);
+// 영상 녹화 관련 라우팅
+app.post("/videos", isLogin, createVideo); // 영상 업로드
+app.post("/videos/:videoId/chunks/upload-url", isLogin, createVideoChunkUploadUrl); // 비디오 청크 업로드 url 발급
+app.post("/videos/:videoId/chunks/complete", isLogin, completeVideoChunk); // 비디오 청크 업로드 검증
+app.post("/videos/:videoId/complete", isLogin, completeVideoUpload); // 비디오 업로드 검증
+
 // 영상 목록 조회
 app.get("/videos/:projectId", isLogin, handleGetVideoList);
 // 영상 상세 조회

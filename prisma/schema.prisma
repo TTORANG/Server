@@ -224,6 +224,8 @@ model ScriptVersion {
 enum FileExt {
   pptx
   pdf
+  mp4
+  webm
 }
 
 model UploadedFile {

@@ -11,6 +11,7 @@ import { pdfToImages } from "./conversion/pdf-to-images.service.js";
 import { generateThumbnail } from "./conversion/thumbnail.service.js";
 import { extractMetadata } from "./conversion/metadata.service.js";
 import { videoTranscode } from "./conversion/video-transcode.service.js";
+import { prisma } from "../db.config.js";
 
 /**
  * 작업 생성 및 큐에 추가
@@ -106,10 +107,7 @@ export const processJob = async (conversionJobId, jobType) => {
 
     // 이미지 변환 완료 후 썸네일 + 메타데이터 작업 체이닝
     if ((jobType === "pptx_to_images" || jobType === "pdf_to_images") && result?.ok) {
-      await Promise.all([
-        chainThumbnailJob(conversionJobId),
-        chainMetadataJob(conversionJobId),
-      ]);
+      await Promise.all([chainThumbnailJob(conversionJobId), chainMetadataJob(conversionJobId)]);
     }
 
     await updateJobToCompleted(conversionJobId);
@@ -170,17 +168,48 @@ export const startConversionPipeline = async ({ uploadedFileId, fileExt }) => {
  *
  * - video_transcode: 청크 병합 → HLS 변환 → GCS 업로드
  */
-export const startVideoEncodingPipeline = async ({ videoId }) => {
-  const job = await createAndEnqueueJob({
-    videoId,
-    jobType: "video_transcode",
+export async function startVideoEncodingPipeline({ projectId, uploadedFileId }) {
+  // uploaded_file 조회
+  const uploadedFile = await prisma.uploadedFile.findUnique({
+    where: { id: uploadedFileId },
   });
 
-  console.log(`[Pipeline] Video encoding started for video ${videoId}:`, {
+  if (!uploadedFile) {
+    throw new Error("Uploaded file not found");
+  }
+
+  // Video 엔티티 생성
+  const video = await prisma.video.create({
+    data: {
+      projectId,
+      status: "processing",
+      sourceStorageBucket: uploadedFile.storageBucket,
+      sourceStorageKey: uploadedFile.storageKey,
+      sourceUrl: uploadedFile.storageUrl,
+      container: uploadedFile.fileExt,
+    },
+  });
+
+  // ConversionJob 생성
+  const job = await prisma.conversionJob.create({
+    data: {
+      videoId: video.id,
+      jobType: "video_transcode",
+      status: "queued",
+    },
+  });
+
+  // Cloud Tasks enqueue (로컬이면 자동 skip)
+  await enqueueConversionTask(job);
+
+  // 로그 (디버깅용)
+  console.log(`[Pipeline] Video encoding started for video ${video.id.toString()}`, {
     jobId: job.id.toString(),
   });
 
+  // 반환
   return {
-    job: { id: job.id.toString(), jobType: "video_transcode" },
+    videoId: video.id,
+    conversionJobId: job.id,
   };
-};
+}
