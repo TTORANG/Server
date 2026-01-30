@@ -10,6 +10,83 @@ import {
   processGetShareLinkList,
   processGetVideoList,
 } from "../services/shareLink.service.js";
+
+/**
+ * @swagger
+ * /presentations/{projectId}/shares:
+ *   post:
+ *     summary: 공유 링크 생성
+ *     description: 특정 프로젝트에 대한 외부 공유 링크를 생성합니다. 영상 포함 여부에 따라 scope를 설정합니다.
+ *     tags: [ShareLink]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "123"
+ *         description: 공유 링크를 생성할 프로젝트 ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               scope:
+ *                 type: string
+ *                 enum: [slides_script, slides_script_video]
+ *                 example: "slides_script_video"
+ *                 description: 공유 범위 (슬라이드+대본 또는 슬라이드+대본+영상)
+ *               videoId:
+ *                 type: string
+ *                 example: "456"
+ *                 description: scope가 slides_script_video일 경우 필수인 영상 ID
+ *               expiredAt:
+ *                 type: string
+ *                 format: date-time
+ *                 description: 링크 만료일 (미지정 시 생성일로부터 7일)
+ *     responses:
+ *       200:
+ *         description: 공유 링크 생성 성공
+ *         content:
+ *           application/json:
+ *             example:
+ *               resultType: "SUCCESS"
+ *               error: null
+ *               success:
+ *                 projectId: "123"
+ *                 scope: "slides_script_video"
+ *                 shareToken: "abc-123-uuid"
+ *                 shareUrl: "https://ttorang.app/share/abc-123-uuid"
+ *                 sharedContentSummary:
+ *                   scope: "slides_script_video"
+ *                   videoTitle: "새로운 연습 1"
+ *                   videoCreatedAt: "2024-11-15T14:30:00.000Z"
+ *                 createdAt: "2026-01-30T10:00:00.000Z"
+ *       400:
+ *         description: 영상 ID 누락 (L002)
+ *         content:
+ *           application/json:
+ *             example:
+ *               resultType: "FAILURE"
+ *               error:
+ *                 errorCode: "L002"
+ *                 reason: "영상을 포함하려면 영상 ID가 필수입니다."
+ *               success: null
+ *       404:
+ *         description: 유효한 영상을 찾을 수 없음 (L001)
+ *         content:
+ *           application/json:
+ *             example:
+ *               resultType: "FAILURE"
+ *               error:
+ *                 errorCode: "L001"
+ *                 reason: "해당 프로젝트에서 유효한 영상을 찾을 수 없습니다."
+ *               success: null
+ */
 export const handleCreateShareLink = async (req, res, next) => {
   try {
     const { projectId } = req.params;
@@ -26,6 +103,57 @@ export const handleCreateShareLink = async (req, res, next) => {
   }
 };
 
+/**
+ * @swagger
+ * /shares/{token}:
+ *   get:
+ *     summary: 공유 콘텐츠 조회
+ *     description: 토큰을 통해 외부 공유된 프로젝트 콘텐츠(슬라이드, 대본, 영상)를 조회합니다. (인증 불필요)
+ *     tags: [ShareLink]
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "abc-123-uuid"
+ *         description: 공유 링크의 유니크 토큰
+ *     responses:
+ *       200:
+ *         description: 공유 콘텐츠 조회 성공
+ *         content:
+ *           application/json:
+ *             example:
+ *               resultType: "SUCCESS"
+ *               error: null
+ *               success:
+ *                 message: "공유된 프로젝트에 접속했습니다."
+ *                 shareInfo:
+ *                   shareToken: "abc-123-uuid"
+ *                   scope: "slides_script_video"
+ *                   createdAt: "2026-01-30T10:00:00.000Z"
+ *                 projectContent:
+ *                   title: "기말고사 발표 자료"
+ *                   slides:
+ *                     - slideId: "1"
+ *                       slideNum: 1
+ *                       imageUrl: "https://..."
+ *                       scriptText: "안녕하세요 발표자입니다."
+ *                   video:
+ *                     videoId: "456"
+ *                     videoUrl: "https://..."
+ *                     thumbnailUrl: "https://..."
+ *       403:
+ *         description: 유효하지 않거나 만료되거나 프로젝트가 삭제된 링크 (L003, L004, L005)
+ *         content:
+ *           application/json:
+ *             example:
+ *               resultType: "FAILURE"
+ *               error:
+ *                 errorCode: "L004"
+ *                 reason: "만료된 공유 링크입니다."
+ *               success: null
+ */
 export const handleGetShareContent = async (req, res, next) => {
   try {
     const { token } = req.params;
@@ -41,6 +169,39 @@ export const handleGetShareContent = async (req, res, next) => {
   }
 };
 
+/**
+ * @swagger
+ * /presentations/{projectId}/shares:
+ *   get:
+ *     summary: 공유 링크 목록 조회
+ *     description: 특정 프로젝트에 대해 생성된 모든 공유 링크 목록을 조회합니다.
+ *     tags: [ShareLink]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "123"
+ *         description: 프로젝트 ID
+ *     responses:
+ *       200:
+ *         description: 공유 링크 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             example:
+ *               resultType: "SUCCESS"
+ *               error: null
+ *               success:
+ *                 - scope: "slides_script_video"
+ *                   shareToken: "abc-123-uuid"
+ *                   isActive: true
+ *                   viewCount: 15
+ *                   videoTitle: "새로운 연습 1"
+ *                   createdAt: "2026-01-30T10:00:00.000Z"
+ */
 export const handleGetShareLinkList = async (req, res, next) => {
   try {
     const { projectId } = req.params;
@@ -57,16 +218,80 @@ export const handleGetShareLinkList = async (req, res, next) => {
   }
 };
 
+/**
+ * @swagger
+ * /presentations/{projectId}/shares/videos:
+ *   get:
+ *     summary: 공유 가능 영상 목록 조회 (무한 스크롤)
+ *     description: 공유 링크 생성 시 선택 가능한 '녹화 완료(ready)' 상태의 영상 목록을 조회합니다. 페이지네이션 정보를 포함합니다.
+ *     tags: [ShareLink]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "123"
+ *         description: 영상을 조회할 프로젝트 ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *            type: integer
+ *            default: 1
+ *         description: 조회할 페이지 번호
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *            type: integer
+ *            default: 10
+ *         description: 한 페이지당 보여줄 영상 개수
+ *     responses:
+ *       200:
+ *         description: 영상 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             example:
+ *               resultType: "SUCCESS"
+ *               error: null
+ *               success:
+ *                   videos:
+ *                      - id: "456"
+ *                        title: "새로운 연습 1"
+ *                        thumbnailUrl: "https://..."
+ *                        createdAt: "2024-11-15T14:30:00.000Z"
+ *                      - id: "457"
+ *                        title: "새로운 연습 2"
+ *                        thumbnailUrl: "https://..."
+ *                        createdAt: "2024-11-15T15:30:00.000Z"
+ *                   pagination:
+ *                      currentPage: 1
+ *                      totalCount: 25
+ *                      hasNext: true
+ */
 export const handleGetVideoListForSharing = async (req, res, next) => {
   try {
     const { projectId } = req.params;
+    const { page, pageSize } = req.query;
 
-    const videos = await processGetVideoList(projectId);
+    const { videos, currentPage, totalCount, hasNext } = await processGetVideoList(
+      projectId,
+      page,
+      pageSize
+    );
 
     res.status(200).json({
       resultType: "SUCCESS",
       error: null,
-      success: getVideoListResponseDTO(videos),
+      success: {
+        videos: getVideoListResponseDTO(videos),
+        pagination: {
+          currentPage: currentPage,
+          totalCount: totalCount,
+          hasNext: hasNext,
+        },
+      },
     });
   } catch (error) {
     next(error);
