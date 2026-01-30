@@ -1,9 +1,9 @@
 import * as videoService from "../services/video.service.js";
 
-export async function createVideo(req, res, next) {
+export async function startRecording(req, res, next) {
   /**
    * @swagger
-   * /videos:
+   * /videos/start:
    *   post:
    *     summary: 영상 녹화 세션 생성
    *     description: |
@@ -17,28 +17,20 @@ export async function createVideo(req, res, next) {
    *       content:
    *         application/json:
    *           example:
-   *             projectId: 2
+   *             projectId: 1
    *             title: "테스트 영상"
    *     responses:
    *       200:
    *         description: 영상 생성 성공
    *         content:
    *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/RecordingStartResponse"
    *             example:
    *               resultType: "SUCCESS"
    *               error: null
    *               success:
    *                 videoId: "4"
-   *       400:
-   *         description: 잘못된 요청
-   *         content:
-   *           application/json:
-   *             example:
-   *               resultType: "FAILURE"
-   *               error:
-   *                 errorCode: "F001"
-   *                 reason: "프로젝트 ID가 올바르지 않습니다."
-   *               success: null
    */
   try {
     const result = await videoService.createVideo(req.body);
@@ -48,22 +40,17 @@ export async function createVideo(req, res, next) {
   }
 }
 
-// Video Chunk 업로드 API
-export async function createVideoChunkUploadUrl(req, res, next) {
+// 영상 청크 업로드
+export async function uploadVideoChunk(req, res, next) {
   /**
    * @swagger
-   * /videos/{videoId}/chunks/upload-url:
+   * /videos/{videoId}/chunks/{chunkIndex}:
    *   post:
-   *     summary: 영상 청크 업로드 URL 발급
+   *     summary: 영상 청크 업로드
    *     description: |
-   *       영상 녹화 중 생성된 청크(WebM)를 업로드하기 위한
-   *       Google Cloud Storage Signed URL을 발급합니다.
-   *
-   *       ⚠️ 중요
-   *       - 이 API는 **업로드 URL만 발급**합니다.
-   *       - 실제 파일 업로드는 **백엔드를 거치지 않고**
-   *         **반환된 uploadUrl로 직접 PUT 요청**해야 합니다.
-   *       - Content-Type은 반드시 `video/webm` 이어야 합니다.
+   *       MediaRecorder로 생성된 영상 청크(webm)를 업로드합니다.
+   *       - Content-Type: multipart/form-data
+   *       - file 필드로 전송
    *     tags: [Video]
    *     security:
    *       - bearerAuth: []
@@ -73,84 +60,27 @@ export async function createVideoChunkUploadUrl(req, res, next) {
    *         required: true
    *         schema:
    *           type: integer
-   *           example: 4
-   *         description: 영상 ID
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           example:
-   *             projectId: 2
-   *             chunkIndex: 0
-   *             size: 1048576
-   *             contentType: "video/webm"
-   *     responses:
-   *       200:
-   *         description: 업로드 URL 발급 성공
-   *         content:
-   *           application/json:
-   *             example:
-   *               resultType: "SUCCESS"
-   *               error: null
-   *               success:
-   *                 objectKey: "dev/project/2/video/4/chunks/0/uuid.webm"
-   *                 uploadUrl: "https://storage.googleapis.com/..."
-   *                 expiresAt: "2026-01-18T21:03:15.164Z"
-   *       400:
-   *         description: 잘못된 요청
-   *         content:
-   *           application/json:
-   *             example:
-   *               resultType: "FAILURE"
-   *               error:
-   *                 errorCode: "V003"
-   *                 reason: "영상 청크는 webm 형식만 업로드할 수 있습니다."
-   *               success: null
-   */
-  try {
-    const result = await videoService.createVideoChunkUploadUrl({
-      videoId: req.params.videoId,
-      ...req.body,
-    });
-    res.json(result);
-  } catch (e) {
-    next(e);
-  }
-}
-
-// chunk complete API
-export async function completeVideoChunk(req, res, next) {
-  /**
-   * @swagger
-   * /videos/{videoId}/chunks/complete:
-   *   post:
-   *     summary: 영상 청크 업로드 완료 처리
-   *     description: |
-   *       GCS에 업로드된 영상 청크를 검증하고
-   *       서버에 청크 정보를 기록합니다.
-   *
-   *       - 반드시 **PUT 업로드 성공 후** 호출해야 합니다.
-   *     tags: [Video]
-   *     security:
-   *       - bearerAuth: []
-   *     parameters:
+   *           example: 12
    *       - in: path
-   *         name: videoId
+   *         name: chunkIndex
    *         required: true
    *         schema:
    *           type: integer
-   *           example: 4
+   *           example: 0
    *     requestBody:
    *       required: true
    *       content:
-   *         application/json:
-   *           example:
-   *             projectId: 2
-   *             chunkIndex: 0
-   *             objectKey: "dev/project/2/video/4/chunks/0/uuid.webm"
+   *         multipart/form-data:
+   *           schema:
+   *             type: object
+   *             required: [file]
+   *             properties:
+   *               file:
+   *                 type: string
+   *                 format: binary
    *     responses:
    *       200:
-   *         description: 청크 처리 성공
+   *         description: 청크 업로드 성공
    *         content:
    *           application/json:
    *             example:
@@ -159,10 +89,12 @@ export async function completeVideoChunk(req, res, next) {
    *               success:
    *                 ok: true
    */
+
   try {
-    const result = await videoService.completeVideoChunk({
+    const result = await videoService.uploadVideoChunk({
       videoId: req.params.videoId,
-      ...req.body,
+      chunkIndex: req.params.chunkIndex,
+      file: req.file,
     });
     res.json(result);
   } catch (e) {
@@ -171,22 +103,30 @@ export async function completeVideoChunk(req, res, next) {
 }
 
 // 업로드 완료 → 인코딩 Job 생성
-export async function completeVideoUpload(req, res, next) {
+export async function finishRecording(req, res, next) {
   /**
    * @swagger
-   * /videos/{videoId}/complete:
+   * /videos/{videoId}/finish:
    *   post:
-   *     summary: 영상 업로드 완료 및 인코딩 시작
+   *     summary: 녹화 종료 및 영상 처리 시작
    *     description: |
-   *       모든 영상 청크 업로드가 완료된 후 호출합니다.
+   *       녹화를 종료하고 다음 작업을 수행합니다.
+   *       - 슬라이드 전환 로그 저장
+   *       - 업로드된 영상 청크 검증
+   *       - 영상 상태를 processing으로 변경
+   *       - 인코딩 Job 생성
    *
-   *       서버는 다음 작업을 수행합니다:
-   *       - 영상 상태를 `processing`으로 변경
-   *       - 인코딩 작업(Job)을 생성하고 큐에 등록
+   *       ⚠️ 모든 영상 청크 업로드 완료 후 호출해야 합니다.
    *
-   *       ⚠️ 주의
-   *       - 이 API는 **uploading 상태에서 한 번만 호출**해야 합니다.
-   *       - 이미 processing / ready 상태이면 오류가 발생합니다.
+   *        #### slideLogs 설명
+   *        - 녹화 중 수집된 슬라이드 전환 로그입니다.
+   *        - 각 항목은 슬라이드가 전환된 시점(timestampMs)을 의미합니다.
+   *        - 예시:
+   *          ```json
+   *          {
+   *             "slideLogs": []
+   *          }
+   *          ```
    *     tags: [Video]
    *     security:
    *       - bearerAuth: []
@@ -196,25 +136,40 @@ export async function completeVideoUpload(req, res, next) {
    *         required: true
    *         schema:
    *           type: integer
-   *           example: 4
    *     requestBody:
    *       required: true
    *       content:
    *         application/json:
-   *           example:
-   *             projectId: 2
+   *           schema:
+   *             type: object
+   *             required: [slideLogs]
+   *             properties:
+   *               slideLogs:
+   *                 type: array
+   *                 items:
+   *                   type: object
+   *                   required: [slideId, timestampMs]
+   *                   properties:
+   *                     slideId:
+   *                       type: integer
+   *                       example: 1
+   *                     timestampMs:
+   *                       type: integer
+   *                       example: 15000
    *     responses:
    *       200:
-   *         description: 인코딩 시작 성공
+   *         description: 녹화 종료 성공
    *         content:
    *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/RecordingFinishResponse"
    *             example:
    *               resultType: "SUCCESS"
    *               error: null
    *               success:
    *                 ok: true
-   *       400:
-   *         description: 잘못된 상태
+   *       409:
+   *         description: 영상 상태 오류
    *         content:
    *           application/json:
    *             example:
@@ -222,12 +177,16 @@ export async function completeVideoUpload(req, res, next) {
    *               error:
    *                 errorCode: "V002"
    *                 reason: "영상 상태가 올바르지 않습니다."
+   *                 data:
+   *                   videoId: "12"
+   *                   status: "processing"
    *               success: null
    */
+
   try {
-    const result = await videoService.completeVideoUpload({
+    const result = await videoService.finishRecording({
       videoId: req.params.videoId,
-      projectId: req.body.projectId,
+      slideLogs: req.body.slideLogs,
     });
     res.json(result);
   } catch (e) {
@@ -239,33 +198,24 @@ export async function completeVideoUpload(req, res, next) {
 export async function handleGetVideoList(req, res, next) {
   /**
    * @swagger
-   * /videos/{projectId}:
+   * /presentations/{projectId}/videos:
    *   get:
-   *     summary: 프로젝트 내 영상 목록 조회
-   *     description: |
-   *       특정 프로젝트에 속한 영상 목록을 조회합니다.
-   *
-   *       **조회 조건**
-   *       - 프로젝트는 존재해야 하며 삭제되지 않은 상태여야 합니다.
-   *       - 영상은 삭제되지 않은 상태(`deletedAt = null`)만 조회됩니다.
-   *
-   *       **정렬 기준**
-   *       - 생성일(`createdAt`) 기준 내림차순
-   *
-   *       **주의사항**
-   *       - 본 API는 인증(JWT)이 필요합니다.
-   *       - 반환되는 `id`는 BigInt이므로 문자열(string)로 변환되어 반환됩니다.
-   *     tags: [Video]
+   *     summary: 프로젝트 녹화 영상 목록 조회
+   *     description:
+   *       특정 프로젝트에 속한 모든 녹화 영상을 최신순으로 조회합니다.
+   *       영상이 없는 경우에도 오류가 아닌 빈 목록을 반환합니다.
+   *     tags:
+   *       - Presentation
    *     security:
    *       - bearerAuth: []
    *     parameters:
    *       - in: path
    *         name: projectId
    *         required: true
-   *         schema:
-   *           type: integer
-   *           example: 2
    *         description: 프로젝트 ID
+   *         schema:
+   *           type: string
+   *           example: "1"
    *     responses:
    *       200:
    *         description: 영상 목록 조회 성공
@@ -273,27 +223,14 @@ export async function handleGetVideoList(req, res, next) {
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/VideoListResponse"
-   *             examples:
-   *               success:
-   *                 value:
-   *                   resultType: "SUCCESS"
-   *                   error: null
-   *                   success:
-   *                     videos:
-   *                       - id: "10"
-   *                         title: "발표 영상 1"
-   *                         status: "ready"
-   *                         durationSeconds: 120
-   *                         thumbnailUrl: "https://example.com/thumb.jpg"
-   *                         createdAt: "2026-01-24T10:00:00.000Z"
-   *       401:
-   *         description: 인증 실패
+   *       400:
+   *         description: 잘못된 요청 (유효하지 않은 프로젝트 ID)
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
    *       404:
-   *         description: 프로젝트 없음
+   *         description: 존재하지 않는 프로젝트
    *         content:
    *           application/json:
    *             schema:
@@ -301,7 +238,7 @@ export async function handleGetVideoList(req, res, next) {
    */
 
   try {
-    const { id: projectId } = req.params;
+    const { projectId } = req.params;
     const result = await videoService.getVideoList({ projectId });
     res.json(result);
   } catch (e) {
@@ -396,7 +333,7 @@ export async function handleGetVideoDetail(req, res, next) {
    */
 
   try {
-    const { id: videoId } = req.params;
+    const { videoId } = req.params;
     const result = await videoService.getVideoDetail({ videoId });
     res.json(result);
   } catch (e) {
@@ -772,6 +709,108 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  * @swagger
  * components:
  *   schemas:
+ *
+ *     SuccessResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *           example: null
+ *         success:
+ *           type: object
+ *
+ *     ErrorResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: FAILURE
+ *         error:
+ *           type: object
+ *           properties:
+ *             errorCode:
+ *               type: string
+ *               example: V001
+ *             reason:
+ *               type: string
+ *               example: 영상을 찾을 수 없습니다.
+ *             data:
+ *               nullable: true
+ *         success:
+ *           nullable: true
+ *
+ *     RecordingStartResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *         success:
+ *           type: object
+ *           properties:
+ *             videoId:
+ *               type: string
+ *               description: 생성된 영상 ID(BigInt → string)
+ *               example: "12"
+ *
+ *     VideoChunkUploadResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *         success:
+ *           type: object
+ *           properties:
+ *             ok:
+ *               type: boolean
+ *               example: true
+ *
+ *     RecordingFinishRequest:
+ *       type: object
+ *       required:
+ *         - slideLogs
+ *       properties:
+ *         slideLogs:
+ *           type: array
+ *           description: 녹화 중 발생한 슬라이드 전환 로그
+ *           items:
+ *             type: object
+ *             required:
+ *               - slideId
+ *               - timestampMs
+ *             properties:
+ *               slideId:
+ *                 type: string
+ *                 description: 슬라이드 ID(BigInt → string)
+ *                 example: "1"
+ *               timestampMs:
+ *                 type: integer
+ *                 description: 슬라이드 전환 시점(ms)
+ *                 example: 15000
+ *
+ *     RecordingFinishResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *         success:
+ *           type: object
+ *           properties:
+ *             ok:
+ *               type: boolean
+ *               example: true
+ *
  *     VideoListItem:
  *       type: object
  *       properties:
@@ -781,9 +820,11 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *           example: "10"
  *         title:
  *           type: string
- *           example: "발표 영상 1"
+ *           nullable: true
+ *           example: 발표 영상 1
  *         status:
  *           type: string
+ *           enum: [recording, uploading, processing, ready, failed]
  *           example: ready
  *         durationSeconds:
  *           type: integer
@@ -792,7 +833,7 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *         thumbnailUrl:
  *           type: string
  *           nullable: true
- *           example: "https://example.com/thumb.jpg"
+ *           example: https://example.com/thumb.jpg
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -832,8 +873,10 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *                   example: "2"
  *                 title:
  *                   type: string
+ *                   nullable: true
  *                 status:
  *                   type: string
+ *                   example: ready
  *                 durationSeconds:
  *                   type: integer
  *                   nullable: true
@@ -888,100 +931,16 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *                           name:
  *                             type: string
  *
- *     VideoReactionCreateRequest:
- *       type: object
- *       required:
- *         - emojiType
- *         - timestampMs
- *       properties:
- *         emojiType:
- *           type: string
- *           description: 리액션 이모지 타입(클라이언트/서버 합의 값)
- *           example: "thumbs_up"
- *         timestampMs:
- *           type: integer
- *           minimum: 0
- *           description: 영상 내 타임스탬프(ms)
- *           example: 2000
- *
- *     VideoReactionToggleResponse:
- *       type: object
- *       properties:
- *         resultType:
- *           type: string
- *           example: "SUCCESS"
- *         error:
- *           nullable: true
- *           example: null
- *         success:
- *           type: object
- *           properties:
- *             active:
- *               type: boolean
- *               description: 토글 결과 활성 여부(true=활성, false=비활성)
- *               example: true
- *
- *     VideoCommentCreateRequest:
- *       type: object
- *       required:
- *         - content
- *         - timestampMs
- *       properties:
- *         content:
- *           type: string
- *           description: 댓글 내용(공백만 있는 문자열 불가)
- *           example: "여기 설명 좋아요"
- *         timestampMs:
- *           type: integer
- *           minimum: 0
- *           description: 영상 내 타임스탬프(ms)
- *           example: 2000
- *
- *     VideoCommentCreateResponse:
- *       type: object
- *       properties:
- *         resultType:
- *           type: string
- *           example: "SUCCESS"
- *         error:
- *           nullable: true
- *           example: null
- *         success:
- *           type: object
- *           properties:
- *             id:
- *               type: string
- *               description: 생성된 댓글 ID(BigInt → string)
- *               example: "15"
- *             content:
- *               type: string
- *               example: "여기 설명 좋아요"
- *             timestampMs:
- *               type: integer
- *               example: 2000
- *             createdAt:
- *               type: string
- *               format: date-time
- *
  *     VideoSlideTimelineItem:
  *       type: object
  *       properties:
  *         slideId:
  *           type: string
- *           description: 슬라이드 ID (BigInt → string)
+ *           description: 슬라이드 ID(BigInt → string)
  *           example: "1"
  *         timestampMs:
  *           type: integer
- *           description: 슬라이드 전환 시점 (ms)
  *           example: 15000
- *
- *     VideoSlideTimelineSuccess:
- *       type: object
- *       properties:
- *         slides:
- *           type: array
- *           items:
- *             $ref: "#/components/schemas/VideoSlideTimelineItem"
  *
  *     VideoSlideTimelineResponse:
  *       type: object
@@ -992,29 +951,10 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *         error:
  *           nullable: true
  *         success:
- *           $ref: "#/components/schemas/VideoSlideTimelineSuccess"
- *
- *     ErrorResponse:
- *       type: object
- *       properties:
- *         resultType:
- *           type: string
- *           example: "FAILURE"
- *         error:
  *           type: object
  *           properties:
- *             errorCode:
- *               type: string
- *               example: "V001"
- *             reason:
- *               type: string
- *               example: "영상을 찾을 수 없습니다."
- *             data:
- *               nullable: true
- *               description: 디버깅용 부가 데이터(민감정보 금지)
- *               example:
- *                 videoId: "9999"
- *         success:
- *           nullable: true
- *           example: null
+ *             slides:
+ *               type: array
+ *               items:
+ *                 $ref: "#/components/schemas/VideoSlideTimelineItem"
  */
