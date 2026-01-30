@@ -6,11 +6,11 @@ import {
   getJobById,
 } from "../repositories/conversion-job.repository.js";
 import { enqueueConversionTask } from "../queues/conversion-job.queue.js";
-import { pptxToImages } from "./conversion/pptx-to-images.service.js";
-import { pdfToImages } from "./conversion/pdf-to-images.service.js";
+import { pptxToImages } from "./conversion/pptxToImages.service.js";
+import { pdfToImages } from "./conversion/pdfToImages.service.js";
 import { generateThumbnail } from "./conversion/thumbnail.service.js";
 import { extractMetadata } from "./conversion/metadata.service.js";
-import { videoTranscode } from "./conversion/video-transcode.service.js";
+import { videoTranscode } from "./conversion/videoTranscode.service.js";
 import { prisma } from "../db.config.js";
 
 /**
