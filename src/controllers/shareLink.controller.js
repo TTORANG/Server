@@ -285,6 +285,17 @@ export const handleGetShareLinkList = async (req, res, next) => {
  *                      currentPage: 1
  *                      totalCount: 25
  *                      hasNext: true
+ *       400:
+ *         description: 유효하지 않은 페이지 번호 (P003)
+ *         content:
+ *           application/json:
+ *             example:
+ *               resultType: "FAILURE"
+ *               error:
+ *                 errorCode: "P003"
+ *                 reason: "페이지 번호는 1보다 커야 합니다."
+ *                 data: null
+ *               success: null
  */
 export const handleGetVideoListForSharing = async (req, res, next) => {
   try {

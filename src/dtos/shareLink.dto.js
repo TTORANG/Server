@@ -1,4 +1,5 @@
 export const shareLinkResponseDTO = (link) => {
+  const DEFAULT_PROJECT_TITLE = "발표 자료";
   return {
     projectId: link.projectId.toString(),
     scope: link.scope,
@@ -7,7 +8,7 @@ export const shareLinkResponseDTO = (link) => {
 
     sharedContentSummary: {
       scope: link.scope,
-      projectTitle: link.project?.title || "발표 자료",
+      projectTitle: link.project?.title || DEFAULT_PROJECT_TITLE,
       videoTitle: link.video?.title || null,
       videoCreatedAt: link.video?.createdAt || null,
       thumbnailUrl: link.video?.thumbnailUrl || null,

@@ -1,3 +1,4 @@
+import { InvalidPageError } from "../errors/project.error.js";
 import {
   ProjectDeletedError,
   ShareLinkExpiredError,
@@ -79,7 +80,7 @@ export const processGetShareContent = async (token) => {
     throw new ShareLinkExpiredError();
   }
 
-  incrementViewCount(shareLink.id);
+  await incrementViewCount(shareLink.id);
 
   const { scope, project, video } = shareLink;
   const content = {
@@ -111,6 +112,12 @@ export const processGetVideoList = async (projectId, page, pageSize) => {
   const p = parseInt(page) || 1;
   const rawSize = parseInt(pageSize) || 10;
 
+  if (p < 1) {
+    throw new InvalidPageError();
+  }
+
+  // pageSize 유효성 검사 (0 이하 방지 및 최대치 제한)
+  if (rawSize < 1) rawSize = 10;
   const pSize = rawSize > 50 ? 50 : rawSize; // 최대 50개 까지만 가져오도록 제한 (서버 부하 방지)
 
   const { totalCount, videos } = await getVideoList(projectId, p, pSize);
