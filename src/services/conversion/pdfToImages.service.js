@@ -55,12 +55,10 @@ export async function pdfToImages(jobOrId, opts = {}) {
       destPath: input,
     });
 
-    await fs.mkdir(outDir, { recursive: true });
-
     const PDFTOPPM =
       process.platform === "win32"
-        ? "C:\\poppler\\Library\\bin\\pdftoppm.exe" // 로컬
-        : "/usr/bin/pdftoppm"; // 배포
+        ? process.env.PDFTOPPM_PATH // 로컬
+        : "pdftoppm"; // 배포
 
     // PDF → PNG 변환
     await runCmd(PDFTOPPM, ["-png", "-r", String(dpi), input, prefix]);

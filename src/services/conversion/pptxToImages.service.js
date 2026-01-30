@@ -46,7 +46,6 @@ export async function pptxToImages(jobOrId) {
 
   try {
     await fs.mkdir(path.dirname(input), { recursive: true });
-    await fs.mkdir(workDir, { recursive: true });
     await fs.mkdir(outDir, { recursive: true });
 
     // GCS → 로컬 다운로드
@@ -56,13 +55,8 @@ export async function pptxToImages(jobOrId) {
       destPath: input,
     });
 
-    const SOFFICE =
-      process.platform === "win32"
-        ? "soffice" // 로컬 Windows (PATH)
-        : "/usr/bin/soffice"; // 배포 환경
-
     // libreoffice 등으로 슬라이드 이미지 변환
-    await runCmd(SOFFICE, [
+    await runCmd("soffice", [
       "--headless",
       "--nologo",
       "--nofirststartwizard",
@@ -90,8 +84,8 @@ export async function pptxToImages(jobOrId) {
 
     const PDFTOPPM =
       process.platform === "win32"
-        ? "C:\\poppler\\Library\\bin\\pdftoppm.exe" // 로컬 Windows
-        : "/usr/bin/pdftoppm"; // 배포 환경
+        ? process.env.PDFTOPPM_PATH // 로컬
+        : "pdftoppm"; // 배포
 
     await runCmd(PDFTOPPM, ["-png", "-r", "150", pdfPath, prefix]);
 

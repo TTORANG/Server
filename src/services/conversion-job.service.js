@@ -21,7 +21,9 @@ const createAndEnqueueJob = async ({ uploadedFileId, videoId, jobType }) => {
 
   if (!process.env.GCP_PROJECT_ID || !process.env.CLOUD_RUN_SERVICE_URL) {
     // 로컬 테스트용
-    await processJob(job.id.toString(), jobType);
+    processJob(job.id.toString(), jobType).catch((error) => {
+      console.error(`[Local-Job-Runner] Job ${job.id} failed:`, error);
+    });
   } else {
     await enqueueConversionTask({
       conversionJobId: job.id.toString(),
