@@ -1,9 +1,9 @@
 import { prisma } from "../../db.config.js";
 import { ProjectNotFoundError } from "../../errors/project.error.js";
 
-export async function getPresentationConversionStatus(projectId) {
-  const project = await prisma.project.findUnique({
-    where: { id: BigInt(projectId), isDeleted: false },
+export async function getPresentationConversionStatus(projectId, userId) {
+  const project = await prisma.project.findFirst({
+    where: { id: BigInt(projectId), userId: BigInt(userId), isDeleted: false },
   });
 
   if (!project) {

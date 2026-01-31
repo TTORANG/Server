@@ -61,8 +61,9 @@ export const handleGetPresentationStatus = async (req, res, next) => {
    */
   try {
     const { projectId } = req.params;
+    const userId = req.user.id;
 
-    const result = await getPresentationConversionStatus(projectId);
+    const result = await getPresentationConversionStatus(projectId, userId);
 
     res.status(200).json({
       resultType: "SUCCESS",
