@@ -17,6 +17,9 @@ import {
   listFiles,
 } from "../../utils/conversion.util.js";
 import pLimit from "p-limit";
+import { probeVideoMeta } from "../../utils/videoMeta.util.js";
+import { prisma } from "../../db.config.js";
+import { extractVideoThumbnail } from "../../utils/videoThumbnail.util.js";
 
 /**
  * Video Transcode 서비스
@@ -49,7 +52,8 @@ export const videoTranscode = async (jobOrId) => {
 
   const workDir = tmpPath(`video-work-${jobId}`);
   const chunksDir = path.join(workDir, "chunks");
-  const mergedPath = path.join(workDir, "merged.webm");
+  const mergedExt = video.container === "webm" ? "webm" : "mp4";
+  const mergedPath = path.join(workDir, `merged.${mergedExt}`);
   const hlsDir = path.join(workDir, "hls");
 
   try {
@@ -57,10 +61,38 @@ export const videoTranscode = async (jobOrId) => {
     await fs.mkdir(hlsDir, { recursive: true });
 
     // 1. 청크 다운로드
-    await downloadChunks(video.chunks, chunksDir);
+    await downloadChunks(video.chunks, chunksDir, mergedExt);
 
     // 2. 청크 병합
-    await mergeChunks(chunksDir, mergedPath, video.chunks);
+    await mergeChunks(chunksDir, mergedPath, video.chunks, mergedExt);
+
+    // 메타데이터 추출
+    const meta = await probeVideoMeta(mergedPath);
+
+    // 썸네일 추출
+    let thumbnailUrl = null;
+
+    try {
+      thumbnailUrl = await extractVideoThumbnail({
+        inputPath: mergedPath,
+        videoId: video.id,
+        atSeconds: meta.durationSeconds && meta.durationSeconds > 10 ? 3 : 0,
+      });
+    } catch (e) {
+      console.warn("[VideoThumbnail] failed:", e.message);
+    }
+
+    await prisma.video.update({
+      where: { id: video.id },
+      data: {
+        durationSeconds: meta.durationSeconds,
+        width: meta.width,
+        height: meta.height,
+        fps: meta.fps,
+        codec: meta.codec,
+        thumbnailUrl: thumbnailUrl ?? undefined,
+      },
+    });
 
     // 3. HLS 변환
     await encodeToHLS(mergedPath, hlsDir);
@@ -70,9 +102,6 @@ export const videoTranscode = async (jobOrId) => {
 
     // 5. DB 업데이트
     await updateVideoHlsUrl(video.id, hlsMasterUrl);
-
-    // 6. 원본 청크 삭제 (선택적)
-    // await cleanupChunks(video);
 
     return { ok: true, hlsMasterUrl };
   } catch (error) {
@@ -87,7 +116,7 @@ export const videoTranscode = async (jobOrId) => {
 };
 
 // 1. GCS에서 청크들 다운로드 (병렬 처리, 동시 최대 5개)
-const downloadChunks = async (chunks, destDir) => {
+const downloadChunks = async (chunks, destDir, ext) => {
   const limit = pLimit(5);
 
   await Promise.all(
@@ -95,7 +124,7 @@ const downloadChunks = async (chunks, destDir) => {
       limit(async () => {
         const destPath = path.join(
           destDir,
-          `chunk_${String(chunk.chunkIndex).padStart(5, "0")}.webm`
+          `chunk_${String(chunk.chunkIndex).padStart(5, "0")}.${ext}`
         );
         await downloadFromGCS({
           bucketName: chunk.storageBucket,
@@ -107,18 +136,28 @@ const downloadChunks = async (chunks, destDir) => {
   );
 };
 
+const FFMPEG =
+  process.platform === "win32"
+    ? (() => {
+        if (!process.env.FFMPEG_PATH) {
+          throw new Error("FFMPEG_PATH is not set on win32 environment");
+        }
+        return process.env.FFMPEG_PATH;
+      })()
+    : "ffmpeg";
+
 // 2. 청크들을 하나의 파일로 병합
-const mergeChunks = async (chunksDir, outputPath, chunks) => {
+const mergeChunks = async (chunksDir, outputPath, chunks, ext) => {
   // concat demuxer용 파일 목록 생성
   const listPath = path.join(chunksDir, "concat_list.txt");
   const fileList = chunks
-    .map((c) => `file 'chunk_${String(c.chunkIndex).padStart(5, "0")}.webm'`)
+    .map((c) => `file 'chunk_${String(c.chunkIndex).padStart(5, "0")}.${ext}'`)
     .join("\n");
 
   await fs.writeFile(listPath, fileList);
 
   // FFmpeg concat
-  await runCmd("ffmpeg", ["-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy", outputPath], {
+  await runCmd(FFMPEG, ["-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy", outputPath], {
     cwd: chunksDir,
   });
 };
@@ -126,7 +165,7 @@ const mergeChunks = async (chunksDir, outputPath, chunks) => {
 // 3. HLS 변환 (다중 품질)
 const encodeToHLS = async (inputPath, hlsDir) => {
   // 720p + 1080p 다중 품질 HLS 생성
-  await runCmd("ffmpeg", [
+  await runCmd(FFMPEG, [
     "-i",
     inputPath,
     // 720p 스트림

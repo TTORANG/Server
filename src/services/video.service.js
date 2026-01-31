@@ -71,7 +71,7 @@ export async function uploadVideoChunk({ videoId, chunkIndex, file }) {
   if (!file || !file.buffer || !file.mimetype) {
     throw new InvalidVideoChunkError({ reason: "chunk 파일이 필요합니다." });
   }
-  if (!ALLOWED_VIDEO_MIME.includes(file.mimetype)) {
+  if (!ALLOWED_VIDEO_MIME.has(file.mimetype)) {
     throw new InvalidVideoChunkError({ contentType: file.mimetype });
   }
 
