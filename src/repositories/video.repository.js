@@ -40,3 +40,17 @@ export const getVideoChunksByVideoId = async (videoId) => {
     orderBy: { chunkIndex: "asc" },
   });
 };
+
+export const updateVideoMetadata = async (videoId, metadata) => {
+  return prisma.video.update({
+    where: { id: BigInt(videoId) },
+    data: {
+      durationSeconds: metadata.durationSeconds,
+      width: metadata.width,
+      height: metadata.height,
+      fps: metadata.fps,
+      codec: metadata.codec,
+      thumbnailUrl: metadata.thumbnailUrl ?? undefined,
+    },
+  });
+};

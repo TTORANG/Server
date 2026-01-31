@@ -73,11 +73,19 @@ export function runCmd(cmd, args, { cwd } = {}) {
       cwd,
       env: process.env,
     });
+
+    let stdout = "";
     let stderr = "";
+
+    p.stdout.on("data", (d) => (stdout += d.toString()));
     p.stderr.on("data", (d) => (stderr += d.toString()));
+
     p.on("error", reject);
+
     p.on("close", (code) => {
-      if (code === 0) return resolve({ ok: true });
+      if (code === 0) {
+        return resolve({ ok: true, stdout, stderr });
+      }
       reject(new Error(`CMD_FAILED: ${cmd} failed: ${stderr}`));
     });
   });

@@ -5,6 +5,7 @@ import {
   updateVideoStatus,
   updateVideoHlsUrl,
   deleteVideoChunks,
+  updateVideoMetadata,
 } from "../../repositories/video.repository.js";
 import { getJobById } from "../../repositories/conversion-job.repository.js";
 import {
@@ -17,6 +18,21 @@ import {
   listFiles,
 } from "../../utils/conversion.util.js";
 import pLimit from "p-limit";
+import { probeVideoMeta } from "../../utils/videoMeta.util.js";
+import { extractVideoThumbnail } from "../../utils/videoThumbnail.util.js";
+import { FFMPEG_PATH } from "../../utils/ffmpeg.util.js";
+import {
+  DEFAULT_THUMBNAIL_EXTRACT_SECONDS,
+  FALLBACK_THUMBNAIL_EXTRACT_SECONDS,
+  MIN_DURATION_FOR_ADVANCED_THUMBNAIL_SECONDS,
+} from "../../constants/videos.js";
+import {
+  InvalidParameterError,
+  NoVideoChunksError,
+  VideoEncodingFailedError,
+  VideoNotFoundError,
+} from "../../errors/video.error.js";
+import { BaseError } from "../../errors/base.error.js";
 
 /**
  * Video Transcode 서비스
@@ -32,16 +48,16 @@ export const videoTranscode = async (jobOrId) => {
   const job = await getJobById(jobId);
 
   if (!job?.videoId) {
-    throw new Error("VIDEO_ID_NOT_FOUND_IN_JOB");
+    throw new InvalidParameterError({ jobId }, "변환 작업에 videoId가 존재하지 않습니다.");
   }
 
   const video = await getVideoWithChunks(job.videoId);
   if (!video) {
-    throw new Error("VIDEO_NOT_FOUND");
+    throw new VideoNotFoundError({ videoId: job.videoId });
   }
 
   if (!video.chunks || video.chunks.length === 0) {
-    throw new Error("NO_CHUNKS_FOUND");
+    throw new NoVideoChunksError({ videoId: job.videoId });
   }
 
   // 상태를 processing으로 변경
@@ -49,7 +65,8 @@ export const videoTranscode = async (jobOrId) => {
 
   const workDir = tmpPath(`video-work-${jobId}`);
   const chunksDir = path.join(workDir, "chunks");
-  const mergedPath = path.join(workDir, "merged.webm");
+  const mergedExt = video.container === "webm" ? "webm" : "mp4";
+  const mergedPath = path.join(workDir, `merged.${mergedExt}`);
   const hlsDir = path.join(workDir, "hls");
 
   try {
@@ -57,10 +74,40 @@ export const videoTranscode = async (jobOrId) => {
     await fs.mkdir(hlsDir, { recursive: true });
 
     // 1. 청크 다운로드
-    await downloadChunks(video.chunks, chunksDir);
+    await downloadChunks(video.chunks, chunksDir, mergedExt);
 
     // 2. 청크 병합
-    await mergeChunks(chunksDir, mergedPath, video.chunks);
+    await mergeChunks(chunksDir, mergedPath, video.chunks, mergedExt);
+
+    // 메타데이터 추출
+    const meta = await probeVideoMeta(mergedPath);
+
+    // 썸네일 추출
+    let thumbnailUrl = null;
+
+    const atSeconds =
+      meta.durationSeconds && meta.durationSeconds > MIN_DURATION_FOR_ADVANCED_THUMBNAIL_SECONDS
+        ? DEFAULT_THUMBNAIL_EXTRACT_SECONDS
+        : FALLBACK_THUMBNAIL_EXTRACT_SECONDS;
+
+    try {
+      thumbnailUrl = await extractVideoThumbnail({
+        inputPath: mergedPath,
+        videoId: video.id,
+        atSeconds,
+      });
+    } catch (e) {
+      console.warn("[VideoThumbnail] failed:", e.message);
+    }
+
+    await updateVideoMetadata(video.id, {
+      durationSeconds: meta.durationSeconds,
+      width: meta.width,
+      height: meta.height,
+      fps: meta.fps,
+      codec: meta.codec,
+      thumbnailUrl,
+    });
 
     // 3. HLS 변환
     await encodeToHLS(mergedPath, hlsDir);
@@ -71,15 +118,10 @@ export const videoTranscode = async (jobOrId) => {
     // 5. DB 업데이트
     await updateVideoHlsUrl(video.id, hlsMasterUrl);
 
-    // 6. 원본 청크 삭제 (선택적)
-    // await cleanupChunks(video);
-
     return { ok: true, hlsMasterUrl };
   } catch (error) {
-    await updateVideoStatus(video.id, "failed", {
-      errorMessage: error.message,
-    });
-    throw error;
+    await updateVideoStatus(video.id, "failed", { errorMessage: error.message });
+    throw error instanceof BaseError ? error : new VideoEncodingFailedError({ videoId: video.id });
   } finally {
     // 임시 파일 정리
     await fs.rm(workDir, { recursive: true, force: true }).catch(() => {});
@@ -87,7 +129,7 @@ export const videoTranscode = async (jobOrId) => {
 };
 
 // 1. GCS에서 청크들 다운로드 (병렬 처리, 동시 최대 5개)
-const downloadChunks = async (chunks, destDir) => {
+const downloadChunks = async (chunks, destDir, ext) => {
   const limit = pLimit(5);
 
   await Promise.all(
@@ -95,7 +137,7 @@ const downloadChunks = async (chunks, destDir) => {
       limit(async () => {
         const destPath = path.join(
           destDir,
-          `chunk_${String(chunk.chunkIndex).padStart(5, "0")}.webm`
+          `chunk_${String(chunk.chunkIndex).padStart(5, "0")}.${ext}`
         );
         await downloadFromGCS({
           bucketName: chunk.storageBucket,
@@ -107,18 +149,20 @@ const downloadChunks = async (chunks, destDir) => {
   );
 };
 
+const FFMPEG = FFMPEG_PATH;
+
 // 2. 청크들을 하나의 파일로 병합
-const mergeChunks = async (chunksDir, outputPath, chunks) => {
+const mergeChunks = async (chunksDir, outputPath, chunks, ext) => {
   // concat demuxer용 파일 목록 생성
   const listPath = path.join(chunksDir, "concat_list.txt");
   const fileList = chunks
-    .map((c) => `file 'chunk_${String(c.chunkIndex).padStart(5, "0")}.webm'`)
+    .map((c) => `file 'chunk_${String(c.chunkIndex).padStart(5, "0")}.${ext}'`)
     .join("\n");
 
   await fs.writeFile(listPath, fileList);
 
   // FFmpeg concat
-  await runCmd("ffmpeg", ["-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy", outputPath], {
+  await runCmd(FFMPEG, ["-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy", outputPath], {
     cwd: chunksDir,
   });
 };
@@ -126,7 +170,7 @@ const mergeChunks = async (chunksDir, outputPath, chunks) => {
 // 3. HLS 변환 (다중 품질)
 const encodeToHLS = async (inputPath, hlsDir) => {
   // 720p + 1080p 다중 품질 HLS 생성
-  await runCmd("ffmpeg", [
+  await runCmd(FFMPEG, [
     "-i",
     inputPath,
     // 720p 스트림
