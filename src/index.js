@@ -56,6 +56,7 @@ import {
 
 import multer from "multer";
 import { MAX_SIZE_BYTES } from "./constants/files.js";
+import { handleGetPresentationStatus } from "./controllers/conversionStatus.controller.js";
 
 dotenv.config();
 
@@ -165,6 +166,9 @@ app.post("/presentations/slides/:slideId/restore", isLogin, handleRestoreVersion
 
 // 프로젝트 하위 녹화 영상 목록 조회
 app.get("/presentations/:projectId/videos", isLogin, handleGetVideoList);
+
+// 프로젝트 파일 변환 상태 조회
+app.get("/presentations/:projectId/status", isLogin, handleGetPresentationStatus);
 
 // 공유 링크 생성
 app.post("/presentations/:projectId/shares", isLogin, handleCreateShareLink);
