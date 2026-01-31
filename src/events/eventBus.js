@@ -1,9 +1,5 @@
 /**
  * Redis 기반 Pub/Sub 이벤트 버스
- *
- * 사용법:
- *   import eventBus from './events/eventBus.js';
- *
  *   // 이벤트 발행 (Publisher)
  *   eventBus.publish('comment:created', { commentId: 1, projectId: 2 });
  *
@@ -23,10 +19,6 @@ class EventBus {
     this.isConnected = false;
   }
 
-  /**
-   * Redis 연결 초기화
-   * @param {string} redisUrl - Redis 연결 URL (기본: localhost:6379)
-   */
   async connect(redisUrl = process.env.REDIS_URL || "redis://localhost:6379") {
     try {
       // Publisher용 Redis 클라이언트
@@ -72,11 +64,6 @@ class EventBus {
     }
   }
 
-  /**
-   * 이벤트 발행 (Publish)
-   * @param {string} channel - 이벤트 채널명 (e.g., 'comment:created')
-   * @param {object} data - 전달할 데이터
-   */
   async publish(channel, data) {
     if (!this.publisher || !this.isConnected) {
       console.warn(`[EventBus] Not connected. Skipping publish to ${channel}`);
@@ -99,11 +86,6 @@ class EventBus {
     }
   }
 
-  /**
-   * 이벤트 구독 (Subscribe)
-   * @param {string} channel - 구독할 채널명
-   * @param {function} handler - 메시지 수신 시 실행할 함수
-   */
   async subscribe(channel, handler) {
     if (!this.subscriber) {
       console.warn(`[EventBus] Not connected. Cannot subscribe to ${channel}`);
@@ -127,10 +109,6 @@ class EventBus {
     }
   }
 
-  /**
-   * 구독 해제
-   * @param {string} channel - 구독 해제할 채널명
-   */
   async unsubscribe(channel) {
     if (!this.subscriber) return;
 
@@ -143,9 +121,6 @@ class EventBus {
     }
   }
 
-  /**
-   * 내부: 메시지 수신 처리
-   */
   _handleMessage(channel, message) {
     const handlers = this.handlers.get(channel);
     if (!handlers || handlers.length === 0) return;
@@ -166,9 +141,7 @@ class EventBus {
     }
   }
 
-  /**
-   * 연결 종료
-   */
+  //연결 종료
   async disconnect() {
     if (this.publisher) {
       await this.publisher.quit();

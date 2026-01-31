@@ -1,12 +1,3 @@
-/**
- * 분석/추적 관련 이벤트 핸들러
- * 조회/이탈 기록 처리 (오아시스 업무)
- */
-
-/**
- * 페이지 조회 기록 처리
- * @param {object} data - { presentationId, sessionId, timestamp }
- */
 export const onPageview = async (data) => {
   console.log("[Analytics] 페이지 조회 기록:", data);
 

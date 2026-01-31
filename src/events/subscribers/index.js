@@ -8,7 +8,12 @@ import { EventTypes } from "../eventTypes.js";
 
 // 핸들러 import
 import { onCommentCreated, onReactionAdded, onCommentDeleted } from "./notification.handler.js";
-import { onPageview, onSlideView, onVideoEvent, onExit } from "./analytics.handler.js";
+import {
+  broadcastNewComment,
+  broadcastCommentDeleted,
+  broadcastNewReaction,
+  broadcastReactionRemoved,
+} from "./websocket.handler.js";
 
 /**
  * 모든 이벤트 구독 등록
@@ -22,11 +27,11 @@ export const registerSubscribers = async () => {
   await eventBus.subscribe(EventTypes.COMMENT_DELETED, onCommentDeleted);
   await eventBus.subscribe(EventTypes.REACTION_ADDED, onReactionAdded);
 
-  // ========== 분석/추적 관련 구독 (오아시스 업무) ==========
-  await eventBus.subscribe(EventTypes.ANALYTICS_PAGEVIEW, onPageview);
-  await eventBus.subscribe(EventTypes.ANALYTICS_SLIDE_VIEW, onSlideView);
-  await eventBus.subscribe(EventTypes.ANALYTICS_VIDEO_EVENT, onVideoEvent);
-  await eventBus.subscribe(EventTypes.ANALYTICS_EXIT, onExit);
+  // ========== WebSocket 브로드캐스트 구독 ==========
+  await eventBus.subscribe(EventTypes.COMMENT_CREATED, broadcastNewComment);
+  await eventBus.subscribe(EventTypes.COMMENT_DELETED, broadcastCommentDeleted);
+  await eventBus.subscribe(EventTypes.REACTION_ADDED, broadcastNewReaction);
+  await eventBus.subscribe(EventTypes.REACTION_REMOVED, broadcastReactionRemoved);
 
   console.log("[Subscribers] All event handlers registered");
 };
