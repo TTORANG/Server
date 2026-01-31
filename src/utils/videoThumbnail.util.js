@@ -1,15 +1,9 @@
 import fs from "fs/promises";
 import { runCmd, tmpPath, uploadToGCS, envPrefix, uuid } from "./conversion.util.js";
+import { FFMPEG_PATH } from "./ffmpeg.util.js";
+import { THUMBNAIL_HEIGHT, THUMBNAIL_WIDTH } from "../constants/videos.js";
 
-const FFMPEG =
-  process.platform === "win32"
-    ? (() => {
-        if (!process.env.FFMPEG_PATH) {
-          throw new Error("FFMPEG_PATH is not set on win32 environment");
-        }
-        return process.env.FFMPEG_PATH;
-      })()
-    : "ffmpeg";
+const FFMPEG = FFMPEG_PATH;
 
 export async function extractVideoThumbnail({ inputPath, videoId, atSeconds = 3 }) {
   const tmpOut = tmpPath(`video-thumb-${videoId}.png`);
@@ -22,7 +16,7 @@ export async function extractVideoThumbnail({ inputPath, videoId, atSeconds = 3 
     "-vframes",
     "1",
     "-vf",
-    "scale=512:288:force_original_aspect_ratio=decrease",
+    `scale=${THUMBNAIL_WIDTH}:${THUMBNAIL_HEIGHT}:force_original_aspect_ratio=decrease`,
     "-f",
     "image2",
     tmpOut,

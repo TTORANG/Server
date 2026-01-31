@@ -5,6 +5,7 @@ import {
   updateVideoStatus,
   updateVideoHlsUrl,
   deleteVideoChunks,
+  updateVideoMetadata,
 } from "../../repositories/video.repository.js";
 import { getJobById } from "../../repositories/conversion-job.repository.js";
 import {
@@ -18,8 +19,20 @@ import {
 } from "../../utils/conversion.util.js";
 import pLimit from "p-limit";
 import { probeVideoMeta } from "../../utils/videoMeta.util.js";
-import { prisma } from "../../db.config.js";
 import { extractVideoThumbnail } from "../../utils/videoThumbnail.util.js";
+import { FFMPEG_PATH } from "../../utils/ffmpeg.util.js";
+import {
+  DEFAULT_THUMBNAIL_EXTRACT_SECONDS,
+  FALLBACK_THUMBNAIL_EXTRACT_SECONDS,
+  MIN_DURATION_FOR_ADVANCED_THUMBNAIL_SECONDS,
+} from "../../constants/videos.js";
+import {
+  InvalidParameterError,
+  NoVideoChunksError,
+  VideoEncodingFailedError,
+  VideoNotFoundError,
+} from "../../errors/video.error.js";
+import { BaseError } from "../../errors/base.error.js";
 
 /**
  * Video Transcode 서비스
@@ -35,16 +48,16 @@ export const videoTranscode = async (jobOrId) => {
   const job = await getJobById(jobId);
 
   if (!job?.videoId) {
-    throw new Error("VIDEO_ID_NOT_FOUND_IN_JOB");
+    throw new InvalidParameterError({ jobId }, "변환 작업에 videoId가 존재하지 않습니다.");
   }
 
   const video = await getVideoWithChunks(job.videoId);
   if (!video) {
-    throw new Error("VIDEO_NOT_FOUND");
+    throw new VideoNotFoundError({ videoId: job.videoId });
   }
 
   if (!video.chunks || video.chunks.length === 0) {
-    throw new Error("NO_CHUNKS_FOUND");
+    throw new NoVideoChunksError({ videoId: job.videoId });
   }
 
   // 상태를 processing으로 변경
@@ -72,26 +85,28 @@ export const videoTranscode = async (jobOrId) => {
     // 썸네일 추출
     let thumbnailUrl = null;
 
+    const atSeconds =
+      meta.durationSeconds && meta.durationSeconds > MIN_DURATION_FOR_ADVANCED_THUMBNAIL_SECONDS
+        ? DEFAULT_THUMBNAIL_EXTRACT_SECONDS
+        : FALLBACK_THUMBNAIL_EXTRACT_SECONDS;
+
     try {
       thumbnailUrl = await extractVideoThumbnail({
         inputPath: mergedPath,
         videoId: video.id,
-        atSeconds: meta.durationSeconds && meta.durationSeconds > 10 ? 3 : 0,
+        atSeconds,
       });
     } catch (e) {
       console.warn("[VideoThumbnail] failed:", e.message);
     }
 
-    await prisma.video.update({
-      where: { id: video.id },
-      data: {
-        durationSeconds: meta.durationSeconds,
-        width: meta.width,
-        height: meta.height,
-        fps: meta.fps,
-        codec: meta.codec,
-        thumbnailUrl: thumbnailUrl ?? undefined,
-      },
+    await updateVideoMetadata(video.id, {
+      durationSeconds: meta.durationSeconds,
+      width: meta.width,
+      height: meta.height,
+      fps: meta.fps,
+      codec: meta.codec,
+      thumbnailUrl,
     });
 
     // 3. HLS 변환
@@ -105,10 +120,8 @@ export const videoTranscode = async (jobOrId) => {
 
     return { ok: true, hlsMasterUrl };
   } catch (error) {
-    await updateVideoStatus(video.id, "failed", {
-      errorMessage: error.message,
-    });
-    throw error;
+    await updateVideoStatus(video.id, "failed", { errorMessage: error.message });
+    throw error instanceof BaseError ? error : new VideoEncodingFailedError({ videoId: video.id });
   } finally {
     // 임시 파일 정리
     await fs.rm(workDir, { recursive: true, force: true }).catch(() => {});
@@ -136,15 +149,7 @@ const downloadChunks = async (chunks, destDir, ext) => {
   );
 };
 
-const FFMPEG =
-  process.platform === "win32"
-    ? (() => {
-        if (!process.env.FFMPEG_PATH) {
-          throw new Error("FFMPEG_PATH is not set on win32 environment");
-        }
-        return process.env.FFMPEG_PATH;
-      })()
-    : "ffmpeg";
+const FFMPEG = FFMPEG_PATH;
 
 // 2. 청크들을 하나의 파일로 병합
 const mergeChunks = async (chunksDir, outputPath, chunks, ext) => {

@@ -1,14 +1,7 @@
 import { runCmd } from "./conversion.util.js";
+import { FFPROBE_PATH } from "./ffmpeg.util.js";
 
-const FFPROBE =
-  process.platform === "win32"
-    ? (() => {
-        if (!process.env.FFPROBE_PATH) {
-          throw new Error("FFPROBE_PATH is not set on win32 environment");
-        }
-        return process.env.FFPROBE_PATH;
-      })()
-    : "ffprobe";
+const FFPROBE = FFPROBE_PATH;
 
 export async function probeVideoMeta(inputPath) {
   const result = await runCmd(FFPROBE, [
