@@ -10,12 +10,14 @@ import { InvalidParameterError, VideoNotFoundError } from "../errors/video.error
 import eventBus from "../events/eventBus.js";
 import { EventTypes } from "../events/eventTypes.js";
 import {
+  aggregateVideoReactionsByBucket,
   countSlideReactions,
   createReaction,
   findReaction,
   findSlideByIdWithOwner,
   updateReaction,
 } from "../repositories/reaction.repository.js";
+import { getVideoById } from "../repositories/video.repository.js";
 
 const ALLOWED_EMOJIS = ["thumbs_up", "heart", "eyes", "clap"];
 
@@ -76,19 +78,12 @@ export async function getSlideReactionSummary({ slideId, userId }) {
 }
 
 // 영상 타임스탬프 리액션 생성
-export async function toggleVideoReaction({ videoId, emojiType, timestampMs, userId, sessionId }) {
-  if (!sessionId) {
-    throw new AuthSessionRequiredError({
-      userId: String(userId),
-      videoId: String(videoId),
-    });
-  }
+export async function toggleVideoReaction({ videoId, emojiType, timestampMs, userId }) {
+  const vid = BigInt(videoId);
+  const ts = timestampMs !== undefined && timestampMs !== null ? Number(timestampMs) : null;
 
-  const vid = toInt(videoId);
-  const ts = toInt(timestampMs);
-
-  if (!Number.isInteger(vid) || vid <= 0) {
-    throw new VideoNotFoundError({ videoId: String(videoId) });
+  if (vid <= 0n) {
+    throw new InvalidParameterError({ videoId: String(videoId) });
   }
   if (!emojiType || typeof emojiType !== "string") {
     throw new InvalidParameterError({ emojiType }, "잘못된 이모지 타입입니다.");
@@ -112,7 +107,6 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
   const existing = await prisma.reaction.findFirst({
     where: {
       userId,
-      sessionId,
       targetType: "video",
       targetId: vid,
       timestampMs: ts,
@@ -152,7 +146,6 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
   const reaction = await prisma.reaction.create({
     data: {
       userId,
-      sessionId,
       targetType: "video",
       targetId: vid,
       timestampMs: ts,
@@ -172,3 +165,45 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
 
   return { active: true };
 }
+
+// 영상 리액션 집계
+export const getReactionMarkers = async ({ videoId, intervalMs = 5000 }) => {
+  // videoId 검증
+  if (typeof videoId !== "bigint" || videoId <= 0n) {
+    throw new InvalidParameterError({ videoId: String(videoId) });
+  }
+  // interval 검증
+  const safeInterval = Number(intervalMs);
+  if (!Number.isInteger(safeInterval) || safeInterval <= 0) {
+    throw new InvalidParameterError({ intervalMs });
+  }
+  // video 존재 검증
+  const video = await getVideoById(videoId);
+  if (!video) {
+    throw new VideoNotFoundError({ videoId: String(videoId) });
+  }
+
+  // 집계 로우: (bucketMs, emojiType, count)
+  const rows = await aggregateVideoReactionsByBucket({
+    videoId,
+    intervalMs: safeInterval,
+  });
+
+  // bucket별 대표 emoji 선택
+  const byBucket = new Map();
+  for (const r of rows) {
+    const bucketMs = Number(r.bucketMs);
+    const current = byBucket.get(bucketMs);
+    if (!current || r.count > current.count) {
+      byBucket.set(bucketMs, {
+        timestampMs: bucketMs,
+        emojiType: r.emojiType,
+        count: r.count,
+      });
+    }
+  }
+
+  const markers = [...byBucket.values()].sort((a, b) => a.timestampMs - b.timestampMs);
+
+  return { intervalMs: safeInterval, markers };
+};

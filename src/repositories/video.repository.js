@@ -1,5 +1,12 @@
 import { prisma } from "../db.config.js";
 
+export const getVideoById = (videoId) => {
+  return prisma.video.findUnique({
+    where: { id: BigInt(videoId), deletedAt: null },
+    select: { id: true },
+  });
+};
+
 export const getVideoWithChunks = async (videoId) => {
   return await prisma.video.findUnique({
     where: { id: BigInt(videoId) },
