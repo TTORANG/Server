@@ -33,11 +33,9 @@ import {
 } from "./controllers/slide.controller.js";
 import {
   finishRecording,
-  handleCreateVideoComment,
   handleGetVideoDetail,
   handleGetVideoList,
   handleGetVideoSlideTimeline,
-  handleToggleVideoReaction,
   startRecording,
   uploadVideoChunk,
 } from "./controllers/video.controller.js";
@@ -66,6 +64,8 @@ import { registerSubscribers } from "./events/subscribers/index.js";
 
 // Socket.io
 import { initializeSocket } from "./socket/index.js";
+import { handleToggleVideoReaction } from "./controllers/reaction.controller.js";
+import { handleCreateVideoComment } from "./controllers/comment.controller.js";
 
 dotenv.config();
 
@@ -195,20 +195,14 @@ app.get("/presentations/:projectId/shares/videos", isLogin, handleGetVideoListFo
 // 파일 업로드 관련 라우팅
 app.post("/files/upload", isLogin, upload.single("file"), postUploadPresentationFile);
 
-// 영상 녹화 관련 라우팅
+// 영상 관련 라우팅
 app.post("/videos/start", isLogin, startRecording); // 영상 업로드
 app.post("/videos/:videoId/finish", isLogin, finishRecording); // 비디오 업로드 검증
-
-// 영상 상세 조회
-app.get("/videos/:videoId", isLogin, handleGetVideoDetail);
-// 영상 청크 업로드
-app.post("/videos/:videoId/chunks/:chunkIndex", isLogin, upload.single("file"), uploadVideoChunk);
-// 영상 타임스탬프 리액션 생성
-app.post("/videos/:videoId/reactions", isLogin, handleToggleVideoReaction);
-// 영상 타임스탬프 댓글 생성
-app.post("/videos/:videoId/comments", isLogin, handleCreateVideoComment);
-// 영상-슬라이드 동기화
-app.get("/videos/:videoId/slides", isLogin, handleGetVideoSlideTimeline);
+app.get("/videos/:videoId", isLogin, handleGetVideoDetail); // 영상 상세 조회
+app.post("/videos/:videoId/chunks/:chunkIndex", isLogin, upload.single("file"), uploadVideoChunk); // 영상 청크 업로드
+app.post("/videos/:videoId/reactions", isLogin, handleToggleVideoReaction); // 영상 타임스탬프 리액션 생성
+app.post("/videos/:videoId/comments", isLogin, handleCreateVideoComment); // 영상 타임스탬프 댓글 생성
+app.get("/videos/:videoId/slides", isLogin, handleGetVideoSlideTimeline); // 영상-슬라이드 동기화 타임라인 조회
 
 // Worker 엔드포인트 (pdf,ppt,동영상 변환)
 app.post("/worker/process-job", handleProcessJob);
