@@ -210,7 +210,7 @@ export const patchComment = async (req, res, next) => {
    */
   try {
     const commentId = BigInt(req.params.commentId);
-    const { content } = req.body;
+    const content = req.body.content?.trim();
 
     const updated = await updateComment({
       commentId,
@@ -291,7 +291,7 @@ export const deleteCommentController = async (req, res, next) => {
    *                   resultType: FAILURE
    *                   error:
    *                     errorCode: C006
-   *                     reason: 수정 권한이 없습니다.
+   *                     reason: 삭제 권한이 없습니다.
    *                     data: null
    *                   success: null
    *       404:
@@ -392,6 +392,7 @@ export const getSlideCommentsController = async (req, res, next) => {
 
     const result = await getSlideComments({
       slideId,
+      userId: req.user.id,
       page,
       limit,
     });
@@ -526,7 +527,7 @@ export async function handleCreateVideoComment(req, res, next) {
     res.status(201).json({
       resultType: "SUCCESS",
       error: null,
-      success: commentResponseDTO(result),
+      success: result.success,
     });
   } catch (e) {
     next(e);

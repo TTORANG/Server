@@ -34,7 +34,7 @@ export class CommentNotFoundError extends BaseError {
 
 export class NoCommentPermissionError extends BaseError {
   constructor() {
-    super("수정 권한이 없습니다.", 403, "C006");
+    super("댓글을 수정 또는 삭제할 권한이 없습니다.", 403, "C006");
   }
 }
 

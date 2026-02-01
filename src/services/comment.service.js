@@ -27,19 +27,25 @@ export const createSlideComment = async ({ slideId, content, userId }) => {
     throw new InvalidSlideIdError(slideId?.toString());
   }
 
-  if (!content) {
+  if (!content || !content.trim()) {
     throw new EmptyCommentContentError();
   }
 
+  // slide → project 조회
   const slide = await getSlideWithProject(slideId);
   if (!slide) {
-    throw new SlideNotFoundError(slideId);
+    throw new SlideNotFoundError(slideId?.toString());
+  }
+
+  //권한 체크 (프로젝트 소유자 기준)
+  if (slide.project.userId !== userId) {
+    throw new NoCommentPermissionError();
   }
 
   return createComment({
     userId,
     targetType: "slide",
-    targetId: BigInt(slideId),
+    targetId: slideId,
     content,
   });
 };
@@ -95,10 +101,30 @@ export const deleteComment = async ({ commentId, userId }) => {
 };
 
 // 댓글 목록 조회
-export const getSlideComments = async ({ slideId, page = 1, limit = 20 }) => {
+export const getSlideComments = async ({ slideId, userId, page = 1, limit = 20 }) => {
   // slideId 검증
   if (slideId === undefined || slideId === null || typeof slideId !== "bigint" || slideId <= 0n) {
     throw new InvalidSlideIdError(slideId?.toString());
+  }
+
+  // userId 검증
+  if (userId === undefined || userId === null) {
+    throw new NoCommentPermissionError();
+  }
+
+  const project = await prisma.project.findFirst({
+    where: {
+      slides: {
+        some: { id: slideId },
+      },
+      userId,
+      isDeleted: false,
+    },
+    select: { id: true },
+  });
+
+  if (!project) {
+    throw new NoCommentPermissionError();
   }
 
   // pagination 보정
@@ -124,7 +150,7 @@ export const getSlideComments = async ({ slideId, page = 1, limit = 20 }) => {
       },
     };
   } catch (e) {
-    throw new CommentListFetchFailedError(slideId);
+    throw new CommentListFetchFailedError(slideId?.toString());
   }
 };
 
