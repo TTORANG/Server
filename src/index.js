@@ -58,9 +58,19 @@ import multer from "multer";
 import { MAX_SIZE_BYTES } from "./constants/files.js";
 import { handleGetPresentationStatus } from "./controllers/conversionStatus.controller.js";
 
+import { createServer } from "http";
+
+// Pub/Sub 이벤트 시스템
+import eventBus from "./events/eventBus.js";
+import { registerSubscribers } from "./events/subscribers/index.js";
+
+// Socket.io
+import { initializeSocket } from "./socket/index.js";
+
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app); // HTTP 서버 생성 (Socket.io용)
 const port = process.env.PORT || 8080;
 
 app.use(cors()); // cors 방식 허용
@@ -219,6 +229,29 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
-});
+// 서버 시작
+const startServer = async () => {
+  try {
+    // Redis Pub/Sub 연결
+    await eventBus.connect();
+
+    // 이벤트 구독자 등록
+    await registerSubscribers();
+
+    // Socket.io 초기화
+    await initializeSocket(httpServer);
+
+    // HTTP 서버 시작 (Express + Socket.io)
+    httpServer.listen(port, () => {
+      console.log(`Server listening on port ${port}`);
+    });
+  } catch (error) {
+    console.error("Server startup error:", error);
+    // Redis 연결 실패해도 서버는 시작 (graceful degradation)
+    httpServer.listen(port, () => {
+      console.log(`Server listening on port ${port} (without Redis)`);
+    });
+  }
+};
+
+startServer();
