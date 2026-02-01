@@ -39,6 +39,10 @@ export function countSlideReactions(slideId) {
 }
 
 export function findSlideByIdWithOwner(slideId, userId) {
+  if (!userId) {
+    return null;
+  }
+
   return prisma.slide.findFirst({
     where: {
       id: BigInt(slideId),
