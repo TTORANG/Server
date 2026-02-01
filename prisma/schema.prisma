@@ -154,7 +154,7 @@ model Comment {
 model Reaction {
   id         BigInt   @id @default(autoincrement())
   userId     BigInt @map("user_id")
-  sessionId  String   @db.Char(36) @map("session_id")
+  sessionId  String?   @db.Char(36) @map("session_id")
   targetType TargetType @map("target_type")
   targetId   BigInt @map("target_id")
   timestampMs Int?      @map("timestamp_ms")
@@ -163,9 +163,10 @@ model Reaction {
   isDeleted  Boolean  @map("is_deleted") @default(false) @db.TinyInt
 
   user    User    @relation(fields: [userId], references: [id])
-  session Session @relation(fields: [sessionId], references: [id])
+  session Session? @relation(fields: [sessionId], references: [id])
 
-  @@unique([userId, sessionId, targetType, targetId, timestampMs, emojiType], name: "uq_reaction_dedup_with_timestamp")
+  @@unique([userId, targetType, targetId, emojiType], name: "uq_slide_reaction")
+  @@unique([userId, sessionId, targetType, targetId, timestampMs, emojiType], name: "uq_video_reaction")
   @@map("reaction")
 }
 

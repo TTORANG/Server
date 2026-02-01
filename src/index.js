@@ -64,7 +64,11 @@ import { registerSubscribers } from "./events/subscribers/index.js";
 
 // Socket.io
 import { initializeSocket } from "./socket/index.js";
-import { handleToggleVideoReaction } from "./controllers/reaction.controller.js";
+import {
+  getSlideReactionSummaryController,
+  handleToggleVideoReaction,
+  toggleSlideReactionController,
+} from "./controllers/reaction.controller.js";
 import { handleCreateVideoComment } from "./controllers/comment.controller.js";
 
 dotenv.config();
@@ -203,6 +207,10 @@ app.post("/videos/:videoId/chunks/:chunkIndex", isLogin, upload.single("file"), 
 app.post("/videos/:videoId/reactions", isLogin, handleToggleVideoReaction); // 영상 타임스탬프 리액션 생성
 app.post("/videos/:videoId/comments", isLogin, handleCreateVideoComment); // 영상 타임스탬프 댓글 생성
 app.get("/videos/:videoId/slides", isLogin, handleGetVideoSlideTimeline); // 영상-슬라이드 동기화 타임라인 조회
+
+// 리액션 관련 라우팅
+app.post("/slides/:slideId/reactions/toggle", isLogin, toggleSlideReactionController); // 리액션 추가 및 취소
+app.get("/slides/:slideId/reactions/summary", isLogin, getSlideReactionSummaryController); // 리액션 집계 조회
 
 // Worker 엔드포인트 (pdf,ppt,동영상 변환)
 app.post("/worker/process-job", handleProcessJob);
