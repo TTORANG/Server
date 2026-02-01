@@ -30,3 +30,17 @@ export function updateReaction(id, isDeleted) {
     data: { isDeleted },
   });
 }
+
+export function countSlideReactions(slideId) {
+  return prisma.reaction.groupBy({
+    by: ["emojiType"],
+    where: {
+      targetType: "slide",
+      targetId: BigInt(slideId),
+      isDeleted: false,
+    },
+    _count: {
+      _all: true,
+    },
+  });
+}

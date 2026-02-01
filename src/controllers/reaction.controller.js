@@ -1,5 +1,9 @@
 import { ToggleReactionDto } from "../dtos/reaction.dto.js";
-import { toggleSlideReaction, toggleVideoReaction } from "../services/reaction.service.js";
+import {
+  getSlideReactionSummary,
+  toggleSlideReaction,
+  toggleVideoReaction,
+} from "../services/reaction.service.js";
 
 // 리액션 생성 및 취소
 export async function toggleSlideReactionController(req, res, next) {
@@ -25,7 +29,7 @@ export async function toggleSlideReactionController(req, res, next) {
    *         required: true
    *         schema:
    *           type: string
-   *         description: 슬라이드 ID (BigInt → string)
+   *         description: 슬라이드 ID
    *     requestBody:
    *       required: true
    *       content:
@@ -122,6 +126,118 @@ export async function toggleSlideReactionController(req, res, next) {
       resultType: "SUCCESS",
       error: null,
       success: result,
+    });
+  } catch (e) {
+    next(e);
+  }
+}
+
+// 리액션 집계 조회
+export async function getSlideReactionSummaryController(req, res, next) {
+  /**
+   * @swagger
+   * /slides/{slideId}/reactions/summary:
+   *   get:
+   *     summary: 슬라이드 리액션 집계 조회
+   *     description: |
+   *       특정 슬라이드에 달린 모든 이모지 리액션을 집계하여 반환한다.
+   *
+   *       - 취소된 리액션(isDeleted=true)은 집계에서 제외된다.
+   *       - 리액션이 없는 이모지는 0으로 반환된다.
+   *     tags:
+   *       - Reaction
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: slideId
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: 슬라이드 ID
+   *     responses:
+   *       200:
+   *         description: 리액션 집계 조회 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 resultType:
+   *                   type: string
+   *                   example: SUCCESS
+   *                 error:
+   *                   type: object
+   *                   nullable: true
+   *                   example: null
+   *                 success:
+   *                   type: object
+   *                   description: 이모지 타입별 리액션 개수
+   *                   example:
+   *                     thumbs_up: 5
+   *                     heart: 3
+   *                     eyes: 0
+   *                     clap: 1
+   *
+   *       401:
+   *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               UNAUTHORIZED:
+   *                 summary: 인증 토큰 없음 또는 만료
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: A001
+   *                     reason: 인증이 필요합니다.
+   *                     data: null
+   *                   success: null
+   *
+   *       404:
+   *         description: 슬라이드 없음
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               SLIDE_NOT_FOUND:
+   *                 summary: 슬라이드 미존재
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: R001
+   *                     reason: 슬라이드를 찾을 수 없습니다.
+   *                     data:
+   *                       slideId: "10"
+   *                   success: null
+   *
+   *       500:
+   *         description: 서버 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               INTERNAL_ERROR:
+   *                 summary: 서버 내부 오류
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: R999
+   *                     reason: 서버 오류
+   *                     data: null
+   *                   success: null
+   */
+  try {
+    const summary = await getSlideReactionSummary(req.params.slideId);
+
+    res.json({
+      resultType: "SUCCESS",
+      error: null,
+      success: summary,
     });
   } catch (e) {
     next(e);

@@ -7,6 +7,7 @@ import { InvalidParameterError, VideoNotFoundError } from "../errors/video.error
 import eventBus from "../events/eventBus.js";
 import { EventTypes } from "../events/eventTypes.js";
 import {
+  countSlideReactions,
   createReaction,
   findReaction,
   findSlideById,
@@ -51,6 +52,24 @@ export async function toggleSlideReaction({ slideId, emojiType, userId }) {
     console.error("[toggleSlideReaction error]", e);
     throw new ReactionProcessError({ slideId, emojiType });
   }
+}
+
+// 리액션 집계 조회
+export async function getSlideReactionSummary(slideId) {
+  const slide = await findSlideById(slideId);
+  if (!slide) throw new SlideNotFoundError({ slideId });
+
+  const rows = await countSlideReactions(slideId);
+
+  // 기본값 0 세팅
+  const summary = {};
+  ALLOWED_EMOJIS.forEach((e) => (summary[e] = 0));
+
+  rows.forEach((r) => {
+    summary[r.emojiType] = r._count._all;
+  });
+
+  return summary;
 }
 
 // 영상 타임스탬프 리액션 생성
