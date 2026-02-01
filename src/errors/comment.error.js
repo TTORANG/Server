@@ -37,3 +37,11 @@ export class NoCommentPermissionError extends BaseError {
     super("수정 권한이 없습니다.", 403, "C006");
   }
 }
+
+export class CommentListFetchFailedError extends BaseError {
+  constructor(slideId) {
+    super("댓글을 불러올 수 없습니다.", 500, "C007", {
+      slideId: slideId?.toString(),
+    });
+  }
+}

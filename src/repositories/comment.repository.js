@@ -28,3 +28,37 @@ export const softDeleteComment = async (commentId) => {
     data: { isDeleted: true },
   });
 };
+
+export const findCommentsBySlideId = async ({ slideId, skip, take }) => {
+  const [items, total] = await Promise.all([
+    prisma.comment.findMany({
+      where: {
+        targetType: "slide",
+        targetId: slideId,
+        isDeleted: false,
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+      skip,
+      take,
+      include: {
+        user: {
+          select: {
+            id: true,
+            nickName: true,
+          },
+        },
+      },
+    }),
+    prisma.comment.count({
+      where: {
+        targetType: "slide",
+        targetId: slideId,
+        isDeleted: false,
+      },
+    }),
+  ]);
+
+  return { items, total };
+};

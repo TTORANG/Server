@@ -71,6 +71,7 @@ import {
 } from "./controllers/reaction.controller.js";
 import {
   deleteCommentController,
+  getSlideCommentsController,
   handleCreateVideoComment,
   patchComment,
   postSlideComment,
@@ -220,6 +221,7 @@ app.post("/videos/:videoId/reactions", isLogin, handleToggleVideoReaction); // �
 app.post("/slides/:slideId/comments", isLogin, postSlideComment); // 댓글 작성
 app.patch("/comments/:commentId", isLogin, patchComment); // 댓글 수정
 app.delete("/comments/:commentId", isLogin, deleteCommentController); // 댓글 삭제
+app.get("/slides/:slideId/comments", isLogin, getSlideCommentsController); // 댓글 목록 조회
 app.post("/videos/:videoId/comments", isLogin, handleCreateVideoComment); // 영상 타임스탬프 댓글 생성
 
 // Worker 엔드포인트 (pdf,ppt,동영상 변환)

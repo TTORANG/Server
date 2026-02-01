@@ -1,6 +1,7 @@
 import { prisma } from "../db.config.js";
 import { AuthSessionRequiredError } from "../errors/auth.error.js";
 import {
+  CommentListFetchFailedError,
   CommentNotFoundError,
   EmptyCommentContentError,
   InvalidCommentIdError,
@@ -14,6 +15,7 @@ import { EventTypes } from "../events/eventTypes.js";
 import {
   createComment,
   findCommentById,
+  findCommentsBySlideId,
   softDeleteComment,
   updateCommentContent,
 } from "../repositories/comment.repository.js";
@@ -90,6 +92,40 @@ export const deleteComment = async ({ commentId, userId }) => {
   }
 
   await softDeleteComment(commentId);
+};
+
+// 댓글 목록 조회
+export const getSlideComments = async ({ slideId, page = 1, limit = 20 }) => {
+  // slideId 검증
+  if (slideId === undefined || slideId === null || typeof slideId !== "bigint" || slideId <= 0n) {
+    throw new InvalidSlideIdError(slideId?.toString());
+  }
+
+  // pagination 보정
+  const safePage = Math.max(1, Number(page));
+  const safeLimit = Math.min(50, Math.max(1, Number(limit)));
+
+  const skip = (safePage - 1) * safeLimit;
+
+  try {
+    const { items, total } = await findCommentsBySlideId({
+      slideId,
+      skip,
+      take: safeLimit,
+    });
+
+    return {
+      items,
+      pagination: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages: Math.ceil(total / safeLimit),
+      },
+    };
+  } catch (e) {
+    throw new CommentListFetchFailedError(slideId);
+  }
 };
 
 // 영상 타임스탬프 댓글 생성

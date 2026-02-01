@@ -1,8 +1,13 @@
-import { commentResponseDTO, createSlideCommentRequestDTO } from "../dtos/comment.dto.js";
+import {
+  commentListResponseDTO,
+  commentResponseDTO,
+  createSlideCommentRequestDTO,
+} from "../dtos/comment.dto.js";
 import {
   createSlideComment,
   createVideoComment,
   deleteComment,
+  getSlideComments,
   updateComment,
 } from "../services/comment.service.js";
 
@@ -325,6 +330,82 @@ export const deleteCommentController = async (req, res, next) => {
   }
 };
 
+// 댓글 목록 조회
+export const getSlideCommentsController = async (req, res, next) => {
+  /**
+   * @swagger
+   * /slides/{slideId}/comments:
+   *   get:
+   *     summary: 슬라이드 댓글 목록 조회
+   *     description: |
+   *       특정 슬라이드에 작성된 모든 댓글을 조회합니다.
+   *
+   *       - 작성 시간 기준 오름차순 정렬
+   *       - Soft delete된 댓글은 제외됩니다.
+   *       - 페이지네이션을 지원합니다.
+   *     tags: [Comment]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: slideId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: 슬라이드 ID
+   *       - in: query
+   *         name: page
+   *         required: false
+   *         schema:
+   *           type: integer
+   *           default: 1
+   *       - in: query
+   *         name: limit
+   *         required: false
+   *         schema:
+   *           type: integer
+   *           default: 20
+   *     responses:
+   *       200:
+   *         description: 댓글 목록 조회 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/CommentListResponse"
+   *       400:
+   *         description: 잘못된 슬라이드 ID
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       500:
+   *         description: 댓글 조회 실패
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   */
+
+  try {
+    const slideId = BigInt(req.params.slideId);
+    const { page, limit } = req.query;
+
+    const result = await getSlideComments({
+      slideId,
+      page,
+      limit,
+    });
+
+    res.status(200).json({
+      resultType: "SUCCESS",
+      error: null,
+      success: commentListResponseDTO(result),
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
 // 영상 타임스탬프 댓글 생성
 export async function handleCreateVideoComment(req, res, next) {
   /**
@@ -589,6 +670,64 @@ export async function handleCreateVideoComment(req, res, next) {
  *         success:
  *           nullable: true
  *           example: null
+ *
+ *     CommentListItem:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           example: "10"
+ *         content:
+ *           type: string
+ *           example: "이 슬라이드 이해하기 쉬워요"
+ *         user:
+ *           type: object
+ *           properties:
+ *             id:
+ *               type: string
+ *               example: "3"
+ *             nickName:
+ *               type: string
+ *               example: "로건"
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *
+ *     CommentListResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *           example: null
+ *         success:
+ *           type: object
+ *           properties:
+ *             comments:
+ *               type: array
+ *               items:
+ *                 $ref: "#/components/schemas/CommentListItem"
+ *             pagination:
+ *               type: object
+ *               properties:
+ *                 page:
+ *                   type: integer
+ *                   example: 1
+ *                 limit:
+ *                   type: integer
+ *                   example: 20
+ *                 total:
+ *                   type: integer
+ *                   example: 53
+ *                 totalPages:
+ *                   type: integer
+ *                   example: 3
  *
  *     VideoCommentCreateResponse:
  *       type: object
