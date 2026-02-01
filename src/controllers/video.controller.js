@@ -102,7 +102,7 @@ export async function uploadVideoChunk(req, res, next) {
   }
 }
 
-// 업로드 완료 → 인코딩 Job 생성
+// 영상 녹화 완료
 export async function finishRecording(req, res, next) {
   /**
    * @swagger
@@ -163,11 +163,40 @@ export async function finishRecording(req, res, next) {
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/RecordingFinishResponse"
+   *       400:
+   *         description: 잘못된 요청 파라미터
+   *         content:
+   *           application/json:
    *             example:
-   *               resultType: "SUCCESS"
-   *               error: null
-   *               success:
-   *                 ok: true
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "P001"
+   *                 reason: "slideLogs가 필요합니다."
+   *               success: null
+   *
+   *       401:
+   *         description: 인증 실패 또는 영상 소유자 아님
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "A004"
+   *                 reason: "인증 세션 정보가 없습니다."
+   *               success: null
+   *
+   *       404:
+   *         description: 영상 없음
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "V001"
+   *                 reason: "영상을 찾을 수 없습니다."
+   *                 data:
+   *                   videoId: "12"
+   *               success: null
    *       409:
    *         description: 영상 상태 오류
    *         content:
@@ -187,6 +216,7 @@ export async function finishRecording(req, res, next) {
     const result = await videoService.finishRecording({
       videoId: req.params.videoId,
       slideLogs: req.body.slideLogs,
+      userId: req.user.id,
     });
     res.json(result);
   } catch (e) {
@@ -710,38 +740,6 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  * components:
  *   schemas:
  *
- *     SuccessResponse:
- *       type: object
- *       properties:
- *         resultType:
- *           type: string
- *           example: SUCCESS
- *         error:
- *           nullable: true
- *           example: null
- *         success:
- *           type: object
- *
- *     ErrorResponse:
- *       type: object
- *       properties:
- *         resultType:
- *           type: string
- *           example: FAILURE
- *         error:
- *           type: object
- *           properties:
- *             errorCode:
- *               type: string
- *               example: V001
- *             reason:
- *               type: string
- *               example: 영상을 찾을 수 없습니다.
- *             data:
- *               nullable: true
- *         success:
- *           nullable: true
- *
  *     RecordingStartResponse:
  *       type: object
  *       properties:
@@ -788,8 +786,8 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *               - timestampMs
  *             properties:
  *               slideId:
- *                 type: string
- *                 description: 슬라이드 ID(BigInt → string)
+ *                 type: integer
+ *                 description: 슬라이드 ID
  *                 example: "1"
  *               timestampMs:
  *                 type: integer
@@ -807,9 +805,28 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *         success:
  *           type: object
  *           properties:
- *             ok:
- *               type: boolean
- *               example: true
+ *             videoId:
+ *               type: string
+ *               description: 영상 ID(BigInt → string)
+ *               example: "12"
+ *             status:
+ *               type: string
+ *               enum: [processing]
+ *               example: processing
+ *             slideCount:
+ *               type: integer
+ *               example: 3
+ *             slideDurations:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   slideId:
+ *                     type: string
+ *                     example: "1"
+ *                   totalDurationMs:
+ *                     type: integer
+ *                     example: 12000
  *
  *     VideoListItem:
  *       type: object
@@ -900,6 +917,7 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *                   format: date-time
  *             timeline:
  *               type: object
+ *               nullable: true
  *               properties:
  *                 reactions:
  *                   type: array

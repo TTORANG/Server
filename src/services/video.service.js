@@ -14,6 +14,7 @@ import { EventTypes } from "../events/eventTypes.js";
 import { uploadBufferToGCS } from "./gcs.service.js";
 import crypto from "crypto";
 import { ALLOWED_VIDEO_MIME } from "../constants/files.js";
+import { MAX_SLIDE_DURATION_MS } from "../constants/videos.js";
 
 function toInt(value) {
   const n = typeof value === "string" ? Number(value) : value;
@@ -28,6 +29,7 @@ function requireProjectId(projectId) {
   return pid;
 }
 
+// 영상 세션 생성
 export async function createVideo({ projectId, title }) {
   let pid = null;
 
@@ -149,7 +151,7 @@ export async function uploadVideoChunk({ videoId, chunkIndex, file }) {
 }
 
 // 영상 업로드 성공 검증
-export async function finishRecording({ videoId, slideLogs }) {
+export async function finishRecording({ videoId, slideLogs, userId }) {
   const vid = toInt(videoId);
 
   if (!Number.isInteger(vid) || vid <= 0) {
@@ -161,26 +163,28 @@ export async function finishRecording({ videoId, slideLogs }) {
 
   const video = await prisma.video.findFirst({
     where: { id: vid, deletedAt: null },
-    select: { id: true, status: true },
+    select: {
+      id: true,
+      status: true,
+      projectId: true,
+      project: { select: { userId: true } },
+    },
   });
 
-  if (!video) {
-    throw new VideoNotFoundError({ videoId: String(videoId) });
-  }
+  if (!video) throw new VideoNotFoundError({ videoId: String(videoId) });
   if (!["recording", "uploading"].includes(video.status)) {
-    throw new InvalidVideoStatusError({
-      videoId: String(videoId),
-      status: video.status,
-    });
+    throw new InvalidVideoStatusError({ videoId: String(videoId), status: video.status });
   }
 
-  // 업로드 검증
-  const chunkCount = await prisma.videoChunk.count({
-    where: { videoId: vid },
-  });
-  if (chunkCount <= 0) {
-    throw new NoVideoChunksError({ videoId: String(videoId) });
+  // IDOR 방지: 소유권 검증
+  if (!userId) {
+    throw new AuthSessionRequiredError({ videoId: String(videoId) });
   }
+
+  if (!video.project || video.project.userId !== userId) {
+    throw new AuthSessionRequiredError({ videoId: String(videoId), userId: String(userId) });
+  }
+
   for (const l of slideLogs) {
     if (!Number.isInteger(toInt(l.slideId))) {
       throw new InvalidParameterError({ slideId: l.slideId });
@@ -190,24 +194,102 @@ export async function finishRecording({ videoId, slideLogs }) {
     }
   }
 
+  const uniqueSlideIds = [...new Set(slideLogs.map((l) => toInt(l.slideId)))];
+
+  if (!video.projectId && uniqueSlideIds.length > 0) {
+    throw new InvalidParameterError(
+      { videoId: String(vid), slideIds: uniqueSlideIds },
+      "프로젝트가 없는 영상에는 slideLogs를 저장할 수 없습니다."
+    );
+  }
+
+  if (video.projectId && uniqueSlideIds.length > 0) {
+    const validCount = await prisma.slide.count({
+      where: {
+        id: { in: uniqueSlideIds },
+        projectId: video.projectId,
+      },
+    });
+
+    if (validCount !== uniqueSlideIds.length) {
+      throw new InvalidParameterError(
+        { videoId: String(vid), slideIds: uniqueSlideIds, projectId: video.projectId },
+        "slideLogs에 프로젝트에 속하지 않은 slideId가 포함되어 있습니다."
+      );
+    }
+  }
+
+  // 업로드 검증
+  const chunkCount = await prisma.videoChunk.count({
+    where: { videoId: vid },
+  });
+  if (chunkCount <= 0) {
+    throw new NoVideoChunksError({ videoId: String(videoId) });
+  }
+
+  const sorted = [...slideLogs].sort((a, b) => a.timestampMs - b.timestampMs);
+
+  const calcSafeDurationMs = (currTs, nextTs) => {
+    if (!Number.isInteger(currTs) || !Number.isInteger(nextTs) || nextTs <= currTs) return 0;
+
+    const d = nextTs - currTs;
+    if (d > MAX_SLIDE_DURATION_MS) return 0;
+
+    return d;
+  };
+
+  const durationUpserts = [];
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const slideId = toInt(sorted[i].slideId);
+    const durationMs = calcSafeDurationMs(sorted[i].timestampMs, sorted[i + 1].timestampMs);
+
+    if (durationMs <= 0) continue;
+
+    durationUpserts.push(
+      prisma.videoSlideDuration.upsert({
+        where: {
+          videoId_slideId: { videoId: vid, slideId },
+        },
+        update: {
+          totalDurationMs: { increment: durationMs },
+        },
+        create: {
+          videoId: vid,
+          slideId,
+          totalDurationMs: durationMs,
+        },
+      })
+    );
+  }
+
   // 트랜잭션: 슬라이드 로그 저장 + 상태 변경
   await prisma.$transaction([
     prisma.videoSlideEvent.deleteMany({
       where: { videoId: vid },
     }),
     prisma.videoSlideEvent.createMany({
-      data: slideLogs.map((l) => ({
+      data: sorted.map((l) => ({
         videoId: vid,
         slideId: toInt(l.slideId),
         timestampMs: toInt(l.timestampMs),
         eventType: "enter",
       })),
     }),
+    ...durationUpserts,
     prisma.video.update({
       where: { id: vid },
       data: { status: "processing" },
     }),
   ]);
+
+  const slideDurations = await prisma.videoSlideDuration.findMany({
+    where: { videoId: vid },
+    orderBy: { slideId: "asc" },
+    select: {
+      slideId: true,
+      totalDurationMs: true,
+    },
+  });
 
   // 인코딩 파이프라인 시작
   await startVideoEncodingPipeline({ videoId: vid });
@@ -215,7 +297,15 @@ export async function finishRecording({ videoId, slideLogs }) {
   return {
     resultType: "SUCCESS",
     error: null,
-    success: { ok: true },
+    success: {
+      videoId: vid.toString(),
+      status: "processing",
+      slideCount: slideDurations.length,
+      slideDurations: slideDurations.map((s) => ({
+        slideId: s.slideId.toString(),
+        totalDurationMs: s.totalDurationMs,
+      })),
+    },
   };
 }
 
