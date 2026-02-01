@@ -448,6 +448,7 @@ export const getVideoReactionMarkers = async (req, res, next) => {
     const result = await getReactionMarkers({
       videoId,
       intervalMs,
+      userId: req.user.id,
     });
 
     res.status(200).json({

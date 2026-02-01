@@ -1,5 +1,4 @@
 import { prisma } from "../db.config.js";
-import { AuthSessionRequiredError } from "../errors/auth.error.js";
 import { BaseError } from "../errors/base.error.js";
 import {
   InvalidEmojiTypeError,
@@ -17,7 +16,7 @@ import {
   findSlideByIdWithOwner,
   updateReaction,
 } from "../repositories/reaction.repository.js";
-import { getVideoById } from "../repositories/video.repository.js";
+import { findVideoByIdWithOwner } from "../repositories/video.repository.js";
 
 const ALLOWED_EMOJIS = ["thumbs_up", "heart", "eyes", "clap"];
 
@@ -92,13 +91,7 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
     throw new InvalidParameterError({ timestampMs }, "타임스탬프는 0 이상의 정수여야 합니다.");
   }
 
-  const video = await prisma.video.findFirst({
-    where: {
-      id: vid,
-      deletedAt: null,
-    },
-    select: { id: true, projectId: true },
-  });
+  const video = await findVideoByIdWithOwner(vid, userId);
 
   if (!video) {
     throw new VideoNotFoundError({ videoId: String(videoId) });
@@ -167,7 +160,7 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
 }
 
 // 영상 리액션 집계
-export const getReactionMarkers = async ({ videoId, intervalMs = 5000 }) => {
+export const getReactionMarkers = async ({ videoId, intervalMs = 5000, userId }) => {
   // videoId 검증
   if (typeof videoId !== "bigint" || videoId <= 0n) {
     throw new InvalidParameterError({ videoId: String(videoId) });
@@ -178,7 +171,7 @@ export const getReactionMarkers = async ({ videoId, intervalMs = 5000 }) => {
     throw new InvalidParameterError({ intervalMs });
   }
   // video 존재 검증
-  const video = await getVideoById(videoId);
+  const video = await findVideoByIdWithOwner(videoId, userId);
   if (!video) {
     throw new VideoNotFoundError({ videoId: String(videoId) });
   }
@@ -198,7 +191,7 @@ export const getReactionMarkers = async ({ videoId, intervalMs = 5000 }) => {
       byBucket.set(bucketMs, {
         timestampMs: bucketMs,
         emojiType: r.emojiType,
-        count: r.count,
+        count: Number(r.count),
       });
     }
   }
