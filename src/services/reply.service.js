@@ -5,7 +5,7 @@ import { findReplies } from "../repositories/reply.repository.js";
 
 // 답글 작성
 export const createCommentReply = async ({ parentCommentId, content, userId }) => {
-  if (!content || !content.trim()) {
+  if (!content) {
     throw new InvalidParameterError({ content });
   }
 
