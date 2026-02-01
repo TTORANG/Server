@@ -11,6 +11,8 @@ import {
   VideoNotFoundError,
 } from "../errors/video.error.js";
 import { AuthSessionRequiredError } from "../errors/auth.error.js";
+import eventBus from "../events/eventBus.js";
+import { EventTypes } from "../events/eventTypes.js";
 
 function toInt(value) {
   const n = typeof value === "string" ? Number(value) : value;
@@ -384,7 +386,7 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
       id: vid,
       deletedAt: null,
     },
-    select: { id: true },
+    select: { id: true, projectId: true },
   });
 
   if (!video) {
@@ -410,6 +412,24 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
       data: { isDeleted: newIsDeleted },
     });
 
+    // 실시간 알림을 위한 이벤트 발행
+    if (newIsDeleted) {
+      await eventBus.publish(EventTypes.REACTION_REMOVED, {
+        reactionId: existing.id,
+        projectId: video.projectId,
+        videoId: vid,
+      });
+    } else {
+      await eventBus.publish(EventTypes.REACTION_ADDED, {
+        reactionId: existing.id,
+        projectId: video.projectId,
+        videoId: vid,
+        userId,
+        emoji: emojiType,
+        timestampMs: ts,
+      });
+    }
+
     return {
       resultType: "SUCCESS",
       error: null,
@@ -417,7 +437,7 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
     };
   }
 
-  await prisma.reaction.create({
+  const reaction = await prisma.reaction.create({
     data: {
       userId,
       sessionId,
@@ -426,6 +446,16 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
       timestampMs: ts,
       emojiType,
     },
+  });
+
+  // 실시간 알림을 위한 이벤트 발행
+  await eventBus.publish(EventTypes.REACTION_ADDED, {
+    reactionId: reaction.id,
+    projectId: video.projectId,
+    videoId: vid,
+    userId,
+    emoji: emojiType,
+    timestampMs: ts,
   });
 
   return {
@@ -462,7 +492,7 @@ export async function createVideoComment({ videoId, content, timestampMs, userId
       id: vid,
       deletedAt: null,
     },
-    select: { id: true },
+    select: { id: true, projectId: true },
   });
 
   if (!video) {
@@ -484,6 +514,17 @@ export async function createVideoComment({ videoId, content, timestampMs, userId
       timestampMs: true,
       createdAt: true,
     },
+  });
+
+  // 실시간 알림을 위한 이벤트 발행
+  await eventBus.publish(EventTypes.COMMENT_CREATED, {
+    commentId: comment.id,
+    projectId: video.projectId,
+    videoId: vid,
+    userId,
+    content: comment.content,
+    timestampMs: comment.timestampMs,
+    createdAt: comment.createdAt,
   });
 
   return {
