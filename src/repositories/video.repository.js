@@ -1,5 +1,18 @@
 import { prisma } from "../db.config.js";
 
+export async function findVideoByIdWithOwner(videoId, userId) {
+  return prisma.video.findFirst({
+    where: {
+      id: videoId,
+      deletedAt: null,
+      project: {
+        ownerId: userId,
+      },
+    },
+    select: { id: true, projectId: true },
+  });
+}
+
 export const getVideoWithChunks = async (videoId) => {
   return await prisma.video.findUnique({
     where: { id: BigInt(videoId) },

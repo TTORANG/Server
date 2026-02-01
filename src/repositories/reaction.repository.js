@@ -55,3 +55,21 @@ export function findSlideByIdWithOwner(slideId, userId) {
     select: { id: true },
   });
 }
+
+export const aggregateVideoReactionsByBucket = async ({ videoId, intervalMs }) => {
+  // timestamp_ms가 null인 row는 제외 (재생바 마커용이므로)
+  return prisma.$queryRaw`
+    SELECT
+      (FLOOR(r.timestamp_ms / ${intervalMs}) * ${intervalMs}) AS bucketMs,
+      r.emoji_type AS emojiType,
+      COUNT(*) AS count
+    FROM reaction r
+    WHERE
+      r.target_type = 'video'
+      AND r.target_id = ${videoId}
+      AND r.is_deleted = 0
+      AND r.timestamp_ms IS NOT NULL
+    GROUP BY bucketMs, emojiType
+    ORDER BY bucketMs ASC
+  `;
+};

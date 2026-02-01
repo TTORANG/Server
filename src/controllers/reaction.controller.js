@@ -1,5 +1,6 @@
-import { ToggleReactionDto } from "../dtos/reaction.dto.js";
+import { reactionMarkersResponseDTO, ToggleReactionDto } from "../dtos/reaction.dto.js";
 import {
+  getReactionMarkers,
   getSlideReactionSummary,
   toggleSlideReaction,
   toggleVideoReaction,
@@ -262,7 +263,7 @@ export async function handleToggleVideoReaction(req, res, next) {
    *       - 존재하지 않으면 새 리액션을 생성합니다.
    *
    *       **주의사항**
-   *       - 본 API는 인증(JWT) + 세션(sessionId)이 필요합니다.
+   *       - 본 API는 인증(JWT)이 필요합니다.
    *       - `timestampMs`는 0 이상의 정수(ms)만 허용합니다.
    *       - `emojiType`은 문자열이며, 서버/클라이언트에서 합의된 타입을 사용해야 합니다.
    *     tags: [Reaction]
@@ -274,7 +275,6 @@ export async function handleToggleVideoReaction(req, res, next) {
    *         required: true
    *         schema:
    *           type: integer
-   *           example: 2
    *         description: 영상 ID
    *     requestBody:
    *       required: true
@@ -362,7 +362,7 @@ export async function handleToggleVideoReaction(req, res, next) {
    */
 
   try {
-    const { videoId } = req.params;
+    const videoId = BigInt(req.params.videoId);
     const { emojiType, timestampMs } = req.body;
 
     const result = await toggleVideoReaction({
@@ -370,14 +370,96 @@ export async function handleToggleVideoReaction(req, res, next) {
       emojiType,
       timestampMs,
       userId: req.user.id,
-      sessionId: req.user.sessionId,
     });
 
-    res.json(result);
+    res.status(200).json({
+      resultType: "SUCCESS",
+      error: null,
+      success: result,
+    });
   } catch (e) {
     next(e);
   }
 }
+
+// 영상 리액션 집계
+export const getVideoReactionMarkers = async (req, res, next) => {
+  /**
+   * @swagger
+   * /videos/{videoId}/reaction-markers:
+   *   get:
+   *     summary: 영상 재생바 하이라이트 마커 조회(리액션 집계)
+   *     description: |
+   *       영상 전체 리액션을 기준으로 intervalMs 단위로 묶어,
+   *       각 구간별 대표 이모지(가장 많이 눌린 이모지)와 count를 반환합니다.
+   *
+   *       - 기본 intervalMs=5000 (5초)
+   *       - timestampMs가 없는 리액션은 집계에서 제외됩니다.
+   *     tags: [Reaction]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: videoId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: 영상 ID
+   *       - in: query
+   *         name: intervalMs
+   *         required: false
+   *         schema:
+   *           type: integer
+   *           default: 5000
+   *         description: 버킷 간격(ms). 기본 5000
+   *     responses:
+   *       200:
+   *         description: 마커 조회 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ReactionMarkersResponse"
+   *       400:
+   *         description: 잘못된 요청(videoId/intervalMs)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       401:
+   *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       404:
+   *         description: 영상 없음
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   */
+
+  try {
+    const videoId = BigInt(req.params.videoId);
+
+    // 기본 5000ms, 프론트가 바꾸고 싶으면 쿼리로 받기
+    const intervalMs = req.query.intervalMs ? Number(req.query.intervalMs) : 5000;
+
+    const result = await getReactionMarkers({
+      videoId,
+      intervalMs,
+      userId: req.user.id,
+    });
+
+    res.status(200).json({
+      resultType: "SUCCESS",
+      error: null,
+      success: reactionMarkersResponseDTO(result),
+    });
+  } catch (e) {
+    next(e);
+  }
+};
 
 /**
  * @swagger
@@ -440,4 +522,65 @@ export async function handleToggleVideoReaction(req, res, next) {
  *                 - true: 활성(추가됨)
  *                 - false: 비활성(취소됨)
  *
+ *     VideoReactionCreateRequest:
+ *       type: object
+ *       required:
+ *         - emojiType
+ *       properties:
+ *         emojiType:
+ *           type: string
+ *           description: 리액션 이모지 타입
+ *           example: "😂"
+ *         timestampMs:
+ *           type: integer
+ *           description: 현재 재생 위치(ms). 선택 값
+ *           example: 12500
+ *
+ *     VideoReactionToggleResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *           example: null
+ *         success:
+ *           $ref: "#/components/schemas/VideoReactionToggleSuccess"
+ *
+ *     ReactionMarker:
+ *       type: object
+ *       properties:
+ *         timestampMs:
+ *           type: integer
+ *           example: 5000
+ *         emojiType:
+ *           type: string
+ *           example: "😂"
+ *         count:
+ *           type: integer
+ *           example: 7
+ *
+ *     ReactionMarkersSuccess:
+ *       type: object
+ *       properties:
+ *         intervalMs:
+ *           type: integer
+ *           example: 5000
+ *         markers:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/ReactionMarker"
+ *
+ *     ReactionMarkersResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *           example: null
+ *         success:
+ *           $ref: "#/components/schemas/ReactionMarkersSuccess"
  */
