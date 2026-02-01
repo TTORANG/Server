@@ -69,7 +69,13 @@ import {
   handleToggleVideoReaction,
   toggleSlideReactionController,
 } from "./controllers/reaction.controller.js";
-import { handleCreateVideoComment } from "./controllers/comment.controller.js";
+import {
+  deleteCommentController,
+  getSlideCommentsController,
+  handleCreateVideoComment,
+  patchComment,
+  postSlideComment,
+} from "./controllers/comment.controller.js";
 
 dotenv.config();
 
@@ -204,13 +210,19 @@ app.post("/videos/start", isLogin, startRecording); // 영상 업로드
 app.post("/videos/:videoId/finish", isLogin, finishRecording); // 비디오 업로드 검증
 app.get("/videos/:videoId", isLogin, handleGetVideoDetail); // 영상 상세 조회
 app.post("/videos/:videoId/chunks/:chunkIndex", isLogin, upload.single("file"), uploadVideoChunk); // 영상 청크 업로드
-app.post("/videos/:videoId/reactions", isLogin, handleToggleVideoReaction); // 영상 타임스탬프 리액션 생성
-app.post("/videos/:videoId/comments", isLogin, handleCreateVideoComment); // 영상 타임스탬프 댓글 생성
 app.get("/videos/:videoId/slides", isLogin, handleGetVideoSlideTimeline); // 영상-슬라이드 동기화 타임라인 조회
 
 // 리액션 관련 라우팅
 app.post("/slides/:slideId/reactions/toggle", isLogin, toggleSlideReactionController); // 리액션 추가 및 취소
 app.get("/slides/:slideId/reactions/summary", isLogin, getSlideReactionSummaryController); // 리액션 집계 조회
+app.post("/videos/:videoId/reactions", isLogin, handleToggleVideoReaction); // 영상 타임스탬프 리액션 생성
+
+// 댓글 관련 라우팅
+app.post("/slides/:slideId/comments", isLogin, postSlideComment); // 댓글 작성
+app.patch("/comments/:commentId", isLogin, patchComment); // 댓글 수정
+app.delete("/comments/:commentId", isLogin, deleteCommentController); // 댓글 삭제
+app.get("/slides/:slideId/comments", isLogin, getSlideCommentsController); // 댓글 목록 조회
+app.post("/videos/:videoId/comments", isLogin, handleCreateVideoComment); // 영상 타임스탬프 댓글 생성
 
 // Worker 엔드포인트 (pdf,ppt,동영상 변환)
 app.post("/worker/process-job", handleProcessJob);
