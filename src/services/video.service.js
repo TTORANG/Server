@@ -14,6 +14,7 @@ import { EventTypes } from "../events/eventTypes.js";
 import { uploadBufferToGCS } from "./gcs.service.js";
 import crypto from "crypto";
 import { ALLOWED_VIDEO_MIME } from "../constants/files.js";
+import { MAX_SLIDE_DURATION_MS } from "../constants/videos.js";
 
 function toInt(value) {
   const n = typeof value === "string" ? Number(value) : value;
@@ -181,6 +182,7 @@ export async function finishRecording({ videoId, slideLogs }) {
   if (chunkCount <= 0) {
     throw new NoVideoChunksError({ videoId: String(videoId) });
   }
+
   for (const l of slideLogs) {
     if (!Number.isInteger(toInt(l.slideId))) {
       throw new InvalidParameterError({ slideId: l.slideId });
@@ -190,24 +192,72 @@ export async function finishRecording({ videoId, slideLogs }) {
     }
   }
 
+  const sorted = [...slideLogs].sort((a, b) => a.timestampMs - b.timestampMs);
+
+  const calcSafeDurationMs = (currTs, nextTs) => {
+    if (!Number.isInteger(currTs) || !Number.isInteger(nextTs) || nextTs <= currTs) return 0;
+
+    const d = nextTs - currTs;
+    if (d > MAX_SLIDE_DURATION_MS) return 0;
+
+    return d;
+  };
+
+  const durationUpserts = [];
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const slideId = toInt(sorted[i].slideId);
+    const durationMs = calcSafeDurationMs(sorted[i].timestampMs, sorted[i + 1].timestampMs);
+
+    durationUpserts.push(
+      prisma.videoSlideDuration.upsert({
+        where: {
+          videoId_slideId: {
+            videoId: vid,
+            slideId,
+          },
+        },
+        update: {
+          totalDurationMs: {
+            increment: durationMs,
+          },
+        },
+        create: {
+          videoId: vid,
+          slideId,
+          totalDurationMs: durationMs,
+        },
+      })
+    );
+  }
+
   // 트랜잭션: 슬라이드 로그 저장 + 상태 변경
   await prisma.$transaction([
     prisma.videoSlideEvent.deleteMany({
       where: { videoId: vid },
     }),
     prisma.videoSlideEvent.createMany({
-      data: slideLogs.map((l) => ({
+      data: sorted.map((l) => ({
         videoId: vid,
         slideId: toInt(l.slideId),
         timestampMs: toInt(l.timestampMs),
         eventType: "enter",
       })),
     }),
+    ...durationUpserts,
     prisma.video.update({
       where: { id: vid },
       data: { status: "processing" },
     }),
   ]);
+
+  const slideDurations = await prisma.videoSlideDuration.findMany({
+    where: { videoId: vid },
+    orderBy: { slideId: "asc" },
+    select: {
+      slideId: true,
+      totalDurationMs: true,
+    },
+  });
 
   // 인코딩 파이프라인 시작
   await startVideoEncodingPipeline({ videoId: vid });
@@ -215,7 +265,15 @@ export async function finishRecording({ videoId, slideLogs }) {
   return {
     resultType: "SUCCESS",
     error: null,
-    success: { ok: true },
+    success: {
+      videoId: vid.toString(),
+      status: "processing",
+      slideCount: slideDurations.length,
+      slideDurations: slideDurations.map((s) => ({
+        slideId: s.slideId.toString(),
+        totalDurationMs: s.totalDurationMs,
+      })),
+    },
   };
 }
 

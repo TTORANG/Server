@@ -183,6 +183,7 @@ model Slide {
   script      Script?
   assets      SlideAsset[]
   videoEvents VideoSlideEvent[]
+  slideDurations VideoSlideDuration[]
 
   @@unique([projectId, slideNum])
   @@map("slide")
@@ -309,6 +310,7 @@ model Video {
   project        Project?         @relation(fields: [projectId], references: [id])
   chunks         VideoChunk[]
   slideEvents    VideoSlideEvent[]
+  slideDurations VideoSlideDuration[]
   conversionJobs ConversionJob[]
   shareLinks          ShareLink[]
   
@@ -361,6 +363,22 @@ enum SlideAssetFormat {
   jpeg
   webp
 }
+
+model VideoSlideDuration {
+  id              BigInt   @id @default(autoincrement()) @map("id")
+  videoId         BigInt   @map("video_id")
+  slideId         BigInt   @map("slide_id")
+  totalDurationMs Int      @map("total_duration_ms")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  slide Slide @relation(fields: [slideId], references: [id], onDelete: Cascade)
+
+  @@unique([videoId, slideId])
+  @@map("video_slide_duration")
+}
+
 
 model SlideAsset {
   id              BigInt   @id @default(autoincrement()) @map("id")

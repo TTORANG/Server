@@ -24,6 +24,7 @@ import { FFMPEG_PATH } from "../../utils/ffmpeg.util.js";
 import {
   DEFAULT_THUMBNAIL_EXTRACT_SECONDS,
   FALLBACK_THUMBNAIL_EXTRACT_SECONDS,
+  MAX_SLIDE_DURATION_MS,
   MIN_DURATION_FOR_ADVANCED_THUMBNAIL_SECONDS,
 } from "../../constants/videos.js";
 import {
@@ -33,6 +34,7 @@ import {
   VideoNotFoundError,
 } from "../../errors/video.error.js";
 import { BaseError } from "../../errors/base.error.js";
+import { prisma } from "../../db.config.js";
 
 /**
  * Video Transcode 서비스
@@ -108,6 +110,42 @@ export const videoTranscode = async (jobOrId) => {
       codec: meta.codec,
       thumbnailUrl,
     });
+
+    // 마지막 슬라이드 전환 이벤트 조회
+    const lastEvent = await prisma.videoSlideEvent.findFirst({
+      where: { videoId: video.id },
+      orderBy: { timestampMs: "desc" },
+    });
+
+    if (lastEvent && meta.durationSeconds) {
+      const videoDurationMs = meta.durationSeconds * 1000;
+
+      const lastDurationMs = Math.max(
+        0,
+        Math.min(videoDurationMs - lastEvent.timestampMs, MAX_SLIDE_DURATION_MS)
+      );
+
+      if (lastDurationMs > 0) {
+        await prisma.videoSlideDuration.upsert({
+          where: {
+            videoId_slideId: {
+              videoId: video.id,
+              slideId: lastEvent.slideId,
+            },
+          },
+          update: {
+            totalDurationMs: {
+              increment: lastDurationMs,
+            },
+          },
+          create: {
+            videoId: video.id,
+            slideId: lastEvent.slideId,
+            totalDurationMs: lastDurationMs,
+          },
+        });
+      }
+    }
 
     // 3. HLS 변환
     await encodeToHLS(mergedPath, hlsDir);
