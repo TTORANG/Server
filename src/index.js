@@ -67,6 +67,7 @@ import { initializeSocket } from "./socket/index.js";
 import {
   getSlideReactionSummaryController,
   getVideoReactionMarkers,
+  getVideoReactionsByTimeController,
   handleToggleVideoReaction,
   toggleSlideReactionController,
 } from "./controllers/reaction.controller.js";
@@ -217,7 +218,8 @@ app.get("/videos/:videoId/slides", isLogin, handleGetVideoSlideTimeline); // 영
 app.post("/slides/:slideId/reactions/toggle", isLogin, toggleSlideReactionController); // 리액션 추가 및 취소
 app.get("/slides/:slideId/reactions/summary", isLogin, getSlideReactionSummaryController); // 리액션 집계 조회
 app.post("/videos/:videoId/reactions", isLogin, handleToggleVideoReaction); // 영상 타임스탬프 리액션 생성
-app.get("/videos/:videoId/reaction-markers", isLogin, getVideoReactionMarkers); // 영상 리액션 집계
+app.get("/videos/:videoId/reactions/timeline", getVideoReactionMarkers); // 영상 리액션 집계
+app.get("/videos/:videoId/reactions", getVideoReactionsByTimeController); // 시간대별 리액션 조회
 
 // 댓글 관련 라우팅
 app.post("/slides/:slideId/comments", isLogin, postSlideComment); // 댓글 작성

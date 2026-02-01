@@ -73,3 +73,19 @@ export const aggregateVideoReactionsByBucket = async ({ videoId, intervalMs }) =
     ORDER BY bucketMs ASC
   `;
 };
+
+export const aggregateVideoReactionsByTimeWindow = async ({ videoId, startMs, endMs }) => {
+  return prisma.reaction.groupBy({
+    by: ["emojiType"],
+    where: {
+      targetType: "video",
+      targetId: videoId,
+      timestampMs: {
+        gte: startMs,
+        lte: endMs,
+      },
+      isDeleted: false,
+    },
+    _count: { _all: true },
+  });
+};
