@@ -516,18 +516,22 @@ export async function handleCreateVideoComment(req, res, next) {
     const { videoId } = req.params;
     const { content, timestampMs } = req.body;
 
-    const result = await createVideoComment({
+    const comment = await createVideoComment({
       videoId,
       content,
       timestampMs,
       userId: req.user.id,
-      sessionId: req.user.sessionId,
     });
 
     res.status(201).json({
       resultType: "SUCCESS",
       error: null,
-      success: result.success,
+      success: {
+        id: comment.id.toString(),
+        content: comment.content,
+        timestampMs: comment.timestampMs,
+        createdAt: comment.createdAt,
+      },
     });
   } catch (e) {
     next(e);
