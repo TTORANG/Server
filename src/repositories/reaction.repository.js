@@ -1,12 +1,5 @@
 import { prisma } from "../db.config.js";
 
-export function findSlideById(slideId) {
-  return prisma.slide.findFirst({
-    where: { id: BigInt(slideId), isDeleted: false },
-    select: { id: true },
-  });
-}
-
 export function findReaction(where) {
   return prisma.reaction.findFirst({
     where: {
@@ -42,5 +35,19 @@ export function countSlideReactions(slideId) {
     _count: {
       _all: true,
     },
+  });
+}
+
+export function findSlideByIdWithOwner(slideId, userId) {
+  return prisma.slide.findFirst({
+    where: {
+      id: BigInt(slideId),
+      isDeleted: false,
+      project: {
+        userId,
+        isDeleted: false,
+      },
+    },
+    select: { id: true },
   });
 }

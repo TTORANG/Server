@@ -232,7 +232,10 @@ export async function getSlideReactionSummaryController(req, res, next) {
    *                   success: null
    */
   try {
-    const summary = await getSlideReactionSummary(req.params.slideId);
+    const summary = await getSlideReactionSummary({
+      slideId: req.params.slideId,
+      userId: req.user.id,
+    });
 
     res.json({
       resultType: "SUCCESS",
@@ -437,25 +440,4 @@ export async function handleToggleVideoReaction(req, res, next) {
  *                 - true: 활성(추가됨)
  *                 - false: 비활성(취소됨)
  *
- *     SlideReactionCountResponse:
- *       type: object
- *       properties:
- *         resultType:
- *           type: string
- *           example: SUCCESS
- *         error:
- *           type: object
- *           nullable: true
- *           example: null
- *         success:
- *           type: array
- *           items:
- *             type: object
- *             properties:
- *               emojiType:
- *                 type: string
- *                 example: thumbs_up
- *               count:
- *                 type: integer
- *                 example: 12
  */
