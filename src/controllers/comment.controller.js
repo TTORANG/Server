@@ -1,4 +1,100 @@
-import { createVideoComment } from "../services/comment.service.js";
+import { commentResponseDTO, createSlideCommentRequestDTO } from "../dtos/comment.dto.js";
+import { createSlideComment, createVideoComment } from "../services/comment.service.js";
+
+// 댓글 작성
+export const postSlideComment = async (req, res, next) => {
+  /**
+   * @swagger
+   * /slides/{slideId}/comments:
+   *   post:
+   *     summary: 슬라이드 댓글 작성
+   *     description: |
+   *       특정 슬라이드에 댓글을 작성합니다.
+   *     tags: [Comment]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: slideId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: 슬라이드 ID
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: "#/components/schemas/CreateSlideCommentRequest"
+   *           examples:
+   *             basic:
+   *               summary: 슬라이드 댓글 작성
+   *               value:
+   *                 content: "이 슬라이드 설명이 이해하기 쉬워요"
+   *     responses:
+   *       201:
+   *         description: 댓글 생성 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/CreateSlideCommentResponse"
+   *       400:
+   *         description: 잘못된 요청 (댓글 내용 없음)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               emptyContent:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: C001
+   *                     reason: 댓글 내용을 입력해주세요.
+   *                     data: null
+   *                   success: null
+   *       401:
+   *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       404:
+   *         description: 슬라이드 없음
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               slideNotFound:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: C002
+   *                     reason: 슬라이드를 찾을 수 없습니다.
+   *                     data:
+   *                       slideId: "5"
+   *                   success: null
+   */
+  try {
+    const slideId = BigInt(req.params.slideId);
+    const { content } = createSlideCommentRequestDTO(req.body);
+
+    const comment = await createSlideComment({
+      slideId,
+      content,
+      userId: req.user.id,
+    });
+
+    res.status(201).json({
+      resultType: "SUCCESS",
+      error: null,
+      success: commentResponseDTO(comment),
+    });
+  } catch (e) {
+    next(e);
+  }
+};
 
 // 영상 타임스탬프 댓글 생성
 export async function handleCreateVideoComment(req, res, next) {
@@ -14,7 +110,7 @@ export async function handleCreateVideoComment(req, res, next) {
    *       - 본 API는 인증(JWT) + 세션(sessionId)이 필요합니다.
    *       - `content`는 공백만 있는 문자열은 허용하지 않습니다.
    *       - `timestampMs`는 0 이상의 정수(ms)만 허용합니다.
-   *     tags: [Video]
+   *     tags: [Comment]
    *     security:
    *       - bearerAuth: []
    *     parameters:
@@ -128,122 +224,36 @@ export async function handleCreateVideoComment(req, res, next) {
  * components:
  *   schemas:
  *
- *     RecordingStartResponse:
- *       type: object
- *       properties:
- *         resultType:
- *           type: string
- *           example: SUCCESS
- *         error:
- *           nullable: true
- *         success:
- *           type: object
- *           properties:
- *             videoId:
- *               type: string
- *               description: 생성된 영상 ID(BigInt → string)
- *               example: "12"
- *
- *     VideoChunkUploadResponse:
- *       type: object
- *       properties:
- *         resultType:
- *           type: string
- *           example: SUCCESS
- *         error:
- *           nullable: true
- *         success:
- *           type: object
- *           properties:
- *             ok:
- *               type: boolean
- *               example: true
- *
- *     RecordingFinishRequest:
+ *     CreateSlideCommentRequest:
  *       type: object
  *       required:
- *         - slideLogs
+ *         - content
  *       properties:
- *         slideLogs:
- *           type: array
- *           description: 녹화 중 발생한 슬라이드 전환 로그
- *           items:
- *             type: object
- *             required:
- *               - slideId
- *               - timestampMs
- *             properties:
- *               slideId:
- *                 type: integer
- *                 description: 슬라이드 ID
- *                 example: "1"
- *               timestampMs:
- *                 type: integer
- *                 description: 슬라이드 전환 시점(ms)
- *                 example: 15000
- *
- *     RecordingFinishResponse:
- *       type: object
- *       properties:
- *         resultType:
+ *         content:
  *           type: string
- *           example: SUCCESS
- *         error:
- *           nullable: true
- *         success:
- *           type: object
- *           properties:
- *             videoId:
- *               type: string
- *               description: 영상 ID(BigInt → string)
- *               example: "12"
- *             status:
- *               type: string
- *               enum: [processing]
- *               example: processing
- *             slideCount:
- *               type: integer
- *               example: 3
- *             slideDurations:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   slideId:
- *                     type: string
- *                     example: "1"
- *                   totalDurationMs:
- *                     type: integer
- *                     example: 12000
+ *           description: 댓글 내용
+ *           example: 이 슬라이드 정말 좋아요
  *
- *     VideoListItem:
+ *     Comment:
  *       type: object
  *       properties:
  *         id:
  *           type: string
- *           description: 영상 ID(BigInt → string)
- *           example: "10"
- *         title:
+ *           description: 댓글 ID(BigInt → string)
+ *           example: "20"
+ *         content:
  *           type: string
- *           nullable: true
- *           example: 발표 영상 1
- *         status:
+ *           example: 이 부분 설명이 좋아요
+ *         userId:
  *           type: string
- *           enum: [recording, uploading, processing, ready, failed]
- *           example: ready
- *         durationSeconds:
- *           type: integer
- *           nullable: true
- *           example: 120
- *         thumbnailUrl:
- *           type: string
- *           nullable: true
- *           example: https://example.com/thumb.jpg
+ *           description: 작성자 ID
+ *           example: "3"
  *         createdAt:
  *           type: string
  *           format: date-time
+ *           example: 2026-02-02T04:10:00.000Z
  *
- *     VideoListResponse:
+ *     CreateSlideCommentResponse:
  *       type: object
  *       properties:
  *         resultType:
@@ -251,15 +261,45 @@ export async function handleCreateVideoComment(req, res, next) {
  *           example: SUCCESS
  *         error:
  *           nullable: true
+ *           example: null
  *         success:
- *           type: object
- *           properties:
- *             videos:
- *               type: array
- *               items:
- *                 $ref: "#/components/schemas/VideoListItem"
+ *           $ref: "#/components/schemas/Comment"
  *
- *     VideoDetailResponse:
+ *     VideoCommentCreateRequest:
+ *       type: object
+ *       required:
+ *         - content
+ *         - timestampMs
+ *       properties:
+ *         content:
+ *           type: string
+ *           description: 댓글 내용 (공백 불가)
+ *           example: 여기 설명 좋아요
+ *         timestampMs:
+ *           type: integer
+ *           description: 댓글이 달린 영상 시점(ms)
+ *           minimum: 0
+ *           example: 2000
+ *
+ *     VideoComment:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: 댓글 ID(BigInt → string)
+ *           example: "15"
+ *         content:
+ *           type: string
+ *           example: 여기 설명 좋아요
+ *         timestampMs:
+ *           type: integer
+ *           example: 2000
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           example: 2026-01-24T12:34:56.000Z
+ *
+ *     VideoCommentCreateResponse:
  *       type: object
  *       properties:
  *         resultType:
@@ -267,74 +307,7 @@ export async function handleCreateVideoComment(req, res, next) {
  *           example: SUCCESS
  *         error:
  *           nullable: true
+ *           example: null
  *         success:
- *           type: object
- *           properties:
- *             video:
- *               type: object
- *               properties:
- *                 id:
- *                   type: string
- *                   example: "2"
- *                 title:
- *                   type: string
- *                   nullable: true
- *                 status:
- *                   type: string
- *                   example: ready
- *                 durationSeconds:
- *                   type: integer
- *                   nullable: true
- *                 width:
- *                   type: integer
- *                   nullable: true
- *                 height:
- *                   type: integer
- *                   nullable: true
- *                 fps:
- *                   type: number
- *                   nullable: true
- *                 hlsMasterUrl:
- *                   type: string
- *                   nullable: true
- *                 thumbnailUrl:
- *                   type: string
- *                   nullable: true
- *                 createdAt:
- *                   type: string
- *                   format: date-time
- *             timeline:
- *               type: object
- *               nullable: true
- *               properties:
- *                 reactions:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       timestampMs:
- *                         type: integer
- *                       emojiType:
- *                         type: string
- *                       count:
- *                         type: integer
- *                 comments:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: string
- *                       timestampMs:
- *                         type: integer
- *                       content:
- *                         type: string
- *                       user:
- *                         type: object
- *                         properties:
- *                           id:
- *                             type: string
- *                           name:
- *                             type: string
- *
+ *           $ref: "#/components/schemas/VideoComment"
  */

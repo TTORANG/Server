@@ -133,7 +133,7 @@ enum TargetType {
 model Comment {
   id          BigInt   @id @default(autoincrement()) @map("id")
   userId      BigInt   @map("user_id")
-  sessionId   String   @db.Char(36) @map("session_id")
+  sessionId   String?   @db.Char(36) @map("session_id")
   targetType  TargetType @map("target_type")
   targetId    BigInt   @map("target_id")
   timestampMs Int?     @map("timestamp_ms")
@@ -144,7 +144,7 @@ model Comment {
   isDeleted   Boolean  @default(false) @db.TinyInt @map("is_deleted")
 
   user     User    @relation(fields: [userId], references: [id])
-  session  Session @relation(fields: [sessionId], references: [id])
+  session  Session? @relation(fields: [sessionId], references: [id])
   parent   Comment? @relation("CommentParent", fields: [parentId], references: [id])
   children Comment[] @relation("CommentParent")
 

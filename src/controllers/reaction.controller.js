@@ -265,7 +265,7 @@ export async function handleToggleVideoReaction(req, res, next) {
    *       - 본 API는 인증(JWT) + 세션(sessionId)이 필요합니다.
    *       - `timestampMs`는 0 이상의 정수(ms)만 허용합니다.
    *       - `emojiType`은 문자열이며, 서버/클라이언트에서 합의된 타입을 사용해야 합니다.
-   *     tags: [Video]
+   *     tags: [Reaction]
    *     security:
    *       - bearerAuth: []
    *     parameters:

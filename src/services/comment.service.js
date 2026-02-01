@@ -1,8 +1,38 @@
 import { prisma } from "../db.config.js";
 import { AuthSessionRequiredError } from "../errors/auth.error.js";
+import {
+  EmptyCommentContentError,
+  InvalidSlideIdError,
+  SlideNotFoundError,
+} from "../errors/comment.error.js";
 import { InvalidParameterError, VideoNotFoundError } from "../errors/video.error.js";
 import eventBus from "../events/eventBus.js";
 import { EventTypes } from "../events/eventTypes.js";
+import { createComment } from "../repositories/comment.repository.js";
+import { getSlideWithProject } from "../repositories/slide.repository.js";
+
+// 댓글 작성
+export const createSlideComment = async ({ slideId, content, userId }) => {
+  if (slideId === undefined || slideId === null || typeof slideId !== "bigint" || slideId <= 0n) {
+    throw new InvalidSlideIdError(slideId?.toString());
+  }
+
+  if (!content) {
+    throw new EmptyCommentContentError();
+  }
+
+  const slide = await getSlideWithProject(slideId);
+  if (!slide) {
+    throw new SlideNotFoundError(slideId);
+  }
+
+  return createComment({
+    userId,
+    targetType: "slide",
+    targetId: BigInt(slideId),
+    content,
+  });
+};
 
 // 영상 타임스탬프 댓글 생성
 export async function createVideoComment({ videoId, content, timestampMs, userId, sessionId }) {
