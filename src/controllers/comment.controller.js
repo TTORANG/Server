@@ -234,9 +234,9 @@ export const deleteCommentController = async (req, res, next) => {
    * @swagger
    * /comments/{commentId}:
    *   delete:
-   *     summary: 댓글 삭제
+   *     summary: 댓글 및 답글 삭제
    *     description: |
-   *       작성한 댓글을 삭제합니다. (Soft Delete)
+   *       작성한 댓글과 답글을 삭제합니다. (Soft Delete)
    *
    *       - 본인 댓글만 삭제할 수 있습니다.
    *       - 삭제 시 실제 row 삭제가 아니라 `isDeleted=true`로 처리됩니다.
@@ -247,7 +247,7 @@ export const deleteCommentController = async (req, res, next) => {
    *       - in: path
    *         name: commentId
    *         required: true
-   *         description: 댓글 ID
+   *         description: 댓글(답글) ID
    *         schema:
    *           type: integer
    *     responses:

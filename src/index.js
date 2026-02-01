@@ -78,6 +78,7 @@ import {
   patchComment,
   postSlideComment,
 } from "./controllers/comment.controller.js";
+import { getCommentReplies, postCommentReply } from "./controllers/reply.controller.js";
 
 dotenv.config();
 
@@ -224,9 +225,13 @@ app.get("/videos/:videoId/reactions", getVideoReactionsByTimeController); // 시
 // 댓글 관련 라우팅
 app.post("/slides/:slideId/comments", isLogin, postSlideComment); // 댓글 작성
 app.patch("/comments/:commentId", isLogin, patchComment); // 댓글 수정
-app.delete("/comments/:commentId", isLogin, deleteCommentController); // 댓글 삭제
+app.delete("/comments/:commentId", isLogin, deleteCommentController); // 댓글 및 답글 삭제
 app.get("/slides/:slideId/comments", isLogin, getSlideCommentsController); // 댓글 목록 조회
 app.post("/videos/:videoId/comments", isLogin, handleCreateVideoComment); // 영상 타임스탬프 댓글 생성
+
+// 답글 관련 라우팅
+app.post("/comments/:commentId/replies", isLogin, postCommentReply); // 답글 작성
+app.get("/comments/:commentId/replies", isLogin, getCommentReplies); // 답글 목록 조회
 
 // Worker 엔드포인트 (pdf,ppt,동영상 변환)
 app.post("/worker/process-job", handleProcessJob);
