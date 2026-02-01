@@ -204,6 +204,10 @@ export const getReactionMarkers = async ({ videoId, intervalMs = 5000 }) => {
 
 // 시간대별 리액션 조회
 export const getVideoReactionsByTime = async ({ videoId, timestampMs, windowMs }) => {
+  const video = await findVideoById(videoId);
+  if (!video) {
+    throw new VideoNotFoundError({ videoId: String(videoId) });
+  }
   if (!Number.isInteger(timestampMs) || timestampMs < 0) {
     throw new InvalidParameterError({ timestampMs });
   }

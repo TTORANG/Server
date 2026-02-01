@@ -528,7 +528,7 @@ export const getVideoReactionsByTimeController = async (req, res, next) => {
     const windowMs = Number(req.query.windowMs ?? 2000);
 
     if (!Number.isInteger(timestampMs)) {
-      throw new InvalidParameterError({ timestamp: req.query.timestamp });
+      throw new InvalidParameterError({ timestampMs: req.query.timestampMs });
     }
 
     const result = await getVideoReactionsByTime({
