@@ -26,3 +26,9 @@ export const commentListResponseDTO = ({ items, pagination }) => ({
   comments: items.map(commentListItemDTO),
   pagination,
 });
+
+export const createCommentReplyRequestDTO = (body) => {
+  return {
+    content: typeof body?.content === "string" ? body.content.trim() : "",
+  };
+};
