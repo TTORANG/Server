@@ -1,5 +1,14 @@
 import { prisma } from "../db.config.js";
 
+export const findVideoById = async (videoId) => {
+  return prisma.video.findFirst({
+    where: {
+      id: videoId,
+    },
+    select: { id: true },
+  });
+};
+
 export async function findVideoByIdWithOwner(videoId, userId) {
   return prisma.video.findFirst({
     where: {

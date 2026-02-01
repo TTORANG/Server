@@ -10,13 +10,14 @@ import eventBus from "../events/eventBus.js";
 import { EventTypes } from "../events/eventTypes.js";
 import {
   aggregateVideoReactionsByBucket,
+  aggregateVideoReactionsByTimeWindow,
   countSlideReactions,
   createReaction,
   findReaction,
   findSlideByIdWithOwner,
   updateReaction,
 } from "../repositories/reaction.repository.js";
-import { findVideoByIdWithOwner } from "../repositories/video.repository.js";
+import { findVideoById, findVideoByIdWithOwner } from "../repositories/video.repository.js";
 
 const ALLOWED_EMOJIS = ["thumbs_up", "heart", "eyes", "clap"];
 
@@ -160,7 +161,7 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
 }
 
 // 영상 리액션 집계
-export const getReactionMarkers = async ({ videoId, intervalMs = 5000, userId }) => {
+export const getReactionMarkers = async ({ videoId, intervalMs = 5000 }) => {
   // videoId 검증
   if (typeof videoId !== "bigint" || videoId <= 0n) {
     throw new InvalidParameterError({ videoId: String(videoId) });
@@ -171,7 +172,7 @@ export const getReactionMarkers = async ({ videoId, intervalMs = 5000, userId })
     throw new InvalidParameterError({ intervalMs });
   }
   // video 존재 검증
-  const video = await findVideoByIdWithOwner(videoId, userId);
+  const video = await findVideoById(videoId);
   if (!video) {
     throw new VideoNotFoundError({ videoId: String(videoId) });
   }
@@ -199,4 +200,25 @@ export const getReactionMarkers = async ({ videoId, intervalMs = 5000, userId })
   const markers = [...byBucket.values()].sort((a, b) => a.timestampMs - b.timestampMs);
 
   return { intervalMs: safeInterval, markers };
+};
+
+// 시간대별 리액션 조회
+export const getVideoReactionsByTime = async ({ videoId, timestampMs, windowMs }) => {
+  if (!Number.isInteger(timestampMs) || timestampMs < 0) {
+    throw new InvalidParameterError({ timestampMs });
+  }
+
+  const startMs = Math.max(0, timestampMs - windowMs);
+  const endMs = timestampMs + windowMs;
+
+  const rows = await aggregateVideoReactionsByTimeWindow({
+    videoId,
+    startMs,
+    endMs,
+  });
+
+  return rows.map((r) => ({
+    emojiType: r.emojiType,
+    count: r._count._all,
+  }));
 };

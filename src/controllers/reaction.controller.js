@@ -1,7 +1,9 @@
 import { reactionMarkersResponseDTO, ToggleReactionDto } from "../dtos/reaction.dto.js";
+import { InvalidParameterError } from "../errors/video.error.js";
 import {
   getReactionMarkers,
   getSlideReactionSummary,
+  getVideoReactionsByTime,
   toggleSlideReaction,
   toggleVideoReaction,
 } from "../services/reaction.service.js";
@@ -386,9 +388,9 @@ export async function handleToggleVideoReaction(req, res, next) {
 export const getVideoReactionMarkers = async (req, res, next) => {
   /**
    * @swagger
-   * /videos/{videoId}/reaction-markers:
+   * /videos/{videoId}/reactions/timeline:
    *   get:
-   *     summary: 영상 재생바 하이라이트 마커 조회(리액션 집계)
+   *     summary: 타임라인별 리액션 조회
    *     description: |
    *       영상 전체 리액션을 기준으로 intervalMs 단위로 묶어,
    *       각 구간별 대표 이모지(가장 많이 눌린 이모지)와 count를 반환합니다.
@@ -396,8 +398,6 @@ export const getVideoReactionMarkers = async (req, res, next) => {
    *       - 기본 intervalMs=5000 (5초)
    *       - timestampMs가 없는 리액션은 집계에서 제외됩니다.
    *     tags: [Reaction]
-   *     security:
-   *       - bearerAuth: []
    *     parameters:
    *       - in: path
    *         name: videoId
@@ -448,13 +448,99 @@ export const getVideoReactionMarkers = async (req, res, next) => {
     const result = await getReactionMarkers({
       videoId,
       intervalMs,
-      userId: req.user.id,
     });
 
     res.status(200).json({
       resultType: "SUCCESS",
       error: null,
       success: reactionMarkersResponseDTO(result),
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
+// 시간대별 리액션 조회
+export const getVideoReactionsByTimeController = async (req, res, next) => {
+  /**
+   * @swagger
+   * /videos/{videoId}/reactions:
+   *   get:
+   *     summary: 시간대별 영상 리액션 조회
+   *     description: |
+   *       영상의 현재 재생 시간 기준으로 ±2초 범위 내 리액션을 조회합니다.
+   *       동일 시간대의 리액션은 이모지 타입별로 집계되어 반환됩니다.
+   *     tags: [Reaction]
+   *     parameters:
+   *       - in: path
+   *         name: videoId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: 영상 ID
+   *       - in: query
+   *         name: timestampMs
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: 현재 재생 시간 (ms)
+   *         example: 12000
+   *       - in: query
+   *         name: windowMs
+   *         required: false
+   *         schema:
+   *           type: integer
+   *           default: 2000
+   *         description: 조회 범위(ms). 기본값 ±2000ms
+   *     responses:
+   *       200:
+   *         description: 시간대별 리액션 조회 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/VideoReactionGroupResponse"
+   *       400:
+   *         description: 잘못된 요청 파라미터
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               invalidTimestamp:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: P001
+   *                     reason: 요청 파라미터가 올바르지 않습니다.
+   *                     data:
+   *                       timestampMs: "abc"
+   *                   success: null
+   *       404:
+   *         description: 영상 없음
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   */
+  try {
+    const videoId = BigInt(req.params.videoId);
+    const timestampMs = Number(req.query.timestampMs);
+    const windowMs = Number(req.query.windowMs ?? 2000);
+
+    if (!Number.isInteger(timestampMs)) {
+      throw new InvalidParameterError({ timestamp: req.query.timestamp });
+    }
+
+    const result = await getVideoReactionsByTime({
+      videoId,
+      timestampMs,
+      windowMs,
+    });
+
+    res.json({
+      resultType: "SUCCESS",
+      error: null,
+      success: result,
     });
   } catch (e) {
     next(e);
@@ -583,4 +669,31 @@ export const getVideoReactionMarkers = async (req, res, next) => {
  *           example: null
  *         success:
  *           $ref: "#/components/schemas/ReactionMarkersSuccess"
+ *
+ *     VideoReactionGroupItem:
+ *       type: object
+ *       properties:
+ *         emojiType:
+ *           type: string
+ *           description: 이모지 타입
+ *           example: "😂"
+ *         count:
+ *           type: integer
+ *           description: 해당 이모지 리액션 수
+ *           example: 5
+ *
+ *     VideoReactionGroupResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *           example: null
+ *         success:
+ *           type: array
+ *           description: 시간대별 리액션 집계 결과
+ *           items:
+ *             $ref: "#/components/schemas/VideoReactionGroupItem"
  */
