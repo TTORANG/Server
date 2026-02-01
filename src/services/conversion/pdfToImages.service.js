@@ -45,6 +45,9 @@ export async function pdfToImages(jobOrId, opts = {}) {
   const prefix = path.join(outDir, "page");
 
   try {
+    await fs.mkdir(path.dirname(input), { recursive: true });
+    await fs.mkdir(outDir, { recursive: true });
+
     // GCS → 로컬 다운로드
     await downloadFromGCS({
       bucketName: uf.storageBucket,
@@ -52,10 +55,13 @@ export async function pdfToImages(jobOrId, opts = {}) {
       destPath: input,
     });
 
-    await fs.mkdir(outDir, { recursive: true });
+    const PDFTOPPM =
+      process.platform === "win32"
+        ? process.env.PDFTOPPM_PATH // 로컬
+        : "pdftoppm"; // 배포
 
     // PDF → PNG 변환
-    await runCmd("pdftoppm", ["-png", "-r", String(dpi), input, prefix]);
+    await runCmd(PDFTOPPM, ["-png", "-r", String(dpi), input, prefix]);
 
     const files = (await listFiles(outDir))
       .filter((p) => p.endsWith(".png"))

@@ -1,114 +1,156 @@
-import { completeFileUpload } from "../services/files.service.js";
-import { createUploadUrl } from "../services/gcs.service.js";
-import { success } from "../utils/response.util.js";
+import {
+  // completeFileUpload,
+  uploadPresentationAndCreateProject,
+} from "../services/files.service.js";
+// import { createUploadUrl } from "../services/gcs.service.js";
+// import { success } from "../utils/response.util.js";
 
-export async function postUploadUrl(req, res, next) {
+export async function postUploadPresentationFile(req, res, next) {
   /**
    * @swagger
-   * /files/upload-url:
+   * components:
+   *   securitySchemes:
+   *     bearerAuth:
+   *       type: http
+   *       scheme: bearer
+   *       bearerFormat: JWT
+   *
+   *   schemas:
+   *     ApiResponseBase:
+   *       type: object
+   *       properties:
+   *         resultType:
+   *           type: string
+   *           enum: [SUCCESS, FAILURE]
+   *         error:
+   *           type: object
+   *           nullable: true
+   *         success:
+   *           type: object
+   *           nullable: true
+   *
+   *     FileUploadResponse:
+   *       allOf:
+   *         - $ref: "#/components/schemas/ApiResponseBase"
+   *         - type: object
+   *           properties:
+   *             success:
+   *               type: object
+   *               nullable: true
+   *               properties:
+   *                 projectId:
+   *                   type: string
+   *                   description: 생성된 프로젝트 ID(BigInt → string)
+   *                   example: "123"
+   *
+   * /files/upload:
    *   post:
-   *     summary: 파일 업로드용 Signed URL 발급
-   *     description: |
-   *       GCS에 파일을 직접 업로드할 수 있는 Signed URL을 발급합니다.
-   *
-   *       이 API는 파일을 업로드하지 않습니다.
-   *       클라이언트는 아래 순서대로 업로드를 완료해야 합니다.
-   *
-   *       업로드 절차
-   *       1) /files/upload-url 호출 (Signed URL 발급)
-   *          - 업로드할 파일의 contentType, size를 서버에 전달합니다.
-   *          - 응답으로 uploadUrl과 objectKey를 받습니다.
-   *
-   *       2) uploadUrl로 PUT 업로드 (GCS로 직접 업로드)
-   *          - Method: PUT
-   *          - URL: uploadUrl (서버가 발급한 Signed URL)
-   *          - Header: Content-Type은 1)에서 보낸 contentType과 같아야 합니다.
-   *          - Body: 파일 바이너리(raw). multipart/form-data를 사용하지 않습니다.
-   *
-   *          예시(curl)
-   *          ```bash
-   *          curl -X PUT \
-   *            -H "Content-Type: application/pdf" \
-   *            --data-binary @sample.pdf \
-   *            "https://storage.googleapis.com/..."
-   *          ```
-   *
-   *       3) /files/complete 호출 (업로드 완료 확정)
-   *          - PUT 업로드가 성공한 뒤 objectKey를 전달합니다.
-   *          - 서버가 GCS 메타데이터(size, contentType)를 다시 확인하고
-   *            DB에 업로드 정보를 저장합니다.
-   *
-   *       참고
-   *       - uploadUrl은 expiresAt 이후 만료됩니다. 만료되면 1)부터 다시 진행해야 합니다.
-   *       - Content-Type이 다르면 업로드가 실패하거나, complete 단계에서 검증에 실패할 수 있습니다.
+   *     summary: 파일 업로드 (발표자료/발표영상)
+   *     description: >
+   *       발표 자료(PPT/PDF) 또는 발표 영상(MP4/WEBM)을 업로드합니다.
+   *       업로드 완료 시 프로젝트가 자동 생성되며, 파일 타입에 따라 변환 파이프라인이 자동으로 시작됩니다.
    *     tags: [File]
+   *     security:
+   *       - bearerAuth: []
    *     requestBody:
    *       required: true
    *       content:
-   *         application/json:
+   *         multipart/form-data:
    *           schema:
-   *             $ref: '#/components/schemas/FileUploadUrlRequest'
+   *             type: object
+   *             required:
+   *               - file
+   *             properties:
+   *               file:
+   *                 type: string
+   *                 format: binary
+   *                 description: pptx / pdf / mp4 / webm
+   *               title:
+   *                 type: string
+   *                 description: 프로젝트 제목(선택)
+   *                 example: "테스트 프로젝트"
    *     responses:
    *       200:
-   *         description: Signed URL 발급 성공
+   *         description: 업로드 성공 (프로젝트 자동 생성 및 변환 시작)
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: '#/components/schemas/FileUploadUrlResponse'
+   *               $ref: "#/components/schemas/FileUploadResponse"
+   *             examples:
+   *               success:
+   *                 value:
+   *                   resultType: "SUCCESS"
+   *                   error: null
+   *                   success:
+   *                     projectId: "123"
    *       400:
-   *         description: 요청 값 검증 실패(파일 형식/크기 등)
-   */
-
-  try {
-    const result = await createUploadUrl(req.body);
-    return success(res, result);
-  } catch (e) {
-    next(e);
-  }
-}
-
-export async function postComplete(req, res, next) {
-  /**
-   * @swagger
-   * /files/complete:
-   *   post:
-   *     summary: 파일 업로드 완료 처리
-   *     description: |
-   *       Signed URL로 업로드된 파일을 검증하고 업로드를 최종 확정합니다.
-   *
-   *       호출 시점
-   *       - uploadUrl로 PUT 업로드가 성공한 이후에 호출합니다.
-   *
-   *       처리 내용
-   *       - objectKey로 GCS 파일 메타데이터를 조회합니다.
-   *       - contentType, size를 다시 검증합니다.
-   *       - 검증에 성공하면 업로드 정보를 DB에 저장합니다.
-   *
-   *       실패 예시
-   *       - objectKey가 없거나 잘못된 경로인 경우
-   *       - 허용되지 않은 contentType인 경우
-   *       - 파일 크기가 제한을 초과한 경우
-   *     tags: [File]
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             $ref: '#/components/schemas/FileUploadCompleteRequest'
-   *     responses:
-   *       200:
-   *         description: 업로드 확정 성공
+   *         description: 잘못된 요청 (파일 없음/형식 불일치/용량 초과 등)
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: '#/components/schemas/FileUploadCompleteResponse'
-   *       400:
-   *         description: 업로드 검증 실패
+   *               $ref: "#/components/schemas/ApiResponseBase"
+   *             examples:
+   *               fileRequired:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "F001"
+   *                     reason: "업로드할 파일이 필요합니다."
+   *                     data: null
+   *                   success: null
+   *               invalidType:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "F001"
+   *                     reason: "지원하지 않는 파일 형식입니다."
+   *                     data:
+   *                       contentType: "image/png"
+   *                   success: null
+   *               tooLarge:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "F001"
+   *                     reason: "파일 크기는 최대 50MB입니다."
+   *                     data:
+   *                       size: 73400321
+   *                       max: 52428800
+   *                   success: null
+   *       401:
+   *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ApiResponseBase"
+   *             examples:
+   *               unauthorized:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "AUTH_001"
+   *                     reason: "UNAUTHORIZED"
+   *                     data: null
+   *                   success: null
    */
 
   try {
-    const result = await completeFileUpload(req.body);
-    return success(res, result);
+    const { title } = req.body;
+    const userId = req.user.id;
+
+    const result = await uploadPresentationAndCreateProject({
+      userId,
+      title,
+      file: req.file,
+    });
+
+    return res.status(201).json({
+      resultType: "SUCCESS",
+      error: null,
+      success: {
+        projectId: result.projectId,
+      },
+    });
   } catch (e) {
     next(e);
   }

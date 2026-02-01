@@ -11,7 +11,7 @@ import {
   handleLogout,
   handleWithdrawal,
 } from "./controllers/auth.controller.js";
-import { postComplete, postUploadUrl } from "./controllers/files.controller.js";
+import { postUploadPresentationFile } from "./controllers/files.controller.js";
 import {
   handleCreateAnonymousProject,
   handleCreateAnonymousSession,
@@ -32,15 +32,14 @@ import {
   handlePatchSlideTitle,
 } from "./controllers/slide.controller.js";
 import {
-  completeVideoChunk,
-  completeVideoUpload,
-  createVideo,
-  createVideoChunkUploadUrl,
+  finishRecording,
   handleCreateVideoComment,
   handleGetVideoDetail,
   handleGetVideoList,
   handleGetVideoSlideTimeline,
   handleToggleVideoReaction,
+  startRecording,
+  uploadVideoChunk,
 } from "./controllers/video.controller.js";
 import {
   handleGetScript,
@@ -48,6 +47,16 @@ import {
   handleRestoreVersion,
   handleUploadScript,
 } from "./controllers/script.controller.js";
+import {
+  handleCreateShareLink,
+  handleGetShareContent,
+  handleGetShareLinkList,
+  handleGetVideoListForSharing,
+} from "./controllers/shareLink.controller.js";
+
+import multer from "multer";
+import { MAX_SIZE_BYTES } from "./constants/files.js";
+import { handleGetPresentationStatus } from "./controllers/conversionStatus.controller.js";
 
 import { createServer } from "http";
 
@@ -79,6 +88,11 @@ app.get("/", (req, res) => {
 });
 
 const isLogin = passport.authenticate("jwt", { session: false });
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_SIZE_BYTES },
+});
 
 // swagger 문서
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
@@ -160,22 +174,35 @@ app.get("/presentations/slides/:slideId/versions", isLogin, handleGetScriptVersi
 // 대본 버전 복원
 app.post("/presentations/slides/:slideId/restore", isLogin, handleRestoreVersion);
 
-// 파일 업로드 API 라우팅(임시)
-app.post("/files/upload-url", postUploadUrl);
-app.post("/files/complete", postComplete);
+// 프로젝트 하위 녹화 영상 목록 조회
+app.get("/presentations/:projectId/videos", isLogin, handleGetVideoList);
 
-// 영상 업로드 API
-app.post("/videos", isLogin, createVideo);
-// 비디오 청크 업로드 url 발급
-app.post("/videos/:videoId/chunks/upload-url", isLogin, createVideoChunkUploadUrl);
-// 비디오 청크 업로드 검증
-app.post("/videos/:videoId/chunks/complete", isLogin, completeVideoChunk);
-// 비디오 업로드 검증
-app.post("/videos/:videoId/complete", isLogin, completeVideoUpload);
-// 영상 목록 조회
-app.get("/videos/:projectId", isLogin, handleGetVideoList);
+// 프로젝트 파일 변환 상태 조회
+app.get("/presentations/:projectId/status", isLogin, handleGetPresentationStatus);
+
+// 공유 링크 생성
+app.post("/presentations/:projectId/shares", isLogin, handleCreateShareLink);
+
+// 공유 링크 조회 (인증 없이 접근 가능)
+app.get("/shares/:token", handleGetShareContent);
+
+// 공유 링크 목록 조회
+app.get("/presentations/:projectId/shares", isLogin, handleGetShareLinkList);
+
+// 공유 가능 영상 목록 조회
+app.get("/presentations/:projectId/shares/videos", isLogin, handleGetVideoListForSharing);
+
+// 파일 업로드 관련 라우팅
+app.post("/files/upload", isLogin, upload.single("file"), postUploadPresentationFile);
+
+// 영상 녹화 관련 라우팅
+app.post("/videos/start", isLogin, startRecording); // 영상 업로드
+app.post("/videos/:videoId/finish", isLogin, finishRecording); // 비디오 업로드 검증
+
 // 영상 상세 조회
 app.get("/videos/:videoId", isLogin, handleGetVideoDetail);
+// 영상 청크 업로드
+app.post("/videos/:videoId/chunks/:chunkIndex", isLogin, upload.single("file"), uploadVideoChunk);
 // 영상 타임스탬프 리액션 생성
 app.post("/videos/:videoId/reactions", isLogin, handleToggleVideoReaction);
 // 영상 타임스탬프 댓글 생성

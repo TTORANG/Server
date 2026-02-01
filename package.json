@@ -24,6 +24,7 @@
     "http-status-code": "^2.1.0",
     "ioredis": "^5.9.2",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.0.2",
     "mysql2": "^3.16.0",
     "p-limit": "^7.2.0",
     "passport": "^0.7.0",

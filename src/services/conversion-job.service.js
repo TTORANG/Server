@@ -6,11 +6,12 @@ import {
   getJobById,
 } from "../repositories/conversion-job.repository.js";
 import { enqueueConversionTask } from "../queues/conversion-job.queue.js";
-import { pptxToImages } from "./conversion/pptx-to-images.service.js";
-import { pdfToImages } from "./conversion/pdf-to-images.service.js";
+import { pptxToImages } from "./conversion/pptxToImages.service.js";
+import { pdfToImages } from "./conversion/pdfToImages.service.js";
 import { generateThumbnail } from "./conversion/thumbnail.service.js";
 import { extractMetadata } from "./conversion/metadata.service.js";
-import { videoTranscode } from "./conversion/video-transcode.service.js";
+import { videoTranscode } from "./conversion/videoTranscode.service.js";
+import { prisma } from "../db.config.js";
 
 /**
  * 작업 생성 및 큐에 추가
@@ -18,10 +19,17 @@ import { videoTranscode } from "./conversion/video-transcode.service.js";
 const createAndEnqueueJob = async ({ uploadedFileId, videoId, jobType }) => {
   const job = await createConversionJob({ uploadedFileId, videoId, jobType });
 
-  await enqueueConversionTask({
-    conversionJobId: job.id.toString(),
-    jobType,
-  });
+  if (!process.env.GCP_PROJECT_ID || !process.env.CLOUD_RUN_SERVICE_URL) {
+    // 로컬 테스트용
+    processJob(job.id.toString(), jobType).catch((error) => {
+      console.error(`[Local-Job-Runner] Job ${job.id} failed:`, error);
+    });
+  } else {
+    await enqueueConversionTask({
+      conversionJobId: job.id.toString(),
+      jobType,
+    });
+  }
 
   return job;
 };
@@ -99,6 +107,11 @@ const chainMetadataJob = async (parentJobId) => {
  * - 체이닝 처리
  */
 export const processJob = async (conversionJobId, jobType) => {
+  const existingJob = await getJobById(conversionJobId);
+  if (existingJob.status === "completed") {
+    return { success: true };
+  }
+
   try {
     await updateJobToProcessing(conversionJobId);
 
@@ -106,10 +119,7 @@ export const processJob = async (conversionJobId, jobType) => {
 
     // 이미지 변환 완료 후 썸네일 + 메타데이터 작업 체이닝
     if ((jobType === "pptx_to_images" || jobType === "pdf_to_images") && result?.ok) {
-      await Promise.all([
-        chainThumbnailJob(conversionJobId),
-        chainMetadataJob(conversionJobId),
-      ]);
+      await Promise.all([chainThumbnailJob(conversionJobId), chainMetadataJob(conversionJobId)]);
     }
 
     await updateJobToCompleted(conversionJobId);
@@ -170,9 +180,10 @@ export const startConversionPipeline = async ({ uploadedFileId, fileExt }) => {
  *
  * - video_transcode: 청크 병합 → HLS 변환 → GCS 업로드
  */
-export const startVideoEncodingPipeline = async ({ videoId }) => {
+export const startVideoEncodingPipeline = async ({ videoId, uploadedFileId }) => {
   const job = await createAndEnqueueJob({
     videoId,
+    uploadedFileId,
     jobType: "video_transcode",
   });
 
