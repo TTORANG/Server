@@ -1,8 +1,11 @@
 import { prisma } from "../db.config.js";
 import { AuthSessionRequiredError } from "../errors/auth.error.js";
 import { BaseError } from "../errors/base.error.js";
-import { SlideNotFoundError } from "../errors/conversion.error.js";
-import { InvalidEmojiTypeError, ReactionProcessError } from "../errors/reaction.error.js";
+import {
+  InvalidEmojiTypeError,
+  ReactionProcessError,
+  SlideNotFoundError,
+} from "../errors/reaction.error.js";
 import { InvalidParameterError, VideoNotFoundError } from "../errors/video.error.js";
 import eventBus from "../events/eventBus.js";
 import { EventTypes } from "../events/eventTypes.js";
@@ -10,7 +13,7 @@ import {
   countSlideReactions,
   createReaction,
   findReaction,
-  findSlideById,
+  findSlideByIdWithOwner,
   updateReaction,
 } from "../repositories/reaction.repository.js";
 
@@ -22,7 +25,7 @@ export async function toggleSlideReaction({ slideId, emojiType, userId }) {
     throw new InvalidEmojiTypeError({ emojiType });
   }
 
-  const slide = await findSlideById(slideId);
+  const slide = await findSlideByIdWithOwner(slideId, userId);
   if (!slide) {
     throw new SlideNotFoundError({ slideId });
   }
@@ -55,8 +58,8 @@ export async function toggleSlideReaction({ slideId, emojiType, userId }) {
 }
 
 // 리액션 집계 조회
-export async function getSlideReactionSummary(slideId) {
-  const slide = await findSlideById(slideId);
+export async function getSlideReactionSummary({ slideId, userId }) {
+  const slide = await findSlideByIdWithOwner(slideId, userId);
   if (!slide) throw new SlideNotFoundError({ slideId });
 
   const rows = await countSlideReactions(slideId);
