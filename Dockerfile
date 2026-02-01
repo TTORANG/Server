@@ -6,7 +6,7 @@ RUN apk add --no-cache ffmpeg poppler-utils libreoffice
 WORKDIR /app
 
 #해당 파일이 안바뀌면(설정이 안바뀌면)
-COPY package*.json ./ 
+COPY package.json package-lock.json ./ 
 
 # 의존성 설치 (devDependencies 포함 - prisma 필요)
 RUN npm ci
