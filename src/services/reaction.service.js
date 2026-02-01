@@ -1,8 +1,57 @@
 import { prisma } from "../db.config.js";
 import { AuthSessionRequiredError } from "../errors/auth.error.js";
+import { BaseError } from "../errors/base.error.js";
+import { SlideNotFoundError } from "../errors/conversion.error.js";
+import { InvalidEmojiTypeError, ReactionProcessError } from "../errors/reaction.error.js";
 import { InvalidParameterError, VideoNotFoundError } from "../errors/video.error.js";
 import eventBus from "../events/eventBus.js";
 import { EventTypes } from "../events/eventTypes.js";
+import {
+  createReaction,
+  findReaction,
+  findSlideById,
+  updateReaction,
+} from "../repositories/reaction.repository.js";
+
+const ALLOWED_EMOJIS = ["thumbs_up", "heart", "eyes", "clap"];
+
+// 리액션 추가 및 취소
+export async function toggleSlideReaction({ slideId, emojiType, userId }) {
+  if (!ALLOWED_EMOJIS.includes(emojiType)) {
+    throw new InvalidEmojiTypeError({ emojiType });
+  }
+
+  const slide = await findSlideById(slideId);
+  if (!slide) {
+    throw new SlideNotFoundError({ slideId });
+  }
+
+  const where = {
+    userId,
+    sessionId: null,
+    targetType: "slide",
+    targetId: BigInt(slideId),
+    timestampMs: null,
+    emojiType,
+  };
+
+  try {
+    const existing = await findReaction(where);
+
+    if (existing) {
+      const newIsDeleted = !existing.isDeleted;
+      await updateReaction(existing.id, newIsDeleted);
+      return { active: !newIsDeleted };
+    }
+
+    await createReaction(where);
+    return { active: true };
+  } catch (e) {
+    if (e instanceof BaseError) throw e;
+    console.error("[toggleSlideReaction error]", e);
+    throw new ReactionProcessError({ slideId, emojiType });
+  }
+}
 
 // 영상 타임스탬프 리액션 생성
 export async function toggleVideoReaction({ videoId, emojiType, timestampMs, userId, sessionId }) {
@@ -75,11 +124,7 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
       });
     }
 
-    return {
-      resultType: "SUCCESS",
-      error: null,
-      success: { active: !newIsDeleted },
-    };
+    return { active: !newIsDeleted };
   }
 
   const reaction = await prisma.reaction.create({
@@ -103,9 +148,5 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
     timestampMs: ts,
   });
 
-  return {
-    resultType: "SUCCESS",
-    error: null,
-    success: { active: true },
-  };
+  return { active: true };
 }
