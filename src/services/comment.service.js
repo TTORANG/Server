@@ -155,18 +155,11 @@ export const getSlideComments = async ({ slideId, userId, page = 1, limit = 20 }
 };
 
 // 영상 타임스탬프 댓글 생성
-export async function createVideoComment({ videoId, content, timestampMs, userId, sessionId }) {
-  if (!sessionId) {
-    throw new AuthSessionRequiredError({
-      userId: String(userId),
-      videoId: String(videoId),
-    });
-  }
+export async function createVideoComment({ videoId, content, timestampMs, userId }) {
+  const vid = BigInt(videoId);
+  const ts = timestampMs !== undefined && timestampMs !== null ? Number(timestampMs) : null;
 
-  const vid = toInt(videoId);
-  const ts = toInt(timestampMs);
-
-  if (!Number.isInteger(vid) || vid <= 0) {
+  if (vid <= 0n) {
     throw new VideoNotFoundError({ videoId: String(videoId) });
   }
   if (!content || !content.trim()) {
@@ -177,10 +170,7 @@ export async function createVideoComment({ videoId, content, timestampMs, userId
   }
 
   const video = await prisma.video.findFirst({
-    where: {
-      id: vid,
-      deletedAt: null,
-    },
+    where: { id: vid, deletedAt: null },
     select: { id: true, projectId: true },
   });
 
@@ -191,7 +181,6 @@ export async function createVideoComment({ videoId, content, timestampMs, userId
   const comment = await prisma.comment.create({
     data: {
       userId,
-      sessionId,
       targetType: "video",
       targetId: vid,
       timestampMs: ts,
@@ -216,14 +205,5 @@ export async function createVideoComment({ videoId, content, timestampMs, userId
     createdAt: comment.createdAt,
   });
 
-  return {
-    resultType: "SUCCESS",
-    error: null,
-    success: {
-      id: comment.id.toString(),
-      content: comment.content,
-      timestampMs: comment.timestampMs,
-      createdAt: comment.createdAt,
-    },
-  };
+  return comment;
 }
