@@ -1,14 +1,22 @@
 import { prisma } from "../db.config.js";
 import { AuthSessionRequiredError } from "../errors/auth.error.js";
 import {
+  CommentNotFoundError,
   EmptyCommentContentError,
+  InvalidCommentIdError,
   InvalidSlideIdError,
+  NoCommentPermissionError,
   SlideNotFoundError,
 } from "../errors/comment.error.js";
 import { InvalidParameterError, VideoNotFoundError } from "../errors/video.error.js";
 import eventBus from "../events/eventBus.js";
 import { EventTypes } from "../events/eventTypes.js";
-import { createComment } from "../repositories/comment.repository.js";
+import {
+  createComment,
+  findCommentById,
+  softDeleteComment,
+  updateCommentContent,
+} from "../repositories/comment.repository.js";
 import { getSlideWithProject } from "../repositories/slide.repository.js";
 
 // 댓글 작성
@@ -32,6 +40,56 @@ export const createSlideComment = async ({ slideId, content, userId }) => {
     targetId: BigInt(slideId),
     content,
   });
+};
+
+// 댓글 수정
+export const updateComment = async ({ commentId, content, userId }) => {
+  if (
+    commentId === undefined ||
+    commentId === null ||
+    typeof commentId !== "bigint" ||
+    commentId <= 0n
+  ) {
+    throw new InvalidCommentIdError(commentId?.toString());
+  }
+
+  if (!content) {
+    throw new EmptyCommentContentError();
+  }
+
+  const comment = await findCommentById(commentId);
+  if (!comment) {
+    throw new CommentNotFoundError(commentId);
+  }
+
+  if (comment.userId !== userId) {
+    throw new NoCommentPermissionError();
+  }
+
+  return updateCommentContent(commentId, content);
+};
+
+// 댓글 삭제
+export const deleteComment = async ({ commentId, userId }) => {
+  if (
+    commentId === undefined ||
+    commentId === null ||
+    typeof commentId !== "bigint" ||
+    commentId <= 0n
+  ) {
+    throw new InvalidCommentIdError(commentId?.toString());
+  }
+
+  const comment = await findCommentById(commentId);
+  if (!comment) {
+    throw new CommentNotFoundError(commentId);
+  }
+
+  if (comment.userId !== userId) {
+    throw new NoCommentPermissionError();
+  }
+
+  await softDeleteComment(commentId);
 };
 
 // 영상 타임스탬프 댓글 생성

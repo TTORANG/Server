@@ -17,3 +17,23 @@ export class InvalidSlideIdError extends BaseError {
     super("유효하지 않은 슬라이드 ID입니다.", 400, "C003", { slideId: value });
   }
 }
+
+export class InvalidCommentIdError extends BaseError {
+  constructor(value) {
+    super("유효하지 않은 댓글 ID입니다.", 400, "C004", { commentId: value });
+  }
+}
+
+export class CommentNotFoundError extends BaseError {
+  constructor(commentId) {
+    super("댓글을 찾을 수 없습니다.", 404, "C005", {
+      commentId: commentId?.toString(),
+    });
+  }
+}
+
+export class NoCommentPermissionError extends BaseError {
+  constructor() {
+    super("수정 권한이 없습니다.", 403, "C006");
+  }
+}

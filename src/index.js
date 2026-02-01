@@ -69,7 +69,12 @@ import {
   handleToggleVideoReaction,
   toggleSlideReactionController,
 } from "./controllers/reaction.controller.js";
-import { handleCreateVideoComment, postSlideComment } from "./controllers/comment.controller.js";
+import {
+  deleteCommentController,
+  handleCreateVideoComment,
+  patchComment,
+  postSlideComment,
+} from "./controllers/comment.controller.js";
 
 dotenv.config();
 
@@ -213,6 +218,8 @@ app.post("/videos/:videoId/reactions", isLogin, handleToggleVideoReaction); // �
 
 // 댓글 관련 라우팅
 app.post("/slides/:slideId/comments", isLogin, postSlideComment); // 댓글 작성
+app.patch("/comments/:commentId", isLogin, patchComment); // 댓글 수정
+app.delete("/comments/:commentId", isLogin, deleteCommentController); // 댓글 삭제
 app.post("/videos/:videoId/comments", isLogin, handleCreateVideoComment); // 영상 타임스탬프 댓글 생성
 
 // Worker 엔드포인트 (pdf,ppt,동영상 변환)

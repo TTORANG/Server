@@ -362,7 +362,7 @@ export async function handleToggleVideoReaction(req, res, next) {
    */
 
   try {
-    const { id: videoId } = req.params;
+    const { videoId } = req.params;
     const { emojiType, timestampMs } = req.body;
 
     const result = await toggleVideoReaction({

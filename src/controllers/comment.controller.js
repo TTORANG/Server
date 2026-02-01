@@ -1,5 +1,10 @@
 import { commentResponseDTO, createSlideCommentRequestDTO } from "../dtos/comment.dto.js";
-import { createSlideComment, createVideoComment } from "../services/comment.service.js";
+import {
+  createSlideComment,
+  createVideoComment,
+  deleteComment,
+  updateComment,
+} from "../services/comment.service.js";
 
 // 댓글 작성
 export const postSlideComment = async (req, res, next) => {
@@ -90,6 +95,230 @@ export const postSlideComment = async (req, res, next) => {
       resultType: "SUCCESS",
       error: null,
       success: commentResponseDTO(comment),
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
+// 댓글 수정
+export const patchComment = async (req, res, next) => {
+  /**
+   * @swagger
+   * /comments/{commentId}:
+   *   patch:
+   *     summary: 댓글 수정
+   *     description: |
+   *       작성한 댓글의 내용을 수정합니다.
+   *
+   *       - 본인 댓글만 수정할 수 있습니다.
+   *       - 공백/빈 문자열은 허용하지 않습니다.
+   *     tags: [Comment]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: commentId
+   *         required: true
+   *         description: 댓글 ID
+   *         schema:
+   *           type: integer
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: "#/components/schemas/UpdateCommentRequest"
+   *           examples:
+   *             basic:
+   *               summary: 댓글 수정 요청
+   *               value:
+   *                 content: "수정된 댓글 내용입니다."
+   *     responses:
+   *       200:
+   *         description: 댓글 수정 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/UpdateCommentResponse"
+   *       400:
+   *         description: 잘못된 요청(댓글 ID/내용 오류)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               invalidCommentId:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: C004
+   *                     reason: 유효하지 않은 댓글 ID입니다.
+   *                     data:
+   *                       commentId: "abc"
+   *                   success: null
+   *               emptyContent:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: C001
+   *                     reason: 댓글 내용을 입력해주세요.
+   *                     data: null
+   *                   success: null
+   *       401:
+   *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       403:
+   *         description: 수정 권한 없음
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               noPermission:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: C006
+   *                     reason: 수정 권한이 없습니다.
+   *                     data: null
+   *                   success: null
+   *       404:
+   *         description: 댓글 없음
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               commentNotFound:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: C005
+   *                     reason: 댓글을 찾을 수 없습니다.
+   *                     data:
+   *                       commentId: "10"
+   *                   success: null
+   */
+  try {
+    const commentId = BigInt(req.params.commentId);
+    const { content } = req.body;
+
+    const updated = await updateComment({
+      commentId,
+      content,
+      userId: req.user.id,
+    });
+
+    res.status(200).json({
+      resultType: "SUCCESS",
+      error: null,
+      success: commentResponseDTO(updated),
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
+// 댓글 삭제
+export const deleteCommentController = async (req, res, next) => {
+  /**
+   * @swagger
+   * /comments/{commentId}:
+   *   delete:
+   *     summary: 댓글 삭제
+   *     description: |
+   *       작성한 댓글을 삭제합니다. (Soft Delete)
+   *
+   *       - 본인 댓글만 삭제할 수 있습니다.
+   *       - 삭제 시 실제 row 삭제가 아니라 `isDeleted=true`로 처리됩니다.
+   *     tags: [Comment]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: commentId
+   *         required: true
+   *         description: 댓글 ID
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       200:
+   *         description: 댓글 삭제 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/DeleteCommentResponse"
+   *       400:
+   *         description: 잘못된 요청(댓글 ID 오류)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               invalidCommentId:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: C004
+   *                     reason: 유효하지 않은 댓글 ID입니다.
+   *                     data:
+   *                       commentId: "abc"
+   *                   success: null
+   *       401:
+   *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       403:
+   *         description: 삭제 권한 없음
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               noPermission:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: C006
+   *                     reason: 수정 권한이 없습니다.
+   *                     data: null
+   *                   success: null
+   *       404:
+   *         description: 댓글 없음
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               commentNotFound:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: C005
+   *                     reason: 댓글을 찾을 수 없습니다.
+   *                     data:
+   *                       commentId: "10"
+   *                   success: null
+   */
+
+  try {
+    const commentId = BigInt(req.params.commentId);
+
+    await deleteComment({
+      commentId,
+      userId: req.user.id,
+    });
+
+    res.status(200).json({
+      resultType: "SUCCESS",
+      error: null,
+      success: null,
     });
   } catch (e) {
     next(e);
@@ -202,7 +431,7 @@ export async function handleCreateVideoComment(req, res, next) {
    */
 
   try {
-    const { id: videoId } = req.params;
+    const { videoId } = req.params;
     const { content, timestampMs } = req.body;
 
     const result = await createVideoComment({
@@ -213,7 +442,11 @@ export async function handleCreateVideoComment(req, res, next) {
       sessionId: req.user.sessionId,
     });
 
-    res.json(result);
+    res.status(201).json({
+      resultType: "SUCCESS",
+      error: null,
+      success: commentResponseDTO(result),
+    });
   } catch (e) {
     next(e);
   }
@@ -298,6 +531,64 @@ export async function handleCreateVideoComment(req, res, next) {
  *           type: string
  *           format: date-time
  *           example: 2026-01-24T12:34:56.000Z
+ *
+ *     UpdateCommentRequest:
+ *       type: object
+ *       required:
+ *         - content
+ *       properties:
+ *         content:
+ *           type: string
+ *           description: 수정할 댓글 내용(공백 불가)
+ *           example: "수정된 댓글 내용입니다."
+ *
+ *     UpdateCommentResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *           example: null
+ *         success:
+ *           $ref: "#/components/schemas/Comment"
+ *
+ *     DeleteCommentResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *           example: null
+ *         success:
+ *           nullable: true
+ *           example: null
+ *
+ *     ErrorResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: FAILURE
+ *         error:
+ *           type: object
+ *           properties:
+ *             errorCode:
+ *               type: string
+ *               example: C005
+ *             reason:
+ *               type: string
+ *               example: 댓글을 찾을 수 없습니다.
+ *             data:
+ *               nullable: true
+ *               example:
+ *                 commentId: "10"
+ *         success:
+ *           nullable: true
+ *           example: null
  *
  *     VideoCommentCreateResponse:
  *       type: object
