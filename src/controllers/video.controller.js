@@ -1,5 +1,6 @@
 import * as videoService from "../services/video.service.js";
 
+// 영상 녹화 세션 생성
 export async function startRecording(req, res, next) {
   /**
    * @swagger

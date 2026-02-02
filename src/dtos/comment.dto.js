@@ -5,17 +5,17 @@ export const createSlideCommentRequestDTO = (body) => {
 };
 
 export const commentResponseDTO = (comment) => ({
-  id: comment.id?.toString(),
+  commentId: comment.id?.toString(),
   content: comment.content,
   userId: comment.userId?.toString(),
   createdAt: comment.createdAt,
 });
 
 export const commentListItemDTO = (comment) => ({
-  id: comment.id.toString(),
+  commentId: comment.id.toString(),
   content: comment.content,
   user: {
-    id: comment.user.id.toString(),
+    userId: comment.user.id.toString(),
     nickName: comment.user.nickName,
   },
   createdAt: comment.createdAt,
@@ -32,3 +32,18 @@ export const createCommentReplyRequestDTO = (body) => {
     content: typeof body?.content === "string" ? body.content.trim() : "",
   };
 };
+
+export const videoCommentListItemDTO = (comment) => ({
+  commentId: comment.id.toString(),
+  content: comment.content,
+  timestampMs: comment.timestampMs,
+  user: {
+    userId: comment.user.id.toString(),
+    nickName: comment.user.nickName,
+  },
+  createdAt: comment.createdAt,
+});
+
+export const videoCommentListResponseDTO = (comments) => ({
+  comments: comments.map(videoCommentListItemDTO),
+});

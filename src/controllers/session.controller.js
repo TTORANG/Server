@@ -95,6 +95,7 @@ export const handleCreateAnonymousSession = async (req, res, next) => {
  *               error:
  *                 errorCode: "P001"
  *                 reason: "해당 프로젝트를 찾을 수 없습니다."
+ *                 data: null
  *               success: null
  */
 export const handleCreateAnonymousProject = async (req, res, next) => {
@@ -161,6 +162,7 @@ export const handleCreateAnonymousProject = async (req, res, next) => {
  *               error:
  *                 errorCode: "P001"
  *                 reason: "해당 프로젝트를 찾을 수 없습니다."
+ *                 data: null
  *               success: null
  */
 export const handleUpdateAnonymousProject = async (req, res, next) => {
@@ -224,6 +226,8 @@ export const handleUpdateAnonymousProject = async (req, res, next) => {
  *                   error:
  *                     errorCode: "S002"
  *                     reason: "병합할 익명 데이터가 존재하지 않습니다."
+ *                     data:
+ *                       sessionId: "eyJh_XYAUWw..."
  *                   success: null
  *       404:
  *         description: 익명 세션을 찾을 수 없음 (S001)
@@ -234,6 +238,8 @@ export const handleUpdateAnonymousProject = async (req, res, next) => {
  *               error:
  *                 errorCode: "S001"
  *                 reason: "해당 세션을 찾을 수 없거나 이미 만료되었습니다."
+ *                 data:
+ *                   sessionId: "eyJh_XYAUWw..."
  *               success: null
  */
 export const handleMergeSession = async (req, res, next) => {

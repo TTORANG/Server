@@ -66,6 +66,7 @@ import {
  *               error:
  *                 errorCode: "P001"
  *                 reason: "해당 프로젝트를 찾을 수 없습니다."
+ *                 data: null
  *               success: null
  */
 export const handleCreateProject = async (req, res, next) => {
@@ -130,6 +131,7 @@ export const handleCreateProject = async (req, res, next) => {
  *               error:
  *                 errorCode: "P001"
  *                 reason: "해당 프로젝트를 찾을 수 없습니다."
+ *                 data: null
  *               success: null
  */
 export const handleUpdateProjectName = async (req, res, next) => {
@@ -184,6 +186,7 @@ export const handleUpdateProjectName = async (req, res, next) => {
  *               error:
  *                 errorCode: "P001"
  *                 reason: "해당 프로젝트를 찾을 수 없습니다."
+ *                 data: null
  *               success: null
  */
 export const handleDeleteProject = async (req, res, next) => {
@@ -273,6 +276,7 @@ export const handleDeleteProject = async (req, res, next) => {
  *                   error:
  *                     errorCode: "P003"
  *                     reason: "페이지 번호는 1보다 커야 합니다."
+ *                     data: null
  *                   success: null
  *               SearchQueryTooShort:
  *                 summary: 검색어 짧음 (P004)
@@ -281,6 +285,7 @@ export const handleDeleteProject = async (req, res, next) => {
  *                   error:
  *                     errorCode: "P004"
  *                     reason: "검색어는 최소 2글자 이상이어야 합니다."
+ *                     data: null
  *                   success: null
  */
 export const handleGetProjectList = async (req, res, next) => {
