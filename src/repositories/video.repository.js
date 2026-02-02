@@ -1,5 +1,27 @@
 import { prisma } from "../db.config.js";
 
+export const findVideoById = async (videoId) => {
+  return prisma.video.findFirst({
+    where: {
+      id: videoId,
+    },
+    select: { id: true },
+  });
+};
+
+export async function findVideoByIdWithOwner(videoId, userId) {
+  return prisma.video.findFirst({
+    where: {
+      id: videoId,
+      deletedAt: null,
+      project: {
+        ownerId: userId,
+      },
+    },
+    select: { id: true, projectId: true },
+  });
+}
+
 export const getVideoWithChunks = async (videoId) => {
   return await prisma.video.findUnique({
     where: { id: BigInt(videoId) },
@@ -38,5 +60,19 @@ export const getVideoChunksByVideoId = async (videoId) => {
   return await prisma.videoChunk.findMany({
     where: { videoId: BigInt(videoId) },
     orderBy: { chunkIndex: "asc" },
+  });
+};
+
+export const updateVideoMetadata = async (videoId, metadata) => {
+  return prisma.video.update({
+    where: { id: BigInt(videoId) },
+    data: {
+      durationSeconds: metadata.durationSeconds,
+      width: metadata.width,
+      height: metadata.height,
+      fps: metadata.fps,
+      codec: metadata.codec,
+      thumbnailUrl: metadata.thumbnailUrl ?? undefined,
+    },
   });
 };

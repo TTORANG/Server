@@ -39,7 +39,15 @@ jobs:
         run: |
           gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
-      # 5. Docker 이미지 빌드
+      # 5. Debug - 파일 확인
+      - name: Debug - Check files
+        run: |
+          echo "=== Checking package files ==="
+          ls -la package*.json
+          echo "=== package-lock.json first 5 lines ==="
+          head -5 package-lock.json
+
+      # 6. Docker 이미지 빌드
       - name: Build Docker image
         run: |
           docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} .
@@ -80,4 +88,5 @@ jobs:
               CDN_HOST=https://cdn.ttorang.com##
               GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}##
               CLOUD_RUN_SERVICE_URL=https://ttorang-server-407623424780.asia-northeast3.run.app##
-              CLOUD_TASKS_SERVICE_ACCOUNT=${{ secrets.CLOUD_TASKS_SERVICE_ACCOUNT }}"
+              CLOUD_TASKS_SERVICE_ACCOUNT=${{ secrets.CLOUD_TASKS_SERVICE_ACCOUNT }}##
+              REDIS_URL=${{ secrets.REDIS_URL }}"

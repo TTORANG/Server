@@ -1,12 +1,12 @@
 FROM node:20-alpine
 
-# FFmpeg 설치 (영상 인코딩용) + poppler-utils (PDF to Image 변환용)
-RUN apk add --no-cache ffmpeg poppler-utils
+# FFmpeg 설치 (영상 인코딩용) + poppler-utils (PDF to Image 변환용) + libreoffice (PPTX to PDF 변환용)
+RUN apk add --no-cache ffmpeg poppler-utils libreoffice
 
 WORKDIR /app
 
 #해당 파일이 안바뀌면(설정이 안바뀌면)
-COPY package*.json ./ 
+COPY package.json package-lock.json ./ 
 
 # 의존성 설치 (devDependencies 포함 - prisma 필요)
 RUN npm ci
