@@ -185,7 +185,7 @@ app.get("/presentations/:projectId/videos", isLogin, handleGetVideoList);
 app.post("/presentations/:projectId/shares", isLogin, handleCreateShareLink);
 
 // 공유 링크 조회 (인증 없이 접근 가능)
-app.get("/shares/:token", handleGetShareContent);
+app.get("/shares/:shareToken", handleGetShareContent);
 
 // 공유 링크 목록 조회
 app.get("/presentations/:projectId/shares", isLogin, handleGetShareLinkList);
