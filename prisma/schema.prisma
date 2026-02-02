@@ -62,6 +62,12 @@ model Session {
   comments    Comment[]
   reactions   Reaction[]
 
+  // Analytics relations
+  analyticsPageViews   AnalyticsPageView[]
+  analyticsSlideViews  AnalyticsSlideView[]
+  analyticsVideoEvents AnalyticsVideoEvent[]
+  analyticsExits       AnalyticsExit[]
+
   @@unique([userId, isAnonymous], name: "uq_session_user_anonymous")                                          
   @@index([userId])                                                       
   @@index([isAnonymous])     
@@ -90,6 +96,11 @@ model Project {
   uploadedFiles UploadedFile[]
   shareLinks    ShareLink[]
   materials     ProjectMaterial[]
+
+  // Analytics relations
+  analyticsPageViews  AnalyticsPageView[]
+  analyticsSlideViews AnalyticsSlideView[]
+  analyticsExits      AnalyticsExit[]
 
   @@index([userId, createdAt(sort: Desc)], name: "idx_project_user_created")
   @@index([title], name: "idx_project_title")
@@ -185,6 +196,9 @@ model Slide {
   assets      SlideAsset[]
   videoEvents VideoSlideEvent[]
   slideDurations VideoSlideDuration[]
+
+  analyticsSlideViews AnalyticsSlideView[]
+  analyticsExits      AnalyticsExit[]
 
   @@unique([projectId, slideNum])
   @@map("slide")
@@ -313,8 +327,12 @@ model Video {
   slideEvents    VideoSlideEvent[]
   slideDurations VideoSlideDuration[]
   conversionJobs ConversionJob[]
-  shareLinks          ShareLink[]
-  
+  shareLinks     ShareLink[]
+
+  // Analytics relations
+  analyticsVideoEvents AnalyticsVideoEvent[]
+  analyticsExits       AnalyticsExit[] @relation("AnalyticsExitVideo")
+
   @@map("video")
 }
 
@@ -435,4 +453,82 @@ model ConversionJob {
   slideAssets  SlideAsset[]
 
   @@map("conversion_job")
+}
+
+// ==================== Analytics Models ====================
+
+// 페이지 조회 기록 (피드백자의 프로젝트 접속 기록)
+model AnalyticsPageView {
+  id             BigInt   @id @default(autoincrement()) @map("id")
+  projectId      BigInt   @map("project_id")
+  sessionId      String   @db.Char(36) @map("session_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt], name: "idx_analytics_pageview_project")
+  @@index([sessionId], name: "idx_analytics_pageview_session")
+  @@map("analytics_page_view")
+}
+
+// 슬라이드 조회 기록
+model AnalyticsSlideView {
+  id         BigInt   @id @default(autoincrement()) @map("id")
+  projectId  BigInt   @map("project_id")
+  slideId    BigInt   @map("slide_id")
+  sessionId  String   @db.Char(36) @map("session_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  slide   Slide   @relation(fields: [slideId], references: [id], onDelete: Cascade)
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, slideId], name: "idx_analytics_slideview_project_slide")
+  @@index([sessionId], name: "idx_analytics_slideview_session")
+  @@map("analytics_slide_view")
+}
+
+// 영상 이벤트 기록 (재생, 일시정지, 탐색)
+enum AnalyticsVideoEventType {
+  play
+  pause
+  seek
+}
+
+model AnalyticsVideoEvent {
+  id          BigInt   @id @default(autoincrement()) @map("id")
+  videoId     BigInt   @map("video_id")
+  sessionId   String   @db.Char(36) @map("session_id")
+  eventType   AnalyticsVideoEventType @map("event_type")
+  timestampMs Int      @map("timestamp_ms")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  video   Video   @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([videoId, eventType], name: "idx_analytics_video_event_video")
+  @@index([sessionId], name: "idx_analytics_video_event_session")
+  @@map("analytics_video_event")
+}
+
+// 이탈 지점 기록
+model AnalyticsExit {
+  id             BigInt   @id @default(autoincrement()) @map("id")
+  projectId      BigInt   @map("project_id")
+  sessionId      String   @db.Char(36) @map("session_id")
+  lastSlideId    BigInt?  @map("last_slide_id")
+  lastVideoId    BigInt?  @map("last_video_id")
+  lastVideoTimeMs Int?    @map("last_video_time_ms")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  lastSlide Slide?   @relation(fields: [lastSlideId], references: [id], onDelete: SetNull)
+  lastVideo Video?   @relation("AnalyticsExitVideo", fields: [lastVideoId], references: [id], onDelete: SetNull)
+
+  @@index([projectId], name: "idx_analytics_exit_project")
+  @@index([sessionId], name: "idx_analytics_exit_session")
+  @@index([lastSlideId], name: "idx_analytics_exit_slide")
+  @@map("analytics_exit")
 }

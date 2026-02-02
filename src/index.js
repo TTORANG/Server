@@ -51,6 +51,16 @@ import {
   handleGetShareLinkList,
   handleGetVideoListForSharing,
 } from "./controllers/shareLink.controller.js";
+import {
+  handleRecordPageView,
+  handleRecordSlideView,
+  handleRecordVideoEvent,
+  handleRecordExit,
+  handleGetSummary,
+  handleGetSlideAnalytics,
+  handleGetVideoTimeline,
+  handleGetVideoExits,
+} from "./controllers/analytics.controller.js";
 
 import multer from "multer";
 import { MAX_SIZE_BYTES } from "./constants/files.js";
@@ -232,6 +242,20 @@ app.post("/videos/:videoId/comments", isLogin, handleCreateVideoComment); // 영
 // 답글 관련 라우팅
 app.post("/comments/:commentId/replies", isLogin, postCommentReply); // 답글 작성
 app.get("/comments/:commentId/replies", isLogin, getCommentReplies); // 답글 목록 조회
+
+// ==================== Analytics 엔드포인트 ====================
+
+// 수집 API
+app.post("/analytics/pageview", isLogin, handleRecordPageView);
+app.post("/analytics/slide-view", isLogin, handleRecordSlideView);
+app.post("/analytics/video-event", isLogin, handleRecordVideoEvent);
+app.post("/analytics/exit", isLogin, handleRecordExit);
+
+// 조회 API
+app.get("/presentations/:projectId/analytics/summary", isLogin, handleGetSummary);
+app.get("/presentations/:projectId/analytics/slides", isLogin, handleGetSlideAnalytics);
+app.get("/videos/:videoId/analytics/timeline", isLogin, handleGetVideoTimeline);
+app.get("/videos/:videoId/analytics/exits", isLogin, handleGetVideoExits);
 
 // Worker 엔드포인트 (pdf,ppt,동영상 변환)
 app.post("/worker/process-job", handleProcessJob);
