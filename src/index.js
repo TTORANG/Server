@@ -8,13 +8,6 @@ import { specs } from "./swagger.config.js";
 
 import { handleProcessJob } from "./controllers/conversion-job.controller.js";
 
-import {
-  handleRecordPageView,
-  handleRecordSlideView,
-  handleRecordVideoEvent,
-  handleRecordExit,
-} from "./controllers/analytics.controller.js";
-
 import { createServer } from "http";
 
 // Pub/Sub 이벤트 시스템
@@ -35,6 +28,7 @@ import reactionRouter from "./routes/reaction.route.js";
 import videoRouter from "./routes/video.route.js";
 import commentRouter from "./routes/comment.route.js";
 import fileRouter from "./routes/file.route.js";
+import analyticsRouter from "./routes/analytics.route.js";
 
 dotenv.config();
 
@@ -55,22 +49,6 @@ passport.use("naver", naverStrategy);
 app.get("/", (req, res) => {
   res.send("Hello World!");
 });
-
-const isLogin = (req, res, next) => {
-  passport.authenticate("jwt", { session: false }, (err, user, info) => {
-    if (err) return next(err);
-
-    // 인증 실패 에러
-    if (!user) {
-      const authError = new AuthSessionRequiredError(info ? info.message : null);
-      return next(authError);
-    }
-
-    // 인증 성공
-    req.user = user;
-    next();
-  })(req, res, next);
-};
 
 // swagger 문서
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
@@ -105,13 +83,8 @@ app.use("/", commentRouter);
 // 파일 라우터
 app.use("/", fileRouter);
 
-// ==================== Analytics 엔드포인트 ====================
-
-// 수집 API
-app.post("/analytics/pageview", isLogin, handleRecordPageView);
-app.post("/analytics/slide-view", isLogin, handleRecordSlideView);
-app.post("/analytics/video-event", isLogin, handleRecordVideoEvent);
-app.post("/analytics/exit", isLogin, handleRecordExit);
+// Analytics 라우터
+app.use("/analytics", analyticsRouter);
 
 // Worker 엔드포인트 (pdf,ppt,동영상 변환)
 app.post("/worker/process-job", handleProcessJob);
