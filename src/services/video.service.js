@@ -13,6 +13,19 @@ import { uploadBufferToGCS } from "./gcs.service.js";
 import crypto from "crypto";
 import { ALLOWED_VIDEO_MIME } from "../constants/files.js";
 import { MAX_SLIDE_DURATION_MS } from "../constants/videos.js";
+import {
+  findVideoDetailById,
+  findVideosByProjectId,
+  findVideoSlideEnterEvents,
+  findVideoStatusById,
+} from "../repositories/video.repository.js";
+import {
+  videoDetailResponseDTO,
+  videoListResponseDTO,
+  videoSlideTimelineResponseDTO,
+} from "../dtos/video.dto.js";
+import { findVideoReactionsGrouped } from "../repositories/reaction.repository.js";
+import { findVideoComments } from "../repositories/comment.repository.js";
 
 function toInt(value) {
   const n = typeof value === "string" ? Number(value) : value;
@@ -324,32 +337,12 @@ export async function getVideoList({ projectId }) {
     throw new InvalidUploadError({ projectId: pid }, "존재하지 않는 프로젝트입니다.");
   }
 
-  const videos = await prisma.video.findMany({
-    where: {
-      projectId: pid,
-      deletedAt: null,
-      status: { not: "deleted" },
-    },
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      title: true,
-      status: true,
-      durationSeconds: true,
-      thumbnailUrl: true,
-      createdAt: true,
-    },
-  });
+  const videos = await findVideosByProjectId(pid);
 
   return {
     resultType: "SUCCESS",
     error: null,
-    success: {
-      videos: videos.map((v) => ({
-        ...v,
-        id: v.id.toString(),
-      })),
-    },
+    success: videoListResponseDTO(videos),
   };
 }
 
@@ -362,54 +355,9 @@ export async function getVideoDetail({ videoId }) {
 
   // 영상 정보, 리액션, 댓글 가져옴
   const [video, reactions, comments] = await Promise.all([
-    prisma.video.findFirst({
-      where: {
-        id: vid,
-        deletedAt: null,
-      },
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        durationSeconds: true,
-        width: true,
-        height: true,
-        fps: true,
-        hlsMasterUrl: true,
-        thumbnailUrl: true,
-        createdAt: true,
-      },
-    }),
-    prisma.reaction.groupBy({
-      by: ["timestampMs", "emojiType"],
-      where: {
-        targetType: "video",
-        targetId: vid,
-        timestampMs: { not: null },
-        isDeleted: false,
-      },
-      _count: { _all: true },
-    }),
-    prisma.comment.findMany({
-      where: {
-        targetType: "video",
-        targetId: vid,
-        isDeleted: false,
-      },
-      orderBy: { timestampMs: "asc" },
-      select: {
-        id: true,
-        timestampMs: true,
-        content: true,
-        createdAt: true,
-        user: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-    }),
+    findVideoDetailById(vid),
+    findVideoReactionsGrouped(vid),
+    findVideoComments(vid),
   ]);
 
   if (!video) {
@@ -419,27 +367,11 @@ export async function getVideoDetail({ videoId }) {
   return {
     resultType: "SUCCESS",
     error: null,
-    success: {
-      video: {
-        ...video,
-        id: video.id.toString(),
-      },
-      timeline: {
-        reactions: reactions.map((r) => ({
-          timestampMs: r.timestampMs,
-          emojiType: r.emojiType,
-          count: r._count._all,
-        })),
-        comments: comments.map((c) => ({
-          ...c,
-          id: c.id.toString(),
-          user: {
-            ...c.user,
-            id: c.user.id.toString(),
-          },
-        })),
-      },
-    },
+    success: videoDetailResponseDTO({
+      video,
+      reactions,
+      comments,
+    }),
   };
 }
 
@@ -450,13 +382,7 @@ export async function getVideoSlideTimeline({ videoId }) {
     throw new InvalidParameterError({ videoId: String(videoId) }, "videoId가 올바르지 않습니다.");
   }
 
-  const video = await prisma.video.findFirst({
-    where: {
-      id: vid,
-      deletedAt: null,
-    },
-    select: { id: true, status: true },
-  });
+  const video = await findVideoStatusById(vid);
 
   if (!video) {
     throw new VideoNotFoundError({ videoId: String(videoId) });
@@ -469,28 +395,11 @@ export async function getVideoSlideTimeline({ videoId }) {
     });
   }
 
-  const events = await prisma.videoSlideEvent.findMany({
-    where: {
-      videoId: vid,
-      eventType: "enter",
-    },
-    orderBy: {
-      timestampMs: "asc",
-    },
-    select: {
-      slideId: true,
-      timestampMs: true,
-    },
-  });
+  const events = await findVideoSlideEnterEvents(vid);
 
   return {
     resultType: "SUCCESS",
     error: null,
-    success: {
-      slides: events.map((e) => ({
-        slideId: e.slideId.toString(),
-        timestampMs: e.timestampMs,
-      })),
-    },
+    success: videoSlideTimelineResponseDTO(events),
   };
 }

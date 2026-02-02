@@ -13,6 +13,19 @@ export function findReaction(where) {
   });
 }
 
+export async function findVideoReactionsGrouped(videoId) {
+  return prisma.reaction.groupBy({
+    by: ["timestampMs", "emojiType"],
+    where: {
+      targetType: "video",
+      targetId: videoId,
+      timestampMs: { not: null },
+      isDeleted: false,
+    },
+    _count: { _all: true },
+  });
+}
+
 export function createReaction(data) {
   return prisma.reaction.create({ data });
 }
@@ -32,24 +45,22 @@ export function countSlideReactions(slideId) {
       targetId: BigInt(slideId),
       isDeleted: false,
     },
-    _count: {
-      _all: true,
-    },
+    _count: { _all: true },
   });
 }
 
 export function findSlideByIdWithOwner(slideId, userId) {
-  if (!userId) {
-    return null;
-  }
+  if (!userId) return null;
 
   return prisma.slide.findFirst({
     where: {
       id: BigInt(slideId),
       isDeleted: false,
       project: {
-        userId,
-        isDeleted: false,
+        is: {
+          userId: BigInt(userId),
+          isDeleted: false,
+        },
       },
     },
     select: { id: true },
@@ -89,3 +100,34 @@ export const aggregateVideoReactionsByTimeWindow = async ({ videoId, startMs, en
     _count: { _all: true },
   });
 };
+
+export function findVideoReaction({ userId, videoId, timestampMs, emojiType }) {
+  return prisma.reaction.findFirst({
+    where: {
+      userId,
+      targetType: "video",
+      targetId: BigInt(videoId),
+      timestampMs,
+      emojiType,
+    },
+  });
+}
+
+export function updateReactionIsDeleted(reactionId, isDeleted) {
+  return prisma.reaction.update({
+    where: { id: reactionId },
+    data: { isDeleted },
+  });
+}
+
+export function createVideoReaction({ userId, videoId, timestampMs, emojiType }) {
+  return prisma.reaction.create({
+    data: {
+      userId,
+      targetType: "video",
+      targetId: BigInt(videoId),
+      timestampMs,
+      emojiType,
+    },
+  });
+}
