@@ -6,33 +6,14 @@ import { googleStrategy, jwtStrategy, kakaoStrategy, naverStrategy } from "./aut
 import swaggerUi from "swagger-ui-express";
 import { specs } from "./swagger.config.js";
 
-import { postUploadPresentationFile } from "./controllers/files.controller.js";
-
 import { handleProcessJob } from "./controllers/conversion-job.controller.js";
-
-import {
-  finishRecording,
-  handleGetVideoDetail,
-  handleGetVideoList,
-  handleGetVideoSlideTimeline,
-  startRecording,
-  uploadVideoChunk,
-} from "./controllers/video.controller.js";
 
 import {
   handleRecordPageView,
   handleRecordSlideView,
   handleRecordVideoEvent,
   handleRecordExit,
-  handleGetSummary,
-  handleGetSlideAnalytics,
-  handleGetVideoTimeline,
-  handleGetVideoExits,
 } from "./controllers/analytics.controller.js";
-
-import multer from "multer";
-import { MAX_SIZE_BYTES } from "./constants/files.js";
-import { handleGetPresentationStatus } from "./controllers/conversionStatus.controller.js";
 
 import { createServer } from "http";
 
@@ -42,29 +23,18 @@ import { registerSubscribers } from "./events/subscribers/index.js";
 
 // Socket.io
 import { initializeSocket } from "./socket/index.js";
-import {
-  getSlideReactionSummaryController,
-  getVideoReactionMarkers,
-  getVideoReactionsByTimeController,
-  handleToggleVideoReaction,
-  toggleSlideReactionController,
-} from "./controllers/reaction.controller.js";
-import {
-  deleteCommentController,
-  getSlideCommentsController,
-  getVideoCommentsByTimestampController,
-  handleCreateVideoComment,
-  patchComment,
-  postSlideComment,
-} from "./controllers/comment.controller.js";
-import { getCommentReplies, postCommentReply } from "./controllers/reply.controller.js";
 
+// 라우터
 import authRouter from "./routes/auth.route.js";
 import sessionRouter from "./routes/session.route.js";
 import projectRouter from "./routes/project.route.js";
 import slideRouter from "./routes/slide.route.js";
 import scriptRouter from "./routes/script.route.js";
 import shareRouter from "./routes/shareLink.route.js";
+import reactionRouter from "./routes/reaction.route.js";
+import videoRouter from "./routes/video.route.js";
+import commentRouter from "./routes/comment.route.js";
+import fileRouter from "./routes/file.route.js";
 
 dotenv.config();
 
@@ -102,11 +72,6 @@ const isLogin = (req, res, next) => {
   })(req, res, next);
 };
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: MAX_SIZE_BYTES },
-});
-
 // swagger 문서
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
 
@@ -128,40 +93,17 @@ app.use("/presentations/slides", scriptRouter);
 // 공유 링크 라우터
 app.use("/", shareRouter);
 
-// 프로젝트 하위 녹화 영상 목록 조회
-app.get("/presentations/:projectId/videos", isLogin, handleGetVideoList);
+// 리액션 라우터
+app.use("/", reactionRouter);
 
-// 프로젝트 파일 변환 상태 조회
-app.get("/presentations/:projectId/status", isLogin, handleGetPresentationStatus);
+// 영상 라우터
+app.use("/", videoRouter);
 
-// 파일 업로드 관련 라우팅
-app.post("/files/upload", isLogin, upload.single("file"), postUploadPresentationFile);
+// 댓글 라우터
+app.use("/", commentRouter);
 
-// 영상 관련 라우팅
-app.post("/videos/start", isLogin, startRecording); // 영상 업로드
-app.post("/videos/:videoId/finish", isLogin, finishRecording); // 비디오 업로드 검증
-app.get("/videos/:videoId", isLogin, handleGetVideoDetail); // 영상 상세 조회
-app.post("/videos/:videoId/chunks/:chunkIndex", isLogin, upload.single("file"), uploadVideoChunk); // 영상 청크 업로드
-app.get("/videos/:videoId/slides", isLogin, handleGetVideoSlideTimeline); // 영상-슬라이드 동기화 타임라인 조회
-
-// 리액션 관련 라우팅
-app.post("/slides/:slideId/reactions/toggle", isLogin, toggleSlideReactionController); // 리액션 추가 및 취소
-app.get("/slides/:slideId/reactions/summary", isLogin, getSlideReactionSummaryController); // 리액션 집계 조회
-app.post("/videos/:videoId/reactions", isLogin, handleToggleVideoReaction); // 영상 타임스탬프 리액션 생성
-app.get("/videos/:videoId/reactions/timeline", getVideoReactionMarkers); // 영상 리액션 집계
-app.get("/videos/:videoId/reactions", getVideoReactionsByTimeController); // 시간대별 리액션 조회
-
-// 댓글 관련 라우팅
-app.post("/slides/:slideId/comments", isLogin, postSlideComment); // 댓글 작성
-app.patch("/comments/:commentId", isLogin, patchComment); // 댓글 수정
-app.delete("/comments/:commentId", isLogin, deleteCommentController); // 댓글 및 답글 삭제
-app.get("/slides/:slideId/comments", isLogin, getSlideCommentsController); // 댓글 목록 조회
-app.post("/videos/:videoId/comments", isLogin, handleCreateVideoComment); // 영상 타임스탬프 댓글 생성
-app.get("/videos/:videoId/comments", isLogin, getVideoCommentsByTimestampController); // 시간대별 댓글 조회
-
-// 답글 관련 라우팅
-app.post("/comments/:commentId/replies", isLogin, postCommentReply); // 답글 작성
-app.get("/comments/:commentId/replies", isLogin, getCommentReplies); // 답글 목록 조회
+// 파일 라우터
+app.use("/", fileRouter);
 
 // ==================== Analytics 엔드포인트 ====================
 
@@ -170,12 +112,6 @@ app.post("/analytics/pageview", isLogin, handleRecordPageView);
 app.post("/analytics/slide-view", isLogin, handleRecordSlideView);
 app.post("/analytics/video-event", isLogin, handleRecordVideoEvent);
 app.post("/analytics/exit", isLogin, handleRecordExit);
-
-// 조회 API
-app.get("/presentations/:projectId/analytics/summary", isLogin, handleGetSummary);
-app.get("/presentations/:projectId/analytics/slides", isLogin, handleGetSlideAnalytics);
-app.get("/videos/:videoId/analytics/timeline", isLogin, handleGetVideoTimeline);
-app.get("/videos/:videoId/analytics/exits", isLogin, handleGetVideoExits);
 
 // Worker 엔드포인트 (pdf,ppt,동영상 변환)
 app.post("/worker/process-job", handleProcessJob);

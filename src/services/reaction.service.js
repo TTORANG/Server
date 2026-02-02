@@ -1,4 +1,9 @@
+import { ALLOWED_EMOJIS } from "../constants/reaction.js";
 import { prisma } from "../db.config.js";
+import {
+  slideReactionSummaryResponseDTO,
+  videoReactionToggleResponseDTO,
+} from "../dtos/reaction.dto.js";
 import { BaseError } from "../errors/base.error.js";
 import {
   InvalidEmojiTypeError,
@@ -13,13 +18,14 @@ import {
   aggregateVideoReactionsByTimeWindow,
   countSlideReactions,
   createReaction,
+  createVideoReaction,
   findReaction,
   findSlideByIdWithOwner,
+  findVideoReaction,
   updateReaction,
+  updateReactionIsDeleted,
 } from "../repositories/reaction.repository.js";
 import { findVideoById, findVideoByIdWithOwner } from "../repositories/video.repository.js";
-
-const ALLOWED_EMOJIS = ["thumbs_up", "heart", "eyes", "clap"];
 
 // 리액션 추가 및 취소
 export async function toggleSlideReaction({ slideId, emojiType, userId }) {
@@ -66,15 +72,10 @@ export async function getSlideReactionSummary({ slideId, userId }) {
 
   const rows = await countSlideReactions(slideId);
 
-  // 기본값 0 세팅
-  const summary = {};
-  ALLOWED_EMOJIS.forEach((e) => (summary[e] = 0));
-
-  rows.forEach((r) => {
-    summary[r.emojiType] = r._count._all;
+  return slideReactionSummaryResponseDTO({
+    slideId,
+    rows,
   });
-
-  return summary;
 }
 
 // 영상 타임스탬프 리액션 생성
@@ -98,34 +99,27 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
     throw new VideoNotFoundError({ videoId: String(videoId) });
   }
 
-  const existing = await prisma.reaction.findFirst({
-    where: {
-      userId,
-      targetType: "video",
-      targetId: vid,
-      timestampMs: ts,
-      emojiType,
-    },
+  const existing = await findVideoReaction({
+    userId,
+    videoId: vid,
+    timestampMs: ts,
+    emojiType,
   });
 
   if (existing) {
-    const newIsDeleted = !existing.isDeleted;
+    const isDeleted = !existing.isDeleted;
 
-    await prisma.reaction.update({
-      where: { id: existing.id },
-      data: { isDeleted: newIsDeleted },
-    });
+    const updated = await updateReactionIsDeleted(existing.id, isDeleted);
 
-    // 실시간 알림을 위한 이벤트 발행
-    if (newIsDeleted) {
+    if (isDeleted) {
       await eventBus.publish(EventTypes.REACTION_REMOVED, {
-        reactionId: existing.id,
+        reactionId: updated.id,
         projectId: video.projectId,
         videoId: vid,
       });
     } else {
       await eventBus.publish(EventTypes.REACTION_ADDED, {
-        reactionId: existing.id,
+        reactionId: updated.id,
         projectId: video.projectId,
         videoId: vid,
         userId,
@@ -134,22 +128,22 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
       });
     }
 
-    return { active: !newIsDeleted };
+    return videoReactionToggleResponseDTO({
+      reactionId: updated.id,
+      videoId: vid,
+      active: !isDeleted,
+    });
   }
 
-  const reaction = await prisma.reaction.create({
-    data: {
-      userId,
-      targetType: "video",
-      targetId: vid,
-      timestampMs: ts,
-      emojiType,
-    },
+  const created = await createVideoReaction({
+    userId,
+    videoId: vid,
+    timestampMs: ts,
+    emojiType,
   });
 
-  // 실시간 알림을 위한 이벤트 발행
   await eventBus.publish(EventTypes.REACTION_ADDED, {
-    reactionId: reaction.id,
+    reactionId: created.id,
     projectId: video.projectId,
     videoId: vid,
     userId,
@@ -157,7 +151,11 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
     timestampMs: ts,
   });
 
-  return { active: true };
+  return videoReactionToggleResponseDTO({
+    reactionId: created.id,
+    videoId: vid,
+    active: true,
+  });
 }
 
 // 영상 리액션 집계

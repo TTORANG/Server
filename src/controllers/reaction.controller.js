@@ -235,7 +235,7 @@ export async function getSlideReactionSummaryController(req, res, next) {
    *                   success: null
    */
   try {
-    const summary = await getSlideReactionSummary({
+    const result = await getSlideReactionSummary({
       slideId: req.params.slideId,
       userId: req.user.id,
     });
@@ -243,7 +243,7 @@ export async function getSlideReactionSummaryController(req, res, next) {
     res.json({
       resultType: "SUCCESS",
       error: null,
-      success: summary,
+      success: result,
     });
   } catch (e) {
     next(e);
@@ -696,4 +696,23 @@ export const getVideoReactionsByTimeController = async (req, res, next) => {
  *           description: 시간대별 리액션 집계 결과
  *           items:
  *             $ref: "#/components/schemas/VideoReactionGroupItem"
+ *
+ *     VideoReactionToggleSuccess:
+ *       type: object
+ *       properties:
+ *         reactionId:
+ *           type: string
+ *           description: 리액션 ID (BigInt → string)
+ *           example: "123"
+ *         videoId:
+ *           type: string
+ *           description: 영상 ID (BigInt → string)
+ *           example: "21"
+ *         active:
+ *           type: boolean
+ *           description: |
+ *             현재 리액션 상태
+ *             - true: 활성
+ *             - false: 비활성
+ *           example: true
  */

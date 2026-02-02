@@ -12,13 +12,56 @@ export const findVideoById = async (videoId) => {
 export async function findVideoByIdWithOwner(videoId, userId) {
   return prisma.video.findFirst({
     where: {
-      id: videoId,
+      id: BigInt(videoId),
       deletedAt: null,
       project: {
-        ownerId: userId,
+        is: {
+          userId: BigInt(userId),
+          isDeleted: false,
+        },
       },
     },
     select: { id: true, projectId: true },
+  });
+}
+
+export async function findVideosByProjectId(projectId) {
+  return prisma.video.findMany({
+    where: {
+      projectId,
+      deletedAt: null,
+      status: { not: "deleted" },
+    },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      durationSeconds: true,
+      thumbnailUrl: true,
+      createdAt: true,
+    },
+  });
+}
+
+export async function findVideoDetailById(videoId) {
+  return prisma.video.findFirst({
+    where: {
+      id: videoId,
+      deletedAt: null,
+    },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      durationSeconds: true,
+      width: true,
+      height: true,
+      fps: true,
+      hlsMasterUrl: true,
+      thumbnailUrl: true,
+      createdAt: true,
+    },
   });
 }
 
@@ -76,3 +119,32 @@ export const updateVideoMetadata = async (videoId, metadata) => {
     },
   });
 };
+
+export async function findVideoStatusById(videoId) {
+  return prisma.video.findFirst({
+    where: {
+      id: videoId,
+      deletedAt: null,
+    },
+    select: {
+      id: true,
+      status: true,
+    },
+  });
+}
+
+export async function findVideoSlideEnterEvents(videoId) {
+  return prisma.videoSlideEvent.findMany({
+    where: {
+      videoId,
+      eventType: "enter",
+    },
+    orderBy: {
+      timestampMs: "asc",
+    },
+    select: {
+      slideId: true,
+      timestampMs: true,
+    },
+  });
+}
