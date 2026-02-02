@@ -96,6 +96,9 @@ model Project {
   uploadedFiles UploadedFile[]
   shareLinks    ShareLink[]
   materials     ProjectMaterial[]
+  reactions       Reaction[]      
+  comments        Comment[]
+
 
   // Analytics relations
   analyticsPageViews  AnalyticsPageView[]
@@ -137,12 +140,14 @@ model ShareLink {
 }
 
 enum TargetType {
+  project
   slide
   video
 }
 
 model Comment {
   id          BigInt   @id @default(autoincrement()) @map("id")
+  projectId   BigInt     @map("project_id") 
   userId      BigInt   @map("user_id")
   sessionId   String?   @db.Char(36) @map("session_id")
   targetType  TargetType @map("target_type")
@@ -154,6 +159,7 @@ model Comment {
   updatedAt   DateTime? @map("updated_at") @updatedAt
   isDeleted   Boolean  @default(false) @db.TinyInt @map("is_deleted")
 
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user     User    @relation(fields: [userId], references: [id])
   session  Session? @relation(fields: [sessionId], references: [id])
   parent   Comment? @relation("CommentParent", fields: [parentId], references: [id])
@@ -164,6 +170,7 @@ model Comment {
 
 model Reaction {
   id         BigInt   @id @default(autoincrement())
+  projectId   BigInt     @map("project_id")
   userId     BigInt @map("user_id")
   sessionId  String?   @db.Char(36) @map("session_id")
   targetType TargetType @map("target_type")
@@ -175,6 +182,7 @@ model Reaction {
 
   user    User    @relation(fields: [userId], references: [id])
   session Session? @relation(fields: [sessionId], references: [id])
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([userId, targetType, targetId, emojiType], name: "uq_slide_reaction")
   @@unique([userId, sessionId, targetType, targetId, timestampMs, emojiType], name: "uq_video_reaction")
