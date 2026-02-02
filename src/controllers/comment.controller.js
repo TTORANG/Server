@@ -2,12 +2,14 @@ import {
   commentListResponseDTO,
   commentResponseDTO,
   createSlideCommentRequestDTO,
+  videoCommentListResponseDTO,
 } from "../dtos/comment.dto.js";
 import {
   createSlideComment,
   createVideoComment,
   deleteComment,
   getSlideComments,
+  getVideoCommentsByTimestamp,
   updateComment,
 } from "../services/comment.service.js";
 

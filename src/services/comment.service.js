@@ -16,6 +16,7 @@ import {
   createComment,
   findCommentById,
   findCommentsBySlideId,
+  findVideoCommentsByTimestamp,
   softDeleteComment,
   updateCommentContent,
 } from "../repositories/comment.repository.js";
