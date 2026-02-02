@@ -256,7 +256,9 @@ export const handleDeleteProject = async (req, res, next) => {
  *                     title: "기말고사 발표 자료"
  *                     thumbnailUrl: "https://storage.googleapis.com/..."
  *                     slideCount: 10
- *                     feedbackCount: 0
+ *                     reactionCount: 25
+ *                     viewCount: 150
+ *                     feedbackCount: 5
  *                     durationSeconds: 180
  *                     createdAt: "2026-01-15T10:00:00.000Z"
  *                     updatedAt: "2026-01-15T11:00:00.000Z"
