@@ -85,7 +85,7 @@ export const handleCreateProject = async (req, res, next) => {
 
 /**
  * @swagger
- * /presentations/{id}:
+ * /presentations/{projectId}:
  *   patch:
  *     summary: 프로젝트 제목 수정
  *     description: 특정 프로젝트의 제목을 변경합니다.
@@ -94,7 +94,7 @@ export const handleCreateProject = async (req, res, next) => {
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: projectId
  *         required: true
  *         schema:
  *           type: string
@@ -134,10 +134,10 @@ export const handleCreateProject = async (req, res, next) => {
  */
 export const handleUpdateProjectName = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const { projectId } = req.params;
     const { title } = req.body;
     const userId = req.user.id;
-    const project = await processUpdateProjectName(id, userId, title);
+    const project = await processUpdateProjectName(projectId, userId, title);
 
     res.status(200).json({
       resultType: "SUCCESS",
@@ -151,7 +151,7 @@ export const handleUpdateProjectName = async (req, res, next) => {
 
 /**
  * @swagger
- * /presentations/{id}:
+ * /presentations/{projectId}:
  *   delete:
  *     summary: 프로젝트 삭제 (Soft Delete)
  *     description: 특정 프로젝트의 isDeleted 플래그를 true로 변경합니다.
@@ -160,7 +160,7 @@ export const handleUpdateProjectName = async (req, res, next) => {
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: projectId
  *         required: true
  *         schema:
  *           type: string
@@ -188,10 +188,10 @@ export const handleUpdateProjectName = async (req, res, next) => {
  */
 export const handleDeleteProject = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const { projectId } = req.params;
     const userId = req.user.id;
 
-    await processDeleteProject(id, userId);
+    await processDeleteProject(projectId, userId);
 
     res.status(200).json({
       resultType: "SUCCESS",

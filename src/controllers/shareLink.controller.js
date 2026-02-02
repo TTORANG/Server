@@ -120,14 +120,14 @@ export const handleCreateShareLink = async (req, res, next) => {
 
 /**
  * @swagger
- * /shares/{token}:
+ * /shares/{shareToken}:
  *   get:
  *     summary: 공유 콘텐츠 조회
  *     description: 토큰을 통해 외부 공유된 프로젝트 콘텐츠(슬라이드, 대본, 영상)를 조회합니다. (인증 불필요)
  *     tags: [ShareLink]
  *     parameters:
  *       - in: path
- *         name: token
+ *         name: shareToken
  *         required: true
  *         schema:
  *           type: string
@@ -172,8 +172,8 @@ export const handleCreateShareLink = async (req, res, next) => {
  */
 export const handleGetShareContent = async (req, res, next) => {
   try {
-    const { token } = req.params;
-    const result = await processGetShareContent(token);
+    const { shareToken } = req.params;
+    const result = await processGetShareContent(shareToken);
 
     res.status(200).json({
       resultType: "SUCCESS",

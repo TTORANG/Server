@@ -46,9 +46,9 @@ export const findShareLinkWithContent = async (token) => {
               assets: {
                 where: {
                   assetType: "image",
-                  orderBy: {
-                    createdAt: "asc",
-                  },
+                },
+                orderBy: {
+                  createdAt: "asc",
                 },
               },
             },
