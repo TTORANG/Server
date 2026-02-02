@@ -7,37 +7,6 @@ import {
 } from "../errors/analytics.error.js";
 import * as analyticsRepository from "../repositories/analytics.repository.js";
 
-// ==================== Helper Functions ====================
-
-const toInt = (value) => {
-  const n = typeof value === "string" ? Number(value) : value;
-  return Number.isInteger(n) ? n : NaN;
-};
-
-const requireProjectId = (projectId) => {
-  const pid = toInt(projectId);
-  if (!Number.isInteger(pid) || pid <= 0) {
-    throw new AnalyticsInvalidParameterError({ projectId }, "프로젝트 ID가 올바르지 않습니다.");
-  }
-  return pid;
-};
-
-const requireVideoId = (videoId) => {
-  const vid = toInt(videoId);
-  if (!Number.isInteger(vid) || vid <= 0) {
-    throw new AnalyticsInvalidParameterError({ videoId }, "영상 ID가 올바르지 않습니다.");
-  }
-  return vid;
-};
-
-const requireSlideId = (slideId) => {
-  const sid = toInt(slideId);
-  if (!Number.isInteger(sid) || sid <= 0) {
-    throw new AnalyticsInvalidParameterError({ slideId }, "슬라이드 ID가 올바르지 않습니다.");
-  }
-  return sid;
-};
-
 // ==================== 수집 API ====================
 
 /**
@@ -111,7 +80,10 @@ export const recordVideoEvent = async ({ videoId, eventType, timestampMs, sessio
   }
 
   if (!Number.isInteger(ts) || ts < 0) {
-    throw new AnalyticsInvalidParameterError({ timestampMs }, "타임스탬프는 0 이상의 정수여야 합니다.");
+    throw new AnalyticsInvalidParameterError(
+      { timestampMs },
+      "타임스탬프는 0 이상의 정수여야 합니다."
+    );
   }
 
   const video = await analyticsRepository.findVideoById(vid);
@@ -137,7 +109,13 @@ export const recordVideoEvent = async ({ videoId, eventType, timestampMs, sessio
  * 이탈 지점 기록
  * POST /analytics/exit
  */
-export const recordExit = async ({ projectId, sessionId, lastSlideId, lastVideoId, lastVideoTimeMs }) => {
+export const recordExit = async ({
+  projectId,
+  sessionId,
+  lastSlideId,
+  lastVideoId,
+  lastVideoTimeMs,
+}) => {
   if (!sessionId) {
     throw new AnalyticsSessionRequiredError();
   }
@@ -430,4 +408,35 @@ export const getVideoExits = async ({ videoId }) => {
     error: null,
     success: { exits: exitRates },
   };
+};
+
+// ==================== Helper Functions ====================
+
+const toInt = (value) => {
+  const n = typeof value === "string" ? Number(value) : value;
+  return Number.isInteger(n) ? n : NaN;
+};
+
+const requireProjectId = (projectId) => {
+  const pid = toInt(projectId);
+  if (!Number.isInteger(pid) || pid <= 0) {
+    throw new AnalyticsInvalidParameterError({ projectId }, "프로젝트 ID가 올바르지 않습니다.");
+  }
+  return pid;
+};
+
+const requireVideoId = (videoId) => {
+  const vid = toInt(videoId);
+  if (!Number.isInteger(vid) || vid <= 0) {
+    throw new AnalyticsInvalidParameterError({ videoId }, "영상 ID가 올바르지 않습니다.");
+  }
+  return vid;
+};
+
+const requireSlideId = (slideId) => {
+  const sid = toInt(slideId);
+  if (!Number.isInteger(sid) || sid <= 0) {
+    throw new AnalyticsInvalidParameterError({ slideId }, "슬라이드 ID가 올바르지 않습니다.");
+  }
+  return sid;
 };
