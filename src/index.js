@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import express from "express";
+import { PrismaClient } from "@prisma/client";
 import cors from "cors";
 import passport from "passport";
 import { googleStrategy, jwtStrategy, kakaoStrategy, naverStrategy } from "./auth.config.js";
@@ -67,6 +68,11 @@ import scriptRouter from "./routes/script.route.js";
 import shareRouter from "./routes/shareLink.route.js";
 
 dotenv.config();
+export const prisma = new PrismaClient();
+
+BigInt.prototype.toJSON = function () {
+  return this.toString();
+};
 
 const app = express();
 const httpServer = createServer(app); // HTTP 서버 생성 (Socket.io용)
