@@ -30,11 +30,8 @@ export const getShareLinkResponseDTO = (data) => {
     },
     projectContent: {
       title: content.title,
-      slides: content.slides.map((slide) => ({
-        ...slide,
-        slideId: slide.slideId.toString(),
-      })),
-      video: content.video ? { ...content.video, videoId: content.video.videoId.toString() } : null,
+      slides: content.slides,
+      video: content.video || null,
     },
   };
 };

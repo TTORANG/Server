@@ -55,7 +55,11 @@ export const components = {
           properties: {
             errorCode: { type: "string", example: "A001" },
             reason: { type: "string", example: "에러 메시지" },
-            data: { type: "string", example: "null" },
+            data: {
+              type: "object",
+              nullable: true,
+              example: null,
+            },
           },
         },
         success: {

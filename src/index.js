@@ -70,11 +70,15 @@ import shareRouter from "./routes/shareLink.route.js";
 dotenv.config();
 export const prisma = new PrismaClient();
 
-BigInt.prototype.toJSON = function () {
-  return this.toString();
-};
-
 const app = express();
+
+app.set("json replacer", (key, value) => {
+  if (typeof value === "bigint") {
+    return value.toString();
+  }
+  return value;
+});
+
 const httpServer = createServer(app); // HTTP 서버 생성 (Socket.io용)
 const port = process.env.PORT || 8080;
 
