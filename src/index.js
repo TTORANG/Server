@@ -84,6 +84,7 @@ import {
 import {
   deleteCommentController,
   getSlideCommentsController,
+  getVideoCommentsByTimestampController,
   handleCreateVideoComment,
   patchComment,
   postSlideComment,
@@ -238,6 +239,7 @@ app.patch("/comments/:commentId", isLogin, patchComment); // 댓글 수정
 app.delete("/comments/:commentId", isLogin, deleteCommentController); // 댓글 및 답글 삭제
 app.get("/slides/:slideId/comments", isLogin, getSlideCommentsController); // 댓글 목록 조회
 app.post("/videos/:videoId/comments", isLogin, handleCreateVideoComment); // 영상 타임스탬프 댓글 생성
+app.get("/videos/:videoId/comments", isLogin, getVideoCommentsByTimestampController); // 시간대별 댓글 조회
 
 // 답글 관련 라우팅
 app.post("/comments/:commentId/replies", isLogin, postCommentReply); // 답글 작성

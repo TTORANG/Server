@@ -2,12 +2,14 @@ import {
   commentListResponseDTO,
   commentResponseDTO,
   createSlideCommentRequestDTO,
+  videoCommentListResponseDTO,
 } from "../dtos/comment.dto.js";
 import {
   createSlideComment,
   createVideoComment,
   deleteComment,
   getSlideComments,
+  getVideoCommentsByTimestamp,
   updateComment,
 } from "../services/comment.service.js";
 
@@ -538,6 +540,79 @@ export async function handleCreateVideoComment(req, res, next) {
   }
 }
 
+// 시간대별 댓글 조회
+export const getVideoCommentsByTimestampController = async (req, res, next) => {
+  /**
+   * @swagger
+   * /videos/{videoId}/comments:
+   *   get:
+   *     summary: 영상 시간대별 댓글 조회
+   *     description: |
+   *       특정 영상의 특정 시간대(기본 10초 구간)에 작성된 댓글만 조회합니다.
+   *
+   *       - timestampMs 기준으로 10초 window 필터링
+   *       - Soft delete된 댓글은 제외
+   *       - 프로젝트 소유자만 조회 가능
+   *
+   *     tags: [Comment]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: videoId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: 영상 ID
+   *       - in: query
+   *         name: timestamp
+   *         required: true
+   *         schema:
+   *           type: integer
+   *           example: 20000
+   *         description: |
+   *           현재 재생 시점(ms).
+   *           예) 20000 → 20000~29999ms 댓글 조회
+   *     responses:
+   *       200:
+   *         description: 시간대별 댓글 조회 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/VideoCommentListResponse"
+   *       400:
+   *         description: 잘못된 timestamp 값
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       401:
+   *         description: 인증 실패
+   *       403:
+   *         description: 조회 권한 없음
+   *       404:
+   *         description: 영상 없음
+   */
+  try {
+    const { videoId } = req.params;
+    const { timestamp } = req.query;
+
+    const comments = await getVideoCommentsByTimestamp({
+      videoId,
+      timestampMs: timestamp,
+      userId: req.user.id,
+    });
+
+    res.status(200).json({
+      resultType: "SUCCESS",
+      error: null,
+      success: videoCommentListResponseDTO(comments),
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
 /**
  * @swagger
  * components:
@@ -745,4 +820,47 @@ export async function handleCreateVideoComment(req, res, next) {
  *           example: null
  *         success:
  *           $ref: "#/components/schemas/VideoComment"
+ *
+ *     VideoCommentListItem:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           example: "15"
+ *         content:
+ *           type: string
+ *           example: "여기 설명 좋아요"
+ *         timestampMs:
+ *           type: integer
+ *           example: 20000
+ *         user:
+ *           type: object
+ *           properties:
+ *             id:
+ *               type: string
+ *               example: "3"
+ *             nickName:
+ *               type: string
+ *               example: "로건"
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           example: 2026-02-02T05:20:00.000Z
+ *
+ *     VideoCommentListResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *           example: null
+ *         success:
+ *           type: object
+ *           properties:
+ *             comments:
+ *               type: array
+ *               items:
+ *                 $ref: "#/components/schemas/VideoCommentListItem"
  */

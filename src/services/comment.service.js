@@ -16,6 +16,7 @@ import {
   createComment,
   findCommentById,
   findCommentsBySlideId,
+  findVideoCommentsByTimestamp,
   softDeleteComment,
   updateCommentContent,
 } from "../repositories/comment.repository.js";
@@ -207,3 +208,47 @@ export async function createVideoComment({ videoId, content, timestampMs, userId
 
   return comment;
 }
+
+// 시간대별 댓글 조회
+export const getVideoCommentsByTimestamp = async ({
+  videoId,
+  timestampMs,
+  windowMs = 10000, // 10초
+  userId,
+}) => {
+  const vid = BigInt(videoId);
+  const ts = Number(timestampMs);
+
+  if (!Number.isInteger(ts) || ts < 0) {
+    throw new InvalidParameterError({ timestampMs }, "timestampMs 오류");
+  }
+
+  const video = await prisma.video.findFirst({
+    where: { id: vid, deletedAt: null },
+    select: { id: true, projectId: true },
+  });
+
+  if (!video) {
+    throw new VideoNotFoundError({ videoId: String(videoId) });
+  }
+
+  // 프로젝트 소유권 검증
+  const project = await prisma.project.findFirst({
+    where: {
+      id: video.projectId,
+      userId,
+      isDeleted: false,
+    },
+    select: { id: true },
+  });
+
+  if (!project) {
+    throw new NoCommentPermissionError();
+  }
+
+  return findVideoCommentsByTimestamp({
+    videoId: vid,
+    fromMs: Math.floor(ts / windowMs) * windowMs,
+    toMs: Math.floor(ts / windowMs) * windowMs + windowMs,
+  });
+};
