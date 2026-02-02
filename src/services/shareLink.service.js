@@ -53,7 +53,7 @@ export const processCreateShareLink = async (projectId, shareData) => {
     expiredAt: shareData.expiredAt || defaultExpiredAt,
   });
 
-  const baseUrl = process.env.BASE_URL || process.env.LOCAL_URL;
+  const baseUrl = process.env.SERVER_URL || process.env.LOCAL_URL;
   const shareUrl = `${baseUrl}/share/${shareToken}`;
 
   return {
