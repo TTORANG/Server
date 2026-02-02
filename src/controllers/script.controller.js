@@ -226,6 +226,8 @@ export const handleGetScriptVersion = async (req, res, next) => {
  *               error:
  *                 errorCode: "SC002"
  *                 reason: "버전이 존재하지 않습니다."
+ *                 data:
+ *                   slideId: 1
  *               success: null
  */
 export const handleRestoreVersion = async (req, res, next) => {

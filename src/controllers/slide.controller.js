@@ -58,6 +58,7 @@ import {
  *               error:
  *                 errorCode: "P001"
  *                 reason: "해당 프로젝트를 찾을 수 없습니다."
+ *                 data: null
  *               success: null
  */
 export const handleGetSlides = async (req, res, next) => {
@@ -125,6 +126,7 @@ export const handleGetSlides = async (req, res, next) => {
  *               error:
  *                 errorCode: "S002"
  *                 reason: "이 슬라이드에 접근할 권한이 없습니다."
+ *                 data: null
  *               success: null
  *       404:
  *         description: 슬라이드를 찾을 수 없음 (S001)
@@ -135,6 +137,7 @@ export const handleGetSlides = async (req, res, next) => {
  *               error:
  *                 errorCode: "S001"
  *                 reason: "해당 슬라이드를 찾을 수 없습니다"
+ *                 data: null
  *               success: null
  */
 export const handlePatchSlideTitle = async (req, res, next) => {
@@ -197,6 +200,7 @@ export const handlePatchSlideTitle = async (req, res, next) => {
  *               error:
  *                 errorCode: "S002"
  *                 reason: "이 슬라이드에 접근할 권한이 없습니다."
+ *                 data: null
  *               success: null
  *       404:
  *         description: 슬라이드를 찾을 수 없음 (S001)
@@ -207,6 +211,7 @@ export const handlePatchSlideTitle = async (req, res, next) => {
  *               error:
  *                 errorCode: "S001"
  *                 reason: "해당 슬라이드를 찾을 수 없습니다"
+ *                 data: null
  *               success: null
  */
 export const handleGetSlideDetail = async (req, res, next) => {
