@@ -6,3 +6,6 @@ credentials/*.json
 .env
 /src/generated/prisma
 gcp-key.json
+
+.mcp.json
+CLAUDE.md

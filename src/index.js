@@ -33,11 +33,9 @@ import {
 } from "./controllers/slide.controller.js";
 import {
   finishRecording,
-  handleCreateVideoComment,
   handleGetVideoDetail,
   handleGetVideoList,
   handleGetVideoSlideTimeline,
-  handleToggleVideoReaction,
   startRecording,
   uploadVideoChunk,
 } from "./controllers/video.controller.js";
@@ -53,6 +51,16 @@ import {
   handleGetShareLinkList,
   handleGetVideoListForSharing,
 } from "./controllers/shareLink.controller.js";
+import {
+  handleRecordPageView,
+  handleRecordSlideView,
+  handleRecordVideoEvent,
+  handleRecordExit,
+  handleGetSummary,
+  handleGetSlideAnalytics,
+  handleGetVideoTimeline,
+  handleGetVideoExits,
+} from "./controllers/analytics.controller.js";
 
 import multer from "multer";
 import { MAX_SIZE_BYTES } from "./constants/files.js";
@@ -66,6 +74,22 @@ import { registerSubscribers } from "./events/subscribers/index.js";
 
 // Socket.io
 import { initializeSocket } from "./socket/index.js";
+import {
+  getSlideReactionSummaryController,
+  getVideoReactionMarkers,
+  getVideoReactionsByTimeController,
+  handleToggleVideoReaction,
+  toggleSlideReactionController,
+} from "./controllers/reaction.controller.js";
+import {
+  deleteCommentController,
+  getSlideCommentsController,
+  handleCreateVideoComment,
+  patchComment,
+  postSlideComment,
+} from "./controllers/comment.controller.js";
+import { getCommentReplies, postCommentReply } from "./controllers/reply.controller.js";
+import { AuthSessionRequiredError } from "./errors/auth.error.js";
 
 dotenv.config();
 
@@ -87,7 +111,21 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
-const isLogin = passport.authenticate("jwt", { session: false });
+const isLogin = (req, res, next) => {
+  passport.authenticate("jwt", { session: false }, (err, user, info) => {
+    if (err) return next(err);
+
+    // 인증 실패 에러
+    if (!user) {
+      const authError = new AuthSessionRequiredError(info ? info.message : null);
+      return next(authError);
+    }
+
+    // 인증 성공
+    req.user = user;
+    next();
+  })(req, res, next);
+};
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -124,7 +162,7 @@ app.get(
 app.post("/auth/logout", isLogin, handleLogout);
 
 // 계정 삭제
-app.delete("/users/:id", isLogin, handleWithdrawal);
+app.delete("/users/:userId", isLogin, handleWithdrawal);
 
 // 익명 세션 생성 (로그인 불필요)
 app.post("/session/anonymous", handleCreateAnonymousSession);
@@ -133,7 +171,7 @@ app.post("/session/anonymous", handleCreateAnonymousSession);
 app.post("/presentations/anonymous", isLogin, handleCreateAnonymousProject);
 
 // 익명 프로젝트 업데이트 (JWT 필수 - 익명 세션 토큰으로 인증))
-app.patch("/presentations/anonymous/:id", isLogin, handleUpdateAnonymousProject);
+app.patch("/presentations/anonymous/:projectId", isLogin, handleUpdateAnonymousProject);
 
 // 로그인 후 익명 세션 병합 (JWT 필수 - 실제 사용자 토큰)
 app.post("/session/merge", isLogin, handleMergeSession);
@@ -145,10 +183,10 @@ app.get("/user/mypage", isLogin, handleGetMyPage);
 app.post("/presentations", isLogin, handleCreateProject);
 
 // 프로젝트 이름 업데이트
-app.patch("/presentations/:id", isLogin, handleUpdateProjectName);
+app.patch("/presentations/:projectId", isLogin, handleUpdateProjectName);
 
 // 프로젝트 삭제
-app.delete("/presentations/:id", isLogin, handleDeleteProject);
+app.delete("/presentations/:projectId", isLogin, handleDeleteProject);
 
 // 프로젝트 목록 조회/검색
 app.get("/presentations", isLogin, handleGetProjectList);
@@ -184,7 +222,7 @@ app.get("/presentations/:projectId/status", isLogin, handleGetPresentationStatus
 app.post("/presentations/:projectId/shares", isLogin, handleCreateShareLink);
 
 // 공유 링크 조회 (인증 없이 접근 가능)
-app.get("/shares/:token", handleGetShareContent);
+app.get("/shares/:shareToken", handleGetShareContent);
 
 // 공유 링크 목록 조회
 app.get("/presentations/:projectId/shares", isLogin, handleGetShareLinkList);
@@ -195,20 +233,44 @@ app.get("/presentations/:projectId/shares/videos", isLogin, handleGetVideoListFo
 // 파일 업로드 관련 라우팅
 app.post("/files/upload", isLogin, upload.single("file"), postUploadPresentationFile);
 
-// 영상 녹화 관련 라우팅
+// 영상 관련 라우팅
 app.post("/videos/start", isLogin, startRecording); // 영상 업로드
 app.post("/videos/:videoId/finish", isLogin, finishRecording); // 비디오 업로드 검증
+app.get("/videos/:videoId", isLogin, handleGetVideoDetail); // 영상 상세 조회
+app.post("/videos/:videoId/chunks/:chunkIndex", isLogin, upload.single("file"), uploadVideoChunk); // 영상 청크 업로드
+app.get("/videos/:videoId/slides", isLogin, handleGetVideoSlideTimeline); // 영상-슬라이드 동기화 타임라인 조회
 
-// 영상 상세 조회
-app.get("/videos/:videoId", isLogin, handleGetVideoDetail);
-// 영상 청크 업로드
-app.post("/videos/:videoId/chunks/:chunkIndex", isLogin, upload.single("file"), uploadVideoChunk);
-// 영상 타임스탬프 리액션 생성
-app.post("/videos/:videoId/reactions", isLogin, handleToggleVideoReaction);
-// 영상 타임스탬프 댓글 생성
-app.post("/videos/:videoId/comments", isLogin, handleCreateVideoComment);
-// 영상-슬라이드 동기화
-app.get("/videos/:videoId/slides", isLogin, handleGetVideoSlideTimeline);
+// 리액션 관련 라우팅
+app.post("/slides/:slideId/reactions/toggle", isLogin, toggleSlideReactionController); // 리액션 추가 및 취소
+app.get("/slides/:slideId/reactions/summary", isLogin, getSlideReactionSummaryController); // 리액션 집계 조회
+app.post("/videos/:videoId/reactions", isLogin, handleToggleVideoReaction); // 영상 타임스탬프 리액션 생성
+app.get("/videos/:videoId/reactions/timeline", getVideoReactionMarkers); // 영상 리액션 집계
+app.get("/videos/:videoId/reactions", getVideoReactionsByTimeController); // 시간대별 리액션 조회
+
+// 댓글 관련 라우팅
+app.post("/slides/:slideId/comments", isLogin, postSlideComment); // 댓글 작성
+app.patch("/comments/:commentId", isLogin, patchComment); // 댓글 수정
+app.delete("/comments/:commentId", isLogin, deleteCommentController); // 댓글 및 답글 삭제
+app.get("/slides/:slideId/comments", isLogin, getSlideCommentsController); // 댓글 목록 조회
+app.post("/videos/:videoId/comments", isLogin, handleCreateVideoComment); // 영상 타임스탬프 댓글 생성
+
+// 답글 관련 라우팅
+app.post("/comments/:commentId/replies", isLogin, postCommentReply); // 답글 작성
+app.get("/comments/:commentId/replies", isLogin, getCommentReplies); // 답글 목록 조회
+
+// ==================== Analytics 엔드포인트 ====================
+
+// 수집 API
+app.post("/analytics/pageview", isLogin, handleRecordPageView);
+app.post("/analytics/slide-view", isLogin, handleRecordSlideView);
+app.post("/analytics/video-event", isLogin, handleRecordVideoEvent);
+app.post("/analytics/exit", isLogin, handleRecordExit);
+
+// 조회 API
+app.get("/presentations/:projectId/analytics/summary", isLogin, handleGetSummary);
+app.get("/presentations/:projectId/analytics/slides", isLogin, handleGetSlideAnalytics);
+app.get("/videos/:videoId/analytics/timeline", isLogin, handleGetVideoTimeline);
+app.get("/videos/:videoId/analytics/exits", isLogin, handleGetVideoExits);
 
 // Worker 엔드포인트 (pdf,ppt,동영상 변환)
 app.post("/worker/process-job", handleProcessJob);
