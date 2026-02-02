@@ -111,6 +111,23 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
 
     const updated = await updateReactionIsDeleted(existing.id, isDeleted);
 
+    if (isDeleted) {
+      await eventBus.publish(EventTypes.REACTION_REMOVED, {
+        reactionId: updated.id,
+        projectId: video.projectId,
+        videoId: vid,
+      });
+    } else {
+      await eventBus.publish(EventTypes.REACTION_ADDED, {
+        reactionId: updated.id,
+        projectId: video.projectId,
+        videoId: vid,
+        userId,
+        emoji: emojiType,
+        timestampMs: ts,
+      });
+    }
+
     return videoReactionToggleResponseDTO({
       reactionId: updated.id,
       videoId: vid,
@@ -123,6 +140,15 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
     videoId: vid,
     timestampMs: ts,
     emojiType,
+  });
+
+  await eventBus.publish(EventTypes.REACTION_ADDED, {
+    reactionId: created.id,
+    projectId: video.projectId,
+    videoId: vid,
+    userId,
+    emoji: emojiType,
+    timestampMs: ts,
   });
 
   return videoReactionToggleResponseDTO({
