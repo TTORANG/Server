@@ -224,26 +224,27 @@ export const getVideoCommentsByTimestamp = async ({
   }
 
   const video = await prisma.video.findFirst({
-    where: { id: vid, deletedAt: null },
-    select: { id: true, projectId: true },
-  });
-
-  if (!video) {
-    throw new VideoNotFoundError({ videoId: String(videoId) });
-  }
-
-  // 프로젝트 소유권 검증
-  const project = await prisma.project.findFirst({
     where: {
-      id: video.projectId,
-      userId,
-      isDeleted: false,
+      id: vid,
+      deletedAt: null,
+      project: {
+        userId,
+        isDeleted: false,
+      },
     },
     select: { id: true },
   });
 
-  if (!project) {
-    throw new NoCommentPermissionError();
+  if (!video) {
+    const videoExists = await prisma.video.findFirst({
+      where: { id: vid, deletedAt: null },
+      select: { id: true },
+    });
+    if (!videoExists) {
+      throw new VideoNotFoundError({ videoId: String(videoId) });
+    } else {
+      throw new NoCommentPermissionError();
+    }
   }
 
   return findVideoCommentsByTimestamp({

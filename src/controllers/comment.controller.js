@@ -550,8 +550,8 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
    *     description: |
    *       특정 영상의 특정 시간대(기본 10초 구간)에 작성된 댓글만 조회합니다.
    *
-   *       - timestampMs 기준으로 10초 window 필터링
-   *       - Soft delete된 댓글은 제외
+   *       - timestamp(ms) 기준 10초 window 필터링
+   *       - Soft delete된 댓글 제외
    *       - 프로젝트 소유자만 조회 가능
    *
    *     tags: [Comment]
@@ -569,10 +569,12 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
    *         required: true
    *         schema:
    *           type: integer
+   *           minimum: 0
    *           example: 20000
    *         description: |
    *           현재 재생 시점(ms).
    *           예) 20000 → 20000~29999ms 댓글 조회
+   *
    *     responses:
    *       200:
    *         description: 시간대별 댓글 조회 성공
@@ -580,18 +582,80 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/VideoCommentListResponse"
+   *
    *       400:
-   *         description: 잘못된 timestamp 값
+   *         description: 잘못된 요청 (timestamp 형식 오류 등)
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               invalidTimestamp:
+   *                 summary: timestampMs 형식 오류
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: P001
+   *                     reason: "timestampMs 오류"
+   *                     data:
+   *                       timestampMs: "-100"
+   *                   success: null
+   *
    *       401:
-   *         description: 인증 실패
+   *         description: 인증 실패 (JWT 누락/만료)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               unauthorized:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: A001
+   *                     reason: "인증 정보가 없습니다."
+   *                     data: null
+   *                   success: null
+   *
    *       403:
-   *         description: 조회 권한 없음
+   *         description: 조회 권한 없음 (프로젝트 소유자 아님)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               noPermission:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: C006
+   *                     reason: "댓글을 조회할 권한이 없습니다."
+   *                     data: null
+   *                   success: null
+   *
    *       404:
    *         description: 영상 없음
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               videoNotFound:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: V001
+   *                     reason: "영상을 찾을 수 없습니다."
+   *                     data:
+   *                       videoId: "9999"
+   *                   success: null
+   *
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
   try {
     const { videoId } = req.params;
@@ -768,7 +832,7 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *               example: "3"
  *             nickName:
  *               type: string
- *               example: "로건"
+ *               example: "조이"
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -841,7 +905,7 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *               example: "3"
  *             nickName:
  *               type: string
- *               example: "로건"
+ *               example: "조이"
  *         createdAt:
  *           type: string
  *           format: date-time
