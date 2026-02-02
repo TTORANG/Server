@@ -62,9 +62,8 @@ export const getProjectList = async (userId, { page, limit, search, maxDuration,
     orderBy = { title: "asc" };
   } else if (sort === "feedback") {
     orderBy = { comments: { _count: "desc" } };
-  } else if (sort === "reaction") {
-    orderBy = { reactions: { _count: "desc" } };
   }
+
   const where = {
     userId,
     isDeleted: false,
@@ -84,7 +83,7 @@ export const getProjectList = async (userId, { page, limit, search, maxDuration,
       where,
       skip,
       take: parseInt(limit),
-      orderBy: { createdAt: "desc" },
+      orderBy: orderBy,
       include: {
         uploadedFiles: {
           select: {

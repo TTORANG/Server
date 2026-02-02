@@ -18,6 +18,7 @@ import {
 } from "../repositories/shareLink.repository.js";
 import { v4 as uuidv4 } from "uuid";
 import { issueAnonymousSession } from "./session.service.js";
+import { prisma } from "../db.config.js";
 
 const SCOPE_VIDEO = "slides_script_video";
 
@@ -86,6 +87,16 @@ export const processGetShareContent = async (shareToken, sessionId = null) => {
 
   let currentSessionId = sessionId;
   let newTokens = null;
+
+  if (currentSessionId) {
+    const sessionExists = await prisma.session.findUnique({
+      where: { id: currentSessionId },
+    });
+
+    if (!sessionExists) {
+      currentSessionId = null;
+    }
+  }
 
   if (!currentSessionId) {
     // 세션이 없으면 새로 발급하고 변수에 할당

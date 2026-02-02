@@ -240,8 +240,13 @@ export const handleDeleteProject = async (req, res, next) => {
  *         name: sort
  *         schema:
  *           type: string
- *           enum: [latest, name]
+ *           enum: [latest, name, feedback]
  *           default: latest
+ *         description: |
+ *           정렬 조건:
+ *             - latest: 최신순
+ *             - name: 이름순(가나다)
+ *             - feedback: 피드백(댓글) 많은 순
  *     responses:
  *       200:
  *         description: 조회 성공 (데이터가 없어도 SUCCESS이며 빈 배열 반환)
