@@ -62,23 +62,3 @@ export const findCommentsBySlideId = async ({ slideId, skip, take }) => {
 
   return { items, total };
 };
-
-export const findVideoCommentsByTimestamp = async ({ videoId, fromMs, toMs }) => {
-  return prisma.comment.findMany({
-    where: {
-      targetType: "video",
-      targetId: videoId,
-      isDeleted: false,
-      timestampMs: {
-        gte: fromMs,
-        lt: toMs,
-      },
-    },
-    orderBy: { timestampMs: "asc" },
-    include: {
-      user: {
-        select: { id: true, nickName: true },
-      },
-    },
-  });
-};
