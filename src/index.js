@@ -56,6 +56,7 @@ import {
 
 import multer from "multer";
 import { MAX_SIZE_BYTES } from "./constants/files.js";
+import { AuthSessionRequiredError } from "./errors/auth.error.js";
 
 dotenv.config();
 
@@ -76,7 +77,21 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
-const isLogin = passport.authenticate("jwt", { session: false });
+const isLogin = (req, res, next) => {
+  passport.authenticate("jwt", { session: false }, (err, user, info) => {
+    if (err) return next(err);
+
+    // 인증 실패 에러
+    if (!user) {
+      const authError = new AuthSessionRequiredError(info ? info.message : null);
+      return next(authError);
+    }
+
+    // 인증 성공
+    req.user = user;
+    next();
+  })(req, res, next);
+};
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -113,7 +128,7 @@ app.get(
 app.post("/auth/logout", isLogin, handleLogout);
 
 // 계정 삭제
-app.delete("/users/:id", isLogin, handleWithdrawal);
+app.delete("/users/:userId", isLogin, handleWithdrawal);
 
 // 익명 세션 생성 (로그인 불필요)
 app.post("/session/anonymous", handleCreateAnonymousSession);
@@ -122,7 +137,7 @@ app.post("/session/anonymous", handleCreateAnonymousSession);
 app.post("/presentations/anonymous", isLogin, handleCreateAnonymousProject);
 
 // 익명 프로젝트 업데이트 (JWT 필수 - 익명 세션 토큰으로 인증))
-app.patch("/presentations/anonymous/:id", isLogin, handleUpdateAnonymousProject);
+app.patch("/presentations/anonymous/:projectId", isLogin, handleUpdateAnonymousProject);
 
 // 로그인 후 익명 세션 병합 (JWT 필수 - 실제 사용자 토큰)
 app.post("/session/merge", isLogin, handleMergeSession);
@@ -134,10 +149,10 @@ app.get("/user/mypage", isLogin, handleGetMyPage);
 app.post("/presentations", isLogin, handleCreateProject);
 
 // 프로젝트 이름 업데이트
-app.patch("/presentations/:id", isLogin, handleUpdateProjectName);
+app.patch("/presentations/:projectId", isLogin, handleUpdateProjectName);
 
 // 프로젝트 삭제
-app.delete("/presentations/:id", isLogin, handleDeleteProject);
+app.delete("/presentations/:projectId", isLogin, handleDeleteProject);
 
 // 프로젝트 목록 조회/검색
 app.get("/presentations", isLogin, handleGetProjectList);

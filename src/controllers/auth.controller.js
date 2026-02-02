@@ -158,7 +158,7 @@ export const handleLogout = async (req, res, next) => {
 
 /**
  * @swagger
- * /users/{id}:
+ * /users/{userId}:
  *   delete:
  *     summary: 계정 삭제
  *     description: 현재 로그인한 사용자의 계정을 삭제합니다. 본인 계정만 삭제할 수 있습니다.
@@ -167,12 +167,12 @@ export const handleLogout = async (req, res, next) => {
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: userId
  *         required: true
  *         schema:
  *           type: string
  *           example: "123"
- *         description: 삭제할 사용자 ID (현재 로그인한 사용자와 일치해야 합니다)
+ *         description: 삭제할 사용자 userId (현재 로그인한 사용자와 일치해야 합니다)
  *     responses:
  *       200:
  *         description: 계정 삭제 성공
@@ -214,22 +214,24 @@ export const handleLogout = async (req, res, next) => {
  *             example:
  *               resultType: "FAILURE"
  *               error:
- *                 errorCode: "U001"
- *                 reason: "존재하지 않는 사용자입니다."
+ *                 errorCode: "A004"
+ *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+ *                 data: null
  *               success: null
  */
 export const handleWithdrawal = async (req, res, next) => {
   try {
-    const userId = req.user.id;
-    // URL 파라미터의 ID와 현재 로그인 유저 ID 검증 (보안)
-    if (req.params.id !== userId.toString()) {
+    const currentUserId = req.user.id;
+    const { userId } = req.params;
+    // URL 파라미터의 userId와 현재 로그인 유저 ID 검증 (보안)
+    if (userId !== currentUserId.toString()) {
       return next(new UserNotSameError());
     }
-    const result = await processWithdrawal(userId);
+    const result = await processWithdrawal(currentUserId);
     res.status(200).json({
       resultType: "SUCCESS",
       error: null,
-      success: withdrawalResponseDTO(result.id),
+      success: withdrawalResponseDTO(result.userId),
     });
   } catch (error) {
     next(error);
