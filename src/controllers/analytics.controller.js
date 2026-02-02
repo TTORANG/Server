@@ -39,6 +39,28 @@ import {
  *     responses:
  *       200:
  *         description: 기록 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsRecordResponse'
+ *       400:
+ *         description: 잘못된 요청 파라미터
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError400'
+ *       401:
+ *         description: 세션 정보 필요
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError401'
+ *       404:
+ *         description: 프로젝트를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError404Project'
  */
 export const handleRecordPageView = async (req, res, next) => {
   try {
@@ -75,6 +97,28 @@ export const handleRecordPageView = async (req, res, next) => {
  *     responses:
  *       200:
  *         description: 기록 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsRecordResponse'
+ *       400:
+ *         description: 잘못된 요청 파라미터
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError400'
+ *       401:
+ *         description: 세션 정보 필요
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError401'
+ *       404:
+ *         description: 슬라이드를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError404Slide'
  */
 export const handleRecordSlideView = async (req, res, next) => {
   try {
@@ -120,6 +164,28 @@ export const handleRecordSlideView = async (req, res, next) => {
  *     responses:
  *       200:
  *         description: 기록 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsRecordResponse'
+ *       400:
+ *         description: 잘못된 요청 파라미터
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError400'
+ *       401:
+ *         description: 세션 정보 필요
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError401'
+ *       404:
+ *         description: 영상을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError404Video'
  */
 export const handleRecordVideoEvent = async (req, res, next) => {
   try {
@@ -167,6 +233,28 @@ export const handleRecordVideoEvent = async (req, res, next) => {
  *     responses:
  *       200:
  *         description: 기록 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsRecordResponse'
+ *       400:
+ *         description: 잘못된 요청 파라미터
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError400'
+ *       401:
+ *         description: 세션 정보 필요
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError401'
+ *       404:
+ *         description: 프로젝트를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError404Project'
  */
 export const handleRecordExit = async (req, res, next) => {
   try {
@@ -205,6 +293,18 @@ export const handleRecordExit = async (req, res, next) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/AnalyticsSummaryResponse'
+ *       400:
+ *         description: 잘못된 요청 파라미터
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError400'
+ *       404:
+ *         description: 프로젝트를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError404Project'
  */
 export const handleGetSummary = async (req, res, next) => {
   try {
@@ -239,6 +339,18 @@ export const handleGetSummary = async (req, res, next) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/SlideAnalyticsResponse'
+ *       400:
+ *         description: 잘못된 요청 파라미터
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError400'
+ *       404:
+ *         description: 프로젝트를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError404Project'
  */
 export const handleGetSlideAnalytics = async (req, res, next) => {
   try {
@@ -273,6 +385,18 @@ export const handleGetSlideAnalytics = async (req, res, next) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/VideoTimelineResponse'
+ *       400:
+ *         description: 잘못된 요청 파라미터
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError400'
+ *       404:
+ *         description: 영상을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError404Video'
  */
 export const handleGetVideoTimeline = async (req, res, next) => {
   try {
@@ -307,6 +431,18 @@ export const handleGetVideoTimeline = async (req, res, next) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/VideoExitsResponse'
+ *       400:
+ *         description: 잘못된 요청 파라미터
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError400'
+ *       404:
+ *         description: 영상을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError404Video'
  */
 export const handleGetVideoExits = async (req, res, next) => {
   try {
@@ -323,6 +459,149 @@ export const handleGetVideoExits = async (req, res, next) => {
  * @swagger
  * components:
  *   schemas:
+ *     AnalyticsRecordResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *         success:
+ *           type: object
+ *           properties:
+ *             ok:
+ *               type: boolean
+ *               example: true
+ *
+ *     AnalyticsErrorResponse:
+ *       type: object
+ *       description: 에러 응답 공통 형식
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: FAIL
+ *         error:
+ *           type: object
+ *           properties:
+ *             errorCode:
+ *               type: string
+ *               description: "에러 코드 (AN001: 프로젝트 없음, AN002: 영상 없음, AN003: 슬라이드 없음, AN004: 잘못된 파라미터, AN005: 세션 필요)"
+ *             reason:
+ *               type: string
+ *               description: 에러 메시지
+ *             data:
+ *               type: object
+ *               nullable: true
+ *               description: 추가 에러 정보
+ *         success:
+ *           nullable: true
+ *
+ *     AnalyticsError400:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: FAIL
+ *         error:
+ *           type: object
+ *           properties:
+ *             errorCode:
+ *               type: string
+ *               example: AN004
+ *             reason:
+ *               type: string
+ *               example: 프로젝트 ID가 올바르지 않습니다.
+ *             data:
+ *               type: object
+ *               nullable: true
+ *         success:
+ *           nullable: true
+ *
+ *     AnalyticsError401:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: FAIL
+ *         error:
+ *           type: object
+ *           properties:
+ *             errorCode:
+ *               type: string
+ *               example: AN005
+ *             reason:
+ *               type: string
+ *               example: 세션 정보가 필요합니다.
+ *             data:
+ *               type: object
+ *               nullable: true
+ *         success:
+ *           nullable: true
+ *
+ *     AnalyticsError404Project:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: FAIL
+ *         error:
+ *           type: object
+ *           properties:
+ *             errorCode:
+ *               type: string
+ *               example: AN001
+ *             reason:
+ *               type: string
+ *               example: 프로젝트를 찾을 수 없습니다.
+ *             data:
+ *               type: object
+ *               nullable: true
+ *         success:
+ *           nullable: true
+ *
+ *     AnalyticsError404Slide:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: FAIL
+ *         error:
+ *           type: object
+ *           properties:
+ *             errorCode:
+ *               type: string
+ *               example: AN003
+ *             reason:
+ *               type: string
+ *               example: 슬라이드를 찾을 수 없습니다.
+ *             data:
+ *               type: object
+ *               nullable: true
+ *         success:
+ *           nullable: true
+ *
+ *     AnalyticsError404Video:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: FAIL
+ *         error:
+ *           type: object
+ *           properties:
+ *             errorCode:
+ *               type: string
+ *               example: AN002
+ *             reason:
+ *               type: string
+ *               example: 영상을 찾을 수 없습니다.
+ *             data:
+ *               type: object
+ *               nullable: true
+ *         success:
+ *           nullable: true
+ *
  *     AnalyticsSummaryResponse:
  *       type: object
  *       properties:
