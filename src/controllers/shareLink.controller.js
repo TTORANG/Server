@@ -143,6 +143,11 @@ export const handleCreateShareLink = async (req, res, next) => {
  *               error: null
  *               success:
  *                 message: "공유된 프로젝트에 접속했습니다."
+ *                 sessionInfo:
+ *                   sessionId: "106fbf2c-3357-40f7-..."
+ *                   tokens:
+ *                      accessToken: "eyJhbGci..."
+ *                      refreshToken: "eyJhbGci..."
  *                 shareInfo:
  *                   shareToken: "abc-123-uuid"
  *                   scope: "slides_script_video"
@@ -173,7 +178,10 @@ export const handleCreateShareLink = async (req, res, next) => {
 export const handleGetShareContent = async (req, res, next) => {
   try {
     const { shareToken } = req.params;
-    const result = await processGetShareContent(shareToken);
+
+    const { sessionId } = req.query;
+
+    const result = await processGetShareContent(shareToken, sessionId);
 
     res.status(200).json({
       resultType: "SUCCESS",

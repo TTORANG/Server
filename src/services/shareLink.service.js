@@ -6,6 +6,7 @@ import {
   VideoIdRequiredError,
   VideoNotFoundError,
 } from "../errors/shareLink.error.js";
+import { createPageView } from "../repositories/analytics.repository.js";
 import {
   createShareLink,
   findProjectById,
@@ -16,6 +17,7 @@ import {
   incrementViewCount,
 } from "../repositories/shareLink.repository.js";
 import { v4 as uuidv4 } from "uuid";
+import { issueAnonymousSession } from "./session.service.js";
 
 const SCOPE_VIDEO = "slides_script_video";
 
@@ -62,8 +64,8 @@ export const processCreateShareLink = async (projectId, shareData) => {
   };
 };
 
-export const processGetShareContent = async (token) => {
-  const shareLink = await findShareLinkWithContent(token);
+export const processGetShareContent = async (shareToken, sessionId = null) => {
+  const shareLink = await findShareLinkWithContent(shareToken);
 
   // 링크 존재여부 확인
   if (!shareLink || !shareLink.isActive) {
@@ -81,6 +83,21 @@ export const processGetShareContent = async (token) => {
   }
 
   await incrementViewCount(shareLink.id);
+
+  let currentSessionId = sessionId;
+  let newTokens = null;
+
+  if (!currentSessionId) {
+    // 세션이 없으면 새로 발급하고 변수에 할당
+    const sessionData = await issueAnonymousSession();
+    currentSessionId = sessionData.sessionId;
+    newTokens = sessionData.tokens; // 새로 만든 토큰은 클라이언트에 전달해야 함
+  }
+
+  await createPageView({
+    projectId: shareLink.projectId,
+    sessionId: currentSessionId,
+  });
 
   const { scope, project, video } = shareLink;
   const content = {
@@ -101,7 +118,13 @@ export const processGetShareContent = async (token) => {
     };
   }
 
-  return { scope, content, shareLink };
+  return {
+    scope,
+    content,
+    shareLink,
+    sessionId: currentSessionId,
+    tokens: newTokens,
+  };
 };
 
 export const processGetShareLinkList = async (projectId) => {
