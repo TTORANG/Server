@@ -1,9 +1,4 @@
-import {
-  logoutResponseDTO,
-  signinResponseDTO,
-  userMyPageResponseDTO,
-  withdrawalResponseDTO,
-} from "../dtos/auth.dto.js";
+import { logoutResponseDTO, signinResponseDTO, withdrawalResponseDTO } from "../dtos/auth.dto.js";
 import { UserNotSameError, WithdrawFailedError } from "../errors/auth.error.js";
 import {
   handleSocialLoginSuccess,
@@ -65,48 +60,6 @@ export const handleSocialLoginCallback = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-};
-
-/**
- * @swagger
- * /user/mypage:
- *   get:
- *     summary: 마이페이지 조회
- *     description: JWT 인증 정보를 기반으로 현재 로그인한 사용자의 마이페이지 정보를 조회합니다.
- *     tags: [Auth]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: 마이페이지 조회 성공
- *         content:
- *           application/json:
- *             example:
- *               resultType: "SUCCESS"
- *               error: null
- *               success:
- *                 message: "인증 성공! 홍길동님의 마이페이지입니다."
- *                 user:
- *                   id: "123"
- *                   email: "user@example.com"
- *                   name: "홍길동"
- *       401:
- *         description: 인증 실패 또는 토큰 누락/만료
- *         content:
- *           application/json:
- *             example:
- *               resultType: "FAILURE"
- *               error:
- *                 errorCode: "U001"
- *                 reason: "존재하지 않는 사용자입니다."
- *               success: null
- */
-export const handleGetMyPage = (req, res) => {
-  res.status(200).json({
-    resultType: "SUCCESS",
-    error: null,
-    success: userMyPageResponseDTO(req.user),
-  });
 };
 
 /**

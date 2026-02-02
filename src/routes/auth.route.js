@@ -2,7 +2,6 @@ import express from "express";
 import passport from "passport";
 import { isLogin } from "../middlewares/auth.middleware.js";
 import {
-  handleGetMyPage,
   handleLogout,
   handleSocialLoginCallback,
   handleWithdrawal,
@@ -38,8 +37,5 @@ router.post("/auth/logout", isLogin, handleLogout);
 
 // 계정 삭제
 router.delete("/users/:userId", isLogin, handleWithdrawal);
-
-// 마이페이지
-router.get("/user/mypage", isLogin, handleGetMyPage);
 
 export default router;
