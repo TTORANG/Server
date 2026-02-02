@@ -32,6 +32,6 @@ export class WithdrawUserError extends BaseError {
 
 export class AuthSessionRequiredError extends BaseError {
   constructor(data = null) {
-    super("인증 세션 정보가 없습니다.", 401, "A004", data);
+    super("인증 세션 정보가 없거나 유효하지 않습니다.", 401, "A004", data);
   }
 }

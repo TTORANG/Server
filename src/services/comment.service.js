@@ -207,3 +207,48 @@ export async function createVideoComment({ videoId, content, timestampMs, userId
 
   return comment;
 }
+
+// 시간대별 댓글 조회
+export const getVideoCommentsByTimestamp = async ({
+  videoId,
+  timestampMs,
+  windowMs = 10000, // 10초
+  userId,
+}) => {
+  const vid = BigInt(videoId);
+  const ts = Number(timestampMs);
+
+  if (!Number.isInteger(ts) || ts < 0) {
+    throw new InvalidParameterError({ timestampMs }, "timestampMs 오류");
+  }
+
+  const video = await prisma.video.findFirst({
+    where: {
+      id: vid,
+      deletedAt: null,
+      project: {
+        userId,
+        isDeleted: false,
+      },
+    },
+    select: { id: true },
+  });
+
+  if (!video) {
+    const videoExists = await prisma.video.findFirst({
+      where: { id: vid, deletedAt: null },
+      select: { id: true },
+    });
+    if (!videoExists) {
+      throw new VideoNotFoundError({ videoId: String(videoId) });
+    } else {
+      throw new NoCommentPermissionError();
+    }
+  }
+
+  return findVideoCommentsByTimestamp({
+    videoId: vid,
+    fromMs: Math.floor(ts / windowMs) * windowMs,
+    toMs: Math.floor(ts / windowMs) * windowMs + windowMs,
+  });
+};

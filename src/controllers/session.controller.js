@@ -115,7 +115,7 @@ export const handleCreateAnonymousProject = async (req, res, next) => {
 
 /**
  * @swagger
- * /presentations/anonymous/{id}:
+ * /presentations/anonymous/{projectId}:
  *   patch:
  *     summary: 익명 프로젝트 제목 수정
  *     description: 익명 세션으로 생성된 특정 프로젝트의 제목을 변경합니다.
@@ -124,7 +124,7 @@ export const handleCreateAnonymousProject = async (req, res, next) => {
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: projectId
  *         required: true
  *         schema:
  *           type: string
@@ -165,11 +165,11 @@ export const handleCreateAnonymousProject = async (req, res, next) => {
  */
 export const handleUpdateAnonymousProject = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const { projectId } = req.params;
     const { title } = req.body;
     const userId = req.user.id;
 
-    const project = await processUpdateProjectName(id, userId, title);
+    const project = await processUpdateProjectName(projectId, userId, title);
 
     res.status(200).json({
       resultType: "SUCCESS",
