@@ -55,6 +55,7 @@ export const components = {
           properties: {
             errorCode: { type: "string", example: "A001" },
             reason: { type: "string", example: "에러 메시지" },
+            data: { type: "string", example: "null" },
           },
         },
         success: {
@@ -102,7 +103,11 @@ export const components = {
               summary: "프로필 이메일 없음 (A001)",
               value: {
                 resultType: "FAILURE",
-                error: { errorCode: "A001", reason: "프로필 이메일을 찾을 수 없습니다." },
+                error: {
+                  errorCode: "A001",
+                  reason: "프로필 이메일을 찾을 수 없습니다.",
+                  data: null,
+                },
                 success: null,
               },
             },
@@ -110,7 +115,7 @@ export const components = {
               summary: "탈퇴 계정 (U002)",
               value: {
                 resultType: "FAILURE",
-                error: { errorCode: "U002", reason: "탈퇴한 계정입니다." },
+                error: { errorCode: "U002", reason: "탈퇴한 계정입니다.", data: null },
                 success: null,
               },
             },

@@ -92,6 +92,7 @@ export const handleSocialLoginCallback = async (req, res, next) => {
  *               error:
  *                 errorCode: "U001"
  *                 reason: "존재하지 않는 사용자입니다."
+ *                 data: null
  *               success: null
  */
 export const handleLogout = async (req, res, next) => {
@@ -151,6 +152,7 @@ export const handleLogout = async (req, res, next) => {
  *                   error:
  *                     errorCode: "A002"
  *                     reason: "본인의 계정만 삭제할 수 있습니다."
+ *                     data: null
  *                   success: null
  *               WithdrawFailed:
  *                 summary: 내부 처리 중 계정 삭제 실패 (A003)
@@ -159,6 +161,7 @@ export const handleLogout = async (req, res, next) => {
  *                   error:
  *                     errorCode: "A003"
  *                     reason: "계정 삭제에 실패했습니다. 고객 지원팀에 문의하세요."
+ *                     data: null
  *                   success: null
  *       401:
  *         description: 인증 실패 또는 토큰 누락/만료
