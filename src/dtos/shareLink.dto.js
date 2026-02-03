@@ -23,6 +23,10 @@ export const getShareLinkResponseDTO = (data) => {
   return {
     message: "공유된 프로젝트에 접속했습니다.",
 
+    sessionInfo: {
+      sessionId: data.sessionId,
+      tokens: data.tokens,
+    },
     shareInfo: {
       shareToken: shareLink.shareToken,
       scope: scope,

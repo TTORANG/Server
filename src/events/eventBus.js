@@ -1,15 +1,13 @@
 /**
  * Redis 기반 Pub/Sub 이벤트 버스
- *   // 이벤트 발행 (Publisher)
- *   eventBus.publish('comment:created', { commentId: 1, projectId: 2 });
+ * BigInt 등 직렬화를 위해 SuperJSON 사용
  *
- *   // 이벤트 구독 (Subscriber)
- *   eventBus.subscribe('comment:created', (data) => {
- *     console.log('새 댓글:', data);
- *   });
+ *   eventBus.publish('comment:created', { commentId: 1n, projectId: 2n });
+ *   eventBus.subscribe('comment:created', (data) => { ... });
  */
 
 import Redis from "ioredis";
+import SuperJSON from "superjson";
 
 class EventBus {
   constructor() {
@@ -71,7 +69,7 @@ class EventBus {
     }
 
     try {
-      const message = JSON.stringify({
+      const message = SuperJSON.stringify({
         channel,
         data,
         timestamp: new Date().toISOString(),
@@ -126,7 +124,7 @@ class EventBus {
     if (!handlers || handlers.length === 0) return;
 
     try {
-      const parsed = JSON.parse(message);
+      const parsed = SuperJSON.parse(message);
 
       // 등록된 모든 핸들러 실행
       handlers.forEach((handler) => {

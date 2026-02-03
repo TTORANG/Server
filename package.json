@@ -33,6 +33,7 @@
     "passport-kakao": "^1.0.1",
     "passport-naver": "^1.0.6",
     "socket.io": "^4.8.3",
+    "superjson": "^2.2.6",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^9.0.1"
