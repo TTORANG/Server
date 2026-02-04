@@ -131,3 +131,48 @@ export function createVideoReaction({ userId, videoId, timestampMs, emojiType })
     },
   });
 }
+
+export function findProjectByIdWithOwner(projectId, userId) {
+  return prisma.project.findFirst({
+    where: {
+      id: projectId,
+      userId,
+      isDeleted: false,
+    },
+    select: { id: true },
+  });
+}
+
+export function findProjectWithSlides(projectId, userId) {
+  return prisma.project.findFirst({
+    where: {
+      id: projectId,
+      userId,
+      isDeleted: false,
+    },
+    select: {
+      id: true,
+      slides: {
+        where: {
+          isDeleted: false,
+        },
+        select: {
+          id: true,
+        },
+      },
+    },
+  });
+}
+
+export function countProjectSlideReactionsBySlideIds(slideIds) {
+  if (!slideIds.length) return [];
+  return prisma.reaction.groupBy({
+    by: ["emojiType"],
+    where: {
+      targetType: "slide",
+      targetId: { in: slideIds },
+      isDeleted: false,
+    },
+    _count: { _all: true },
+  });
+}

@@ -1,12 +1,14 @@
 import { ALLOWED_EMOJIS } from "../constants/reaction.js";
-import { prisma } from "../db.config.js";
 import {
+  projectSlideReactionSummaryResponseDTO,
   slideReactionSummaryResponseDTO,
   videoReactionToggleResponseDTO,
 } from "../dtos/reaction.dto.js";
 import { BaseError } from "../errors/base.error.js";
+import { ProjectNotFoundError } from "../errors/project.error.js";
 import {
   InvalidEmojiTypeError,
+  InvalidReactionParameterError,
   ReactionProcessError,
   SlideNotFoundError,
 } from "../errors/reaction.error.js";
@@ -16,9 +18,11 @@ import { EventTypes } from "../events/eventTypes.js";
 import {
   aggregateVideoReactionsByBucket,
   aggregateVideoReactionsByTimeWindow,
+  countProjectSlideReactionsBySlideIds,
   countSlideReactions,
   createReaction,
   createVideoReaction,
+  findProjectWithSlides,
   findReaction,
   findSlideByIdWithOwner,
   findVideoReaction,
@@ -224,3 +228,41 @@ export const getVideoReactionsByTime = async ({ videoId, timestampMs, windowMs }
     count: r._count._all,
   }));
 };
+
+function parsePositiveBigIntParam(value, fieldName) {
+  if (value === undefined || value === null || value === "") {
+    throw new InvalidReactionParameterError({ [fieldName]: value });
+  }
+
+  let parsed;
+  try {
+    parsed = BigInt(value);
+  } catch (e) {
+    throw new InvalidReactionParameterError({ [fieldName]: value });
+  }
+
+  if (parsed <= 0n) {
+    throw new InvalidReactionParameterError({ [fieldName]: value });
+  }
+
+  return parsed;
+}
+
+// 프로젝트 모든 리액션 집계 조회
+export async function getProjectSlidesReactionSummary({ projectId, userId }) {
+  const projectIdBigInt = parsePositiveBigIntParam(projectId, "projectId");
+  const userIdBigInt = parsePositiveBigIntParam(userId, "userId");
+
+  const project = await findProjectWithSlides(projectIdBigInt, userIdBigInt);
+  if (!project) {
+    throw new ProjectNotFoundError({ projectId: projectIdBigInt.toString() });
+  }
+
+  const slideIds = project.slides.map((s) => s.id);
+  const rows = await countProjectSlideReactionsBySlideIds(slideIds);
+
+  return projectSlideReactionSummaryResponseDTO({
+    projectId: project.id,
+    rows,
+  });
+}

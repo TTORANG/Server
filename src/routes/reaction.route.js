@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  getProjectSlidesReactionSummaryController,
   getSlideReactionSummaryController,
   getVideoReactionMarkers,
   getVideoReactionsByTimeController,
@@ -20,5 +21,11 @@ router.post("/videos/:videoId/reactions", isLogin, handleToggleVideoReaction);
 router.get("/videos/:videoId/reactions/timeline", getVideoReactionMarkers);
 // 시간대별 리액션 조회
 router.get("/videos/:videoId/reactions", getVideoReactionsByTimeController);
+
+router.get(
+  "/presentations/:projectId/slides/reactions/summary",
+  isLogin,
+  getProjectSlidesReactionSummaryController
+);
 
 export default router;

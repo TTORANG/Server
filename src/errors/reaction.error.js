@@ -17,3 +17,9 @@ export class ReactionProcessError extends BaseError {
     super("리액션을 처리할 수 없습니다.", 400, "R003", data);
   }
 }
+
+export class InvalidReactionParameterError extends BaseError {
+  constructor(data) {
+    super("요청 파라미터가 올바르지 않습니다.", 400, "R004", data);
+  }
+}
