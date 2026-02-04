@@ -613,6 +613,15 @@ export const handleGetVideoExits = async (req, res, next) => {
  *         success:
  *           type: object
  *           properties:
+ *             videoIds:
+ *               type: array
+ *               items:
+ *                 type: string
+ *               description: 프로젝트에 연결된 비디오 ID 목록
+ *               example:
+ *                 - "1"
+ *                 - "2"
+ *                 - "3"
  *             totalViews:
  *               type: integer
  *               description: 총 조회수 (고유 세션)
