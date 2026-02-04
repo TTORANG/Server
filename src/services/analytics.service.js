@@ -207,11 +207,12 @@ export const getSummary = async ({ projectId }) => {
   ]);
 
   const totalFeedbackCount = reactionCount + commentCount + videoReactionCount + videoCommentCount;
-
+ 
   return {
     resultType: "SUCCESS",
     error: null,
     success: {
+      videoIds: videoIds.map((id) => id.toString()),
       totalViews,
       avgDurationSeconds: avgDuration,
       completionRate,
