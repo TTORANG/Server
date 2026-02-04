@@ -249,6 +249,7 @@ function parsePositiveBigIntParam(value, fieldName) {
   return parsed;
 }
 
+// 프로젝트 모든 리액션 집계 조회
 export async function getProjectSlidesReactionSummary({ projectId, userId }) {
   const projectIdBigInt = parsePositiveBigIntParam(projectId, "projectId");
   const userIdBigInt = parsePositiveBigIntParam(userId, "userId");

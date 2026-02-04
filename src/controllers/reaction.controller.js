@@ -548,54 +548,55 @@ export const getVideoReactionsByTimeController = async (req, res, next) => {
   }
 };
 
-/**
- * @swagger
- * /presentations/{projectId}/slides/reactions/summary:
- *   get:
- *     summary: 프로젝트 전체 슬라이드 리액션 집계 조회
- *     description: |
- *       특정 프로젝트의 모든 슬라이드에 달린 이모지 리액션을 한 번에 집계하여 반환합니다.
- *
- *       - 취소된 리액션(isDeleted=true)은 제외됩니다.
- *       - 슬라이드에 리액션이 없어도 허용 이모지 키는 0으로 채워 반환됩니다.
- *       - 슬라이드별 상세 목록은 반환하지 않고, 프로젝트 전체 합계만 반환합니다.
- *     tags: [Reaction]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: projectId
- *         required: true
- *         schema:
- *           type: string
- *         description: 프로젝트 ID
- *     responses:
- *       200:
- *         description: 집계 조회 성공
- *         content:
- *           application/json:
- *             schema:
- *               $ref: "#/components/schemas/ProjectSlidesReactionSummaryResponse"
- *       400:
- *         description: 잘못된 파라미터(projectId)
- *         content:
- *           application/json:
- *             schema:
- *               $ref: "#/components/schemas/ErrorResponse"
- *       401:
- *         description: 인증 실패
- *         content:
- *           application/json:
- *             schema:
- *               $ref: "#/components/schemas/ErrorResponse"
- *       404:
- *         description: 프로젝트 없음
- *         content:
- *           application/json:
- *             schema:
- *               $ref: "#/components/schemas/ErrorResponse"
- */
+// 프로젝트 모든 리액션 집계 조회
 export async function getProjectSlidesReactionSummaryController(req, res, next) {
+  /**
+   * @swagger
+   * /presentations/{projectId}/slides/reactions/summary:
+   *   get:
+   *     summary: 프로젝트 전체 슬라이드 리액션 집계 조회
+   *     description: |
+   *       특정 프로젝트의 모든 슬라이드에 달린 이모지 리액션을 한 번에 집계하여 반환합니다.
+   *
+   *       - 취소된 리액션(isDeleted=true)은 제외됩니다.
+   *       - 슬라이드에 리액션이 없어도 허용 이모지 키는 0으로 채워 반환됩니다.
+   *       - 슬라이드별 상세 목록은 반환하지 않고, 프로젝트 전체 합계만 반환합니다.
+   *     tags: [Reaction]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: projectId
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: 프로젝트 ID
+   *     responses:
+   *       200:
+   *         description: 집계 조회 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ProjectSlidesReactionSummaryResponse"
+   *       400:
+   *         description: 잘못된 파라미터(projectId)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       401:
+   *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       404:
+   *         description: 프로젝트 없음
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   */
   try {
     const result = await getProjectSlidesReactionSummary({
       projectId: req.params.projectId,
