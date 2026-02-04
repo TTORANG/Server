@@ -22,10 +22,9 @@ import {
   countSlideReactions,
   createReaction,
   createVideoReaction,
-  findProjectByIdWithOwner,
+  findProjectWithSlides,
   findReaction,
   findSlideByIdWithOwner,
-  findSlidesByProjectId,
   findVideoReaction,
   updateReaction,
   updateReactionIsDeleted,
@@ -254,17 +253,16 @@ export async function getProjectSlidesReactionSummary({ projectId, userId }) {
   const projectIdBigInt = parsePositiveBigIntParam(projectId, "projectId");
   const userIdBigInt = parsePositiveBigIntParam(userId, "userId");
 
-  const project = await findProjectByIdWithOwner(projectIdBigInt, userIdBigInt);
+  const project = await findProjectWithSlides(projectIdBigInt, userIdBigInt);
   if (!project) {
     throw new ProjectNotFoundError({ projectId: projectIdBigInt.toString() });
   }
 
-  const slides = await findSlidesByProjectId(projectIdBigInt);
-  const slideIds = slides.map((s) => s.id);
+  const slideIds = project.slides.map((s) => s.id);
   const rows = await countProjectSlideReactionsBySlideIds(slideIds);
 
   return projectSlideReactionSummaryResponseDTO({
-    projectId: projectIdBigInt,
+    projectId: project.id,
     rows,
   });
 }

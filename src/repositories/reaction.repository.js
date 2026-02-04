@@ -143,27 +143,24 @@ export function findProjectByIdWithOwner(projectId, userId) {
   });
 }
 
-export function findSlidesByProjectId(projectId) {
-  return prisma.slide.findMany({
+export function findProjectWithSlides(projectId, userId) {
+  return prisma.project.findFirst({
     where: {
-      projectId,
+      id: projectId,
+      userId,
       isDeleted: false,
     },
-    select: { id: true, slideNum: true, title: true },
-    orderBy: { slideNum: "asc" },
-  });
-}
-
-export function countSlideReactionsBySlideIds(slideIds) {
-  if (!slideIds.length) return [];
-  return prisma.reaction.groupBy({
-    by: ["targetId", "emojiType"],
-    where: {
-      targetType: "slide",
-      targetId: { in: slideIds },
-      isDeleted: false,
+    select: {
+      id: true,
+      slides: {
+        where: {
+          isDeleted: false,
+        },
+        select: {
+          id: true,
+        },
+      },
     },
-    _count: { _all: true },
   });
 }
 
