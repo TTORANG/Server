@@ -6,6 +6,8 @@ import {
   AnalyticsSessionRequiredError,
 } from "../errors/analytics.error.js";
 import * as analyticsRepository from "../repositories/analytics.repository.js";
+import { findRecentVideoCommentsByProjectId } from "../repositories/comment.repository.js";
+import { findSlideByTimestamp } from "../repositories/video.repository.js";
 
 // ==================== 수집 API ====================
 
@@ -408,6 +410,64 @@ export const getVideoExits = async ({ videoId }) => {
     resultType: "SUCCESS",
     error: null,
     success: { exits: exitRates },
+  };
+};
+
+/**
+ * 프로젝트의 최근 댓글 피드백 조회
+ * GET /presentations/:id/analytics/recent-comments
+ */
+export const getRecentComments = async ({ projectId, limit = 10 }) => {
+  const pid = requireProjectId(projectId);
+
+  const project = await analyticsRepository.findProjectById(pid);
+  if (!project) {
+    throw new AnalyticsProjectNotFoundError({ projectId: pid });
+  }
+
+  // limit 검증
+  const safeLimit = Math.min(50, Math.max(1, Number(limit) || 10));
+
+  // 프로젝트의 최근 영상 댓글 조회
+  const comments = await findRecentVideoCommentsByProjectId({
+    projectId: pid,
+    limit: safeLimit,
+  });
+
+  // 각 댓글에 대해 슬라이드 정보 조회
+  const commentsWithSlides = await Promise.all(
+    comments.map(async (comment) => {
+      const slideInfo = await findSlideByTimestamp(
+        BigInt(comment.targetId),
+        comment.timestampMs
+      );
+
+      return {
+        commentId: comment.id.toString(),
+        content: comment.content,
+        timestampMs: comment.timestampMs,
+        createdAt: comment.createdAt,
+        user: {
+          userId: comment.user.id.toString(),
+          nickName: comment.user.nickName || comment.user.name || "익명 사용자",
+          name: comment.user.name,
+        },
+        slide: slideInfo
+          ? {
+              slideId: slideInfo.slideId.toString(),
+              slideNum: slideInfo.slideNum ? Number(slideInfo.slideNum) : null,
+              title: slideInfo.title,
+              imageUrl: slideInfo.imageUrl,
+            }
+          : null,
+      };
+    })
+  );
+
+  return {
+    resultType: "SUCCESS",
+    error: null,
+    success: { comments: commentsWithSlides },
   };
 };
 

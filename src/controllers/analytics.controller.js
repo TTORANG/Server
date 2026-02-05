@@ -7,8 +7,7 @@ import {
   getSlideAnalytics,
   getVideoTimeline,
   getVideoExits,
-  getSlideRetention,
-  getVideoRetention,
+  getRecentComments,
 } from "../services/analytics.service.js";
 
 /**
@@ -459,9 +458,9 @@ export const handleGetVideoExits = async (req, res, next) => {
 
 /**
  * @swagger
- * /presentations/{projectId}/analytics/slide-retention:
+ * /presentations/{projectId}/analytics/recent-comments:
  *   get:
- *     summary: 슬라이드별 잔존률 조회
+ *     summary: 최근 댓글 피드백 조회
  *     tags: [Analytics]
  *     security:
  *       - bearerAuth: []
@@ -472,19 +471,34 @@ export const handleGetVideoExits = async (req, res, next) => {
  *         schema:
  *           type: integer
  *         description: 프로젝트 ID
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           minimum: 1
+ *           maximum: 50
+ *         description: 조회할 댓글 수 (최대 50)
  *     responses:
  *       200:
- *         description: 슬라이드별 잔존률
+ *         description: 최근 댓글 피드백 조회 성공
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/SlideRetentionResponse'
+ *               $ref: '#/components/schemas/RecentCommentsResponse'
  *       400:
  *         description: 잘못된 요청 파라미터
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/AnalyticsError400'
+ *       401:
+ *         description: 세션 정보 필요
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError401'
  *       404:
  *         description: 프로젝트를 찾을 수 없음
  *         content:
@@ -492,56 +506,11 @@ export const handleGetVideoExits = async (req, res, next) => {
  *             schema:
  *               $ref: '#/components/schemas/AnalyticsError404Project'
  */
-export const handleGetSlideRetention = async (req, res, next) => {
+export const handleGetRecentComments = async (req, res, next) => {
   try {
-    const result = await getSlideRetention({
+    const result = await getRecentComments({
       projectId: req.params.projectId,
-    });
-    res.json(result);
-  } catch (e) {
-    next(e);
-  }
-};
-
-/**
- * @swagger
- * /videos/{videoId}/analytics/retention:
- *   get:
- *     summary: 영상 시청 잔존률 조회 (30초 단위)
- *     tags: [Analytics]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: videoId
- *         required: true
- *         schema:
- *           type: integer
- *         description: 영상 ID
- *     responses:
- *       200:
- *         description: 영상 시청 잔존률
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/VideoRetentionResponse'
- *       400:
- *         description: 잘못된 요청 파라미터
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AnalyticsError400'
- *       404:
- *         description: 영상을 찾을 수 없음
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AnalyticsError404Video'
- */
-export const handleGetVideoRetention = async (req, res, next) => {
-  try {
-    const result = await getVideoRetention({
-      videoId: req.params.videoId,
+      limit: req.query.limit,
     });
     res.json(result);
   } catch (e) {
@@ -812,7 +781,7 @@ export const handleGetVideoRetention = async (req, res, next) => {
  *                   exitRate:
  *                     type: integer
  *
- *     SlideRetentionResponse:
+ *     RecentCommentsResponse:
  *       type: object
  *       properties:
  *         resultType:
@@ -823,59 +792,54 @@ export const handleGetVideoRetention = async (req, res, next) => {
  *         success:
  *           type: object
  *           properties:
- *             totalSessions:
- *               type: integer
- *               description: 첫 슬라이드를 본 총 세션 수 (baseline)
- *             slideRetention:
+ *             comments:
  *               type: array
  *               items:
  *                 type: object
  *                 properties:
- *                   slideId:
+ *                   commentId:
  *                     type: string
- *                   slideNum:
- *                     type: integer
- *                   title:
+ *                     description: 댓글 ID
+ *                   content:
  *                     type: string
- *                   sessionCount:
- *                     type: integer
- *                     description: 해당 슬라이드까지 도달한 세션 수
- *                   retentionRate:
- *                     type: integer
- *                     description: 잔존률 (0-100%)
- *
- *     VideoRetentionResponse:
- *       type: object
- *       properties:
- *         resultType:
- *           type: string
- *           example: SUCCESS
- *         error:
- *           nullable: true
- *         success:
- *           type: object
- *           properties:
- *             totalSessions:
- *               type: integer
- *               description: 영상을 시작한 총 세션 수 (baseline)
- *             durationSeconds:
- *               type: integer
- *               description: 영상 길이 (초)
- *             intervalMs:
- *               type: integer
- *               description: 구간 단위 (30000ms)
- *             videoRetention:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
+ *                     description: 댓글 내용
  *                   timestampMs:
  *                     type: integer
- *                     description: 타임스탬프 (ms)
- *                   sessionCount:
- *                     type: integer
- *                     description: 해당 시점까지 도달한 세션 수
- *                   retentionRate:
- *                     type: integer
- *                     description: 잔존률 (0-100%)
+ *                     description: 영상 내 타임스탬프 (ms)
+ *                   createdAt:
+ *                     type: string
+ *                     format: date-time
+ *                     description: 댓글 작성 시간
+ *                   user:
+ *                     type: object
+ *                     properties:
+ *                       userId:
+ *                         type: string
+ *                         description: 사용자 ID
+ *                       nickName:
+ *                         type: string
+ *                         description: 사용자 닉네임
+ *                       name:
+ *                         type: string
+ *                         description: 사용자 이름
+ *                   slide:
+ *                     type: object
+ *                     nullable: true
+ *                     description: 해당 타임스탬프의 슬라이드 정보
+ *                     properties:
+ *                       slideId:
+ *                         type: string
+ *                         description: 슬라이드 ID
+ *                       slideNum:
+ *                         type: integer
+ *                         nullable: true
+ *                         description: 슬라이드 번호
+ *                       title:
+ *                         type: string
+ *                         nullable: true
+ *                         description: 슬라이드 제목
+ *                       imageUrl:
+ *                         type: string
+ *                         nullable: true
+ *                         description: 슬라이드 이미지 URL
  */
