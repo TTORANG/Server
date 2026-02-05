@@ -84,7 +84,12 @@ export async function getSlideReactionSummary({ slideId, userId }) {
 
 // 영상 타임스탬프 리액션 생성
 export async function toggleVideoReaction({ videoId, emojiType, timestampMs, userId }) {
-  const vid = BigInt(videoId);
+  let vid;
+  try {
+    vid = BigInt(videoId);
+  } catch {
+    throw new InvalidParameterError({ videoId: String(videoId) });
+  }
   const ts = timestampMs !== undefined && timestampMs !== null ? Number(timestampMs) : null;
 
   if (vid <= 0n) {
@@ -163,25 +168,31 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
 }
 
 // 영상 리액션 집계
-export const getReactionMarkers = async ({ videoId, intervalMs = 5000 }) => {
-  // videoId 검증
-  if (typeof videoId !== "bigint" || videoId <= 0n) {
+export const getReactionMarkers = async ({ videoId, intervalMs }) => {
+  let vid;
+  try {
+    vid = BigInt(videoId);
+  } catch {
+    throw new InvalidParameterError({ videoId: String(videoId) });
+  }
+  if (vid <= 0n) {
     throw new InvalidParameterError({ videoId: String(videoId) });
   }
   // interval 검증
-  const safeInterval = Number(intervalMs);
+  const safeInterval =
+    intervalMs === undefined || intervalMs === null ? 5000 : Number(intervalMs);
   if (!Number.isInteger(safeInterval) || safeInterval <= 0) {
     throw new InvalidParameterError({ intervalMs });
   }
   // video 존재 검증
-  const video = await findVideoById(videoId);
+  const video = await findVideoById(vid);
   if (!video) {
     throw new VideoNotFoundError({ videoId: String(videoId) });
   }
 
   // 집계 로우: (bucketMs, emojiType, count)
   const rows = await aggregateVideoReactionsByBucket({
-    videoId,
+    videoId: vid,
     intervalMs: safeInterval,
   });
 
@@ -206,19 +217,36 @@ export const getReactionMarkers = async ({ videoId, intervalMs = 5000 }) => {
 
 // 시간대별 리액션 조회
 export const getVideoReactionsByTime = async ({ videoId, timestampMs, windowMs }) => {
-  const video = await findVideoById(videoId);
+  let vid;
+  try {
+    vid = BigInt(videoId);
+  } catch {
+    throw new InvalidParameterError({ videoId: String(videoId) });
+  }
+  if (vid <= 0n) {
+    throw new InvalidParameterError({ videoId: String(videoId) });
+  }
+
+  const ts = Number(timestampMs);
+  const safeWindowMs =
+    windowMs === undefined || windowMs === null ? 2000 : Number(windowMs);
+
+  const video = await findVideoById(vid);
   if (!video) {
     throw new VideoNotFoundError({ videoId: String(videoId) });
   }
-  if (!Number.isInteger(timestampMs) || timestampMs < 0) {
+  if (!Number.isInteger(ts) || ts < 0) {
     throw new InvalidParameterError({ timestampMs });
   }
+  if (!Number.isInteger(safeWindowMs) || safeWindowMs < 0) {
+    throw new InvalidParameterError({ windowMs });
+  }
 
-  const startMs = Math.max(0, timestampMs - windowMs);
-  const endMs = timestampMs + windowMs;
+  const startMs = Math.max(0, ts - safeWindowMs);
+  const endMs = ts + safeWindowMs;
 
   const rows = await aggregateVideoReactionsByTimeWindow({
-    videoId,
+    videoId: vid,
     startMs,
     endMs,
   });
