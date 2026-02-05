@@ -514,7 +514,7 @@ export async function handleGetVideoDetail(req, res, next) {
    *                     timeline:
    *                       reactions:
    *                         - timestampMs: 2000
-   *                           emojiType: "thumbs_up"
+   *                           emojiType: "fire"
    *                           count: 3
    *                       comments:
    *                         - commentId: "15"

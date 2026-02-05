@@ -21,6 +21,8 @@ export async function toggleSlideReactionController(req, res, next) {
    *       - 이미 존재하면 취소(isDeleted=true)
    *       - 취소된 리액션이 있으면 재활성화
    *
+   *       가능한 이모지 타입: fire, good, bad, sleepy, confused
+   *
    *       슬라이드 리액션은 timestampMs=null 기준으로 처리된다.
    *     tags:
    *       - Reaction
@@ -72,7 +74,7 @@ export async function toggleSlideReactionController(req, res, next) {
    *                     reason: 리액션을 처리할 수 없습니다.
    *                     data:
    *                       slideId: "10"
-   *                       emojiType: "thumbs_up"
+   *                       emojiType: "fire"
    *                   success: null
    *
    *       401:
@@ -180,10 +182,11 @@ export async function getSlideReactionSummaryController(req, res, next) {
    *                   example:
    *                     slideId: "10"
    *                     reactions:
-   *                       thumbs_up: 5
-   *                       heart: 3
-   *                       eyes: 0
-   *                       clap: 1
+   *                       fire: 5
+   *                       good: 3
+   *                       bad: 0
+   *                       sleepy: 1
+   *                       confused: 2
    *
    *       401:
    *         description: 인증 실패
@@ -278,10 +281,10 @@ export async function handleToggleVideoReaction(req, res, next) {
    *           schema:
    *             $ref: "#/components/schemas/VideoReactionCreateRequest"
    *           examples:
-   *             thumbsUpAt2s:
-   *               summary: 2초 지점 thumbs_up 리액션
+   *             fireAt2s:
+   *               summary: 2초 지점 fire 리액션
    *               value:
-   *                 emojiType: "thumbs_up"
+   *                 emojiType: "fire"
    *                 timestampMs: 2000
    *     responses:
    *       200:
@@ -667,11 +670,12 @@ export async function getProjectSlidesReactionSummaryController(req, res, next) 
  *           type: string
  *           description: 리액션 이모지 타입
  *           enum:
- *             - thumbs_up
- *             - heart
- *             - eyes
- *             - clap
- *           example: thumbs_up
+ *             - fire
+ *             - good
+ *             - bad
+ *             - sleepy
+ *             - confused
+ *           example: fire
  *
  *     ToggleSlideReactionResponse:
  *       type: object
@@ -702,7 +706,7 @@ export async function getProjectSlidesReactionSummaryController(req, res, next) 
  *         emojiType:
  *           type: string
  *           description: 리액션 이모지 타입
- *           example: "😂"
+ *           example: "fire"
  *         timestampMs:
  *           type: integer
  *           description: 현재 재생 위치(ms)
@@ -728,7 +732,7 @@ export async function getProjectSlidesReactionSummaryController(req, res, next) 
  *           example: 5000
  *         emojiType:
  *           type: string
- *           example: "😂"
+ *           example: "fire"
  *         count:
  *           type: integer
  *           example: 7
@@ -762,7 +766,7 @@ export async function getProjectSlidesReactionSummaryController(req, res, next) 
  *         emojiType:
  *           type: string
  *           description: 이모지 타입
- *           example: "😂"
+ *           example: "fire"
  *         count:
  *           type: integer
  *           description: 해당 이모지 리액션 수
@@ -793,11 +797,12 @@ export async function getProjectSlidesReactionSummaryController(req, res, next) 
  *           type: object
  *           additionalProperties:
  *             type: integer
- *           example:
- *             thumbs_up: 10
- *             heart: 4
- *             eyes: 2
- *             clap: 7
+   *           example:
+   *             fire: 10
+   *             good: 4
+   *             bad: 2
+   *             sleepy: 1
+   *             confused: 7
  *         totalCount:
  *           type: integer
  *           example: 23
