@@ -49,7 +49,7 @@ export async function uploadVideoChunk(req, res, next) {
    *   post:
    *     summary: 영상 청크 업로드
    *     description: |
-   *       MediaRecorder로 생성된 영상 청크(webm)를 업로드합니다.
+   *       MediaRecorder로 생성된 영상 청크(webm/mp4)를 업로드합니다.
    *       - Content-Type: multipart/form-data
    *       - file 필드로 전송
    *     tags: [Video]
@@ -236,7 +236,7 @@ export async function handleGetVideoList(req, res, next) {
    *       특정 프로젝트에 속한 모든 녹화 영상을 최신순으로 조회합니다.
    *       영상이 없는 경우에도 오류가 아닌 빈 목록을 반환합니다.
    *     tags:
-   *       - Presentation
+   *       - Video
    *     security:
    *       - bearerAuth: []
    *     parameters:
@@ -327,7 +327,7 @@ export async function handleGetVideoDetail(req, res, next) {
    *                   error: null
    *                   success:
    *                     video:
-   *                       id: "2"
+   *                       videoId: "2"
    *                       title: "발표 영상"
    *                       status: "ready"
    *                       durationSeconds: 300
@@ -343,11 +343,12 @@ export async function handleGetVideoDetail(req, res, next) {
    *                           emojiType: "thumbs_up"
    *                           count: 3
    *                       comments:
-   *                         - id: "15"
+   *                         - commentId: "15"
    *                           timestampMs: 2000
    *                           content: "여기 설명 좋아요"
+   *                           createdAt: "2026-01-24T12:34:56.000Z"
    *                           user:
-   *                             id: "1"
+   *                             userId: "1"
    *                             name: "홍길동"
    *       401:
    *         description: 인증 실패
@@ -577,7 +578,7 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *     VideoListItem:
  *       type: object
  *       properties:
- *         id:
+ *         videoId:
  *           type: string
  *           description: 영상 ID(BigInt → string)
  *           example: "10"
@@ -631,7 +632,7 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *             video:
  *               type: object
  *               properties:
- *                 id:
+ *                 videoId:
  *                   type: string
  *                   example: "2"
  *                 title:
@@ -681,16 +682,19 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *                   items:
  *                     type: object
  *                     properties:
- *                       id:
+ *                       commentId:
  *                         type: string
  *                       timestampMs:
  *                         type: integer
  *                       content:
  *                         type: string
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
  *                       user:
  *                         type: object
  *                         properties:
- *                           id:
+ *                           userId:
  *                             type: string
  *                           name:
  *                             type: string
