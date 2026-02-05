@@ -441,3 +441,159 @@ const requireSlideId = (slideId) => {
   }
   return sid;
 };
+
+// ==================== Retention Rate API ====================
+
+/**
+ * 슬라이드별 잔존률
+ * GET /presentations/:id/analytics/slide-retention
+ */
+export const getSlideRetention = async ({ projectId }) => {
+  const pid = requireProjectId(projectId);
+
+  const project = await analyticsRepository.findProjectById(pid);
+  if (!project) {
+    throw new AnalyticsProjectNotFoundError({ projectId: pid });
+  }
+
+  // 슬라이드 목록 조회 (slideNum 순서)
+  const slides = await analyticsRepository.findSlidesByProjectId(pid);
+  if (slides.length === 0) {
+    return {
+      resultType: "SUCCESS",
+      error: null,
+      success: { totalSessions: 0, slideRetention: [] },
+    };
+  }
+
+  // 슬라이드-세션 쌍 조회
+  const slideViewPairs = await analyticsRepository.getSlideViewSessionPairs(pid);
+
+  // slideId별 고유 세션 Set 구성
+  const slideSessionMap = {};
+  slides.forEach((s) => {
+    slideSessionMap[s.id.toString()] = new Set();
+  });
+
+  slideViewPairs.forEach((pair) => {
+    const key = pair.slideId.toString();
+    if (slideSessionMap[key]) {
+      slideSessionMap[key].add(pair.sessionId);
+    }
+  });
+
+  // 첫 번째 슬라이드 세션 수 = baseline (100%)
+  const firstSlide = slides[0];
+  const baselineSessions = slideSessionMap[firstSlide.id.toString()].size;
+
+  if (baselineSessions === 0) {
+    return {
+      resultType: "SUCCESS",
+      error: null,
+      success: {
+        totalSessions: 0,
+        slideRetention: slides.map((s) => ({
+          slideId: s.id.toString(),
+          slideNum: s.slideNum ? Number(s.slideNum) : null,
+          title: s.title,
+          sessionCount: 0,
+          retentionRate: 0,
+        })),
+      },
+    };
+  }
+
+  // 각 슬라이드별 잔존률 계산
+  const slideRetention = slides.map((slide) => {
+    const sessionCount = slideSessionMap[slide.id.toString()].size;
+    const retentionRate = Math.round((sessionCount / baselineSessions) * 100);
+
+    return {
+      slideId: slide.id.toString(),
+      slideNum: slide.slideNum ? Number(slide.slideNum) : null,
+      title: slide.title,
+      sessionCount,
+      retentionRate,
+    };
+  });
+
+  return {
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      totalSessions: baselineSessions,
+      slideRetention,
+    },
+  };
+};
+
+/**
+ * 영상 시청 잔존률 (30초 단위)
+ * GET /videos/:id/analytics/retention
+ */
+export const getVideoRetention = async ({ videoId }) => {
+  const vid = requireVideoId(videoId);
+
+  const video = await analyticsRepository.findVideoById(vid);
+  if (!video) {
+    throw new AnalyticsVideoNotFoundError({ videoId: vid });
+  }
+
+  // 세션별 최대 시청 시점 조회
+  const sessionMaxTimestamps = await analyticsRepository.getMaxTimestampPerSession(vid);
+
+  if (sessionMaxTimestamps.length === 0) {
+    return {
+      resultType: "SUCCESS",
+      error: null,
+      success: {
+        totalSessions: 0,
+        durationSeconds: video.durationSeconds,
+        intervalMs: 30000,
+        videoRetention: [],
+      },
+    };
+  }
+
+  // baseline: 영상을 시작한 총 세션 수
+  const totalSessions = sessionMaxTimestamps.length;
+
+  // 영상 길이 결정 (ms 단위)
+  const durationMs = video.durationSeconds
+    ? video.durationSeconds * 1000
+    : Math.max(...sessionMaxTimestamps.map((s) => s._max.timestampMs || 0));
+
+  // 30초(30000ms) 단위 버킷 생성
+  const intervalMs = 30000;
+  const buckets = [];
+  for (let ts = 0; ts <= durationMs; ts += intervalMs) {
+    buckets.push(ts);
+  }
+
+  // 각 버킷별 잔존률 계산
+  const videoRetention = buckets.map((bucketTs) => {
+    // 해당 시점까지 도달한 세션 수
+    const sessionCount = sessionMaxTimestamps.filter(
+      (s) => (s._max.timestampMs || 0) >= bucketTs
+    ).length;
+
+    const retentionRate = Math.round((sessionCount / totalSessions) * 100);
+
+    return {
+      timestampMs: bucketTs,
+      sessionCount,
+      retentionRate,
+    };
+  });
+
+  return {
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      totalSessions,
+      durationSeconds: video.durationSeconds,
+      intervalMs,
+      videoRetention,
+    },
+  };
+};

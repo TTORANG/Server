@@ -186,3 +186,20 @@ export const findVideoCommentsWithTimestamp = (videoId) =>
     },
     select: { timestampMs: true },
   });
+
+// ==================== Retention Rate 집계 ====================
+
+// 슬라이드-세션 쌍 조회 (잔존률 계산용)
+export const getSlideViewSessionPairs = (projectId) =>
+  prisma.analyticsSlideView.groupBy({
+    by: ["slideId", "sessionId"],
+    where: { projectId },
+  });
+
+// 영상별 세션당 최대 시청 시점 조회
+export const getMaxTimestampPerSession = (videoId) =>
+  prisma.analyticsVideoEvent.groupBy({
+    by: ["sessionId"],
+    where: { videoId, eventType: "play" },
+    _max: { timestampMs: true },
+  });
