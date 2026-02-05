@@ -17,6 +17,17 @@ export async function startRecording(req, res, next) {
    *       required: true
    *       content:
    *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               projectId:
+   *                 type: integer
+   *                 description: 프로젝트 ID (선택)
+   *                 example: 1
+   *               title:
+   *                 type: string
+   *                 description: 영상 제목 (선택)
+   *                 example: "테스트 영상"
    *           example:
    *             projectId: 1
    *             title: "테스트 영상"
@@ -32,6 +43,40 @@ export async function startRecording(req, res, next) {
    *               error: null
    *               success:
    *                 videoId: "4"
+   *       400:
+   *         description: 잘못된 요청 파라미터 또는 존재하지 않는 프로젝트
+   *         content:
+   *           application/json:
+   *             examples:
+   *               invalidProjectId:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "P001"
+   *                     reason: "프로젝트 ID가 올바르지 않습니다."
+   *                     data:
+   *                       projectId: "abc"
+   *                   success: null
+   *               projectNotFound:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "F001"
+   *                     reason: "존재하지 않는 프로젝트입니다."
+   *                     data:
+   *                       projectId: 1
+   *                   success: null
+   *       401:
+   *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "A004"
+   *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+   *                 data: null
+   *               success: null
    */
   try {
     const result = await videoService.createVideo(req.body);
@@ -89,6 +134,65 @@ export async function uploadVideoChunk(req, res, next) {
    *               error: null
    *               success:
    *                 ok: true
+   *       400:
+   *         description: 잘못된 요청 (chunkIndex/파일 형식/업로드 형식 오류 등)
+   *         content:
+   *           application/json:
+   *             examples:
+   *               invalidChunkIndex:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "V004"
+   *                     reason: "비디오 청크 정보가 올바르지 않습니다."
+   *                     data:
+   *                       chunkIndex: -1
+   *                   success: null
+   *               invalidContentType:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "V004"
+   *                     reason: "비디오 청크 정보가 올바르지 않습니다."
+   *                     data:
+   *                       contentType: "image/png"
+   *                   success: null
+   *       401:
+   *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "A004"
+   *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+   *                 data: null
+   *               success: null
+   *       404:
+   *         description: 영상 없음
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "V001"
+   *                 reason: "영상을 찾을 수 없습니다."
+   *                 data:
+   *                   videoId: "12"
+   *               success: null
+   *       409:
+   *         description: 영상 상태 오류
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "V002"
+   *                 reason: "비디오 상태가 올바르지 않습니다."
+   *                 data:
+   *                   videoId: "12"
+   *                   status: "processing"
+   *               success: null
    */
 
   try {
@@ -165,15 +269,35 @@ export async function finishRecording(req, res, next) {
    *             schema:
    *               $ref: "#/components/schemas/RecordingFinishResponse"
    *       400:
-   *         description: 잘못된 요청 파라미터
+   *         description: 잘못된 요청 파라미터 또는 업로드 검증 실패
    *         content:
    *           application/json:
-   *             example:
-   *               resultType: "FAILURE"
-   *               error:
-   *                 errorCode: "P001"
-   *                 reason: "slideLogs가 필요합니다."
-   *               success: null
+   *             examples:
+   *               missingSlideLogs:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "P001"
+   *                     reason: "slideLogs가 필요합니다."
+   *                   success: null
+   *               invalidSlideId:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "P001"
+   *                     reason: "요청 파라미터가 올바르지 않습니다."
+   *                     data:
+   *                       slideId: "abc"
+   *                   success: null
+   *               noChunks:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "V003"
+   *                     reason: "업로드된 비디오 청크가 없습니다."
+   *                     data:
+   *                       videoId: "12"
+   *                   success: null
    *
    *       401:
    *         description: 인증 실패 또는 영상 소유자 아님
@@ -183,7 +307,8 @@ export async function finishRecording(req, res, next) {
    *               resultType: "FAILURE"
    *               error:
    *                 errorCode: "A004"
-   *                 reason: "인증 세션 정보가 없습니다."
+   *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+   *                 data: null
    *               success: null
    *
    *       404:
@@ -255,17 +380,39 @@ export async function handleGetVideoList(req, res, next) {
    *             schema:
    *               $ref: "#/components/schemas/VideoListResponse"
    *       400:
-   *         description: 잘못된 요청 (유효하지 않은 프로젝트 ID)
+   *         description: 잘못된 요청 (유효하지 않은 프로젝트 ID 또는 존재하지 않는 프로젝트)
    *         content:
    *           application/json:
-   *             schema:
-   *               $ref: "#/components/schemas/ErrorResponse"
-   *       404:
-   *         description: 존재하지 않는 프로젝트
+   *             examples:
+   *               invalidProjectId:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "P001"
+   *                     reason: "프로젝트 ID가 올바르지 않습니다."
+   *                     data:
+   *                       projectId: "abc"
+   *                   success: null
+   *               projectNotFound:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "F001"
+   *                     reason: "존재하지 않는 프로젝트입니다."
+   *                     data:
+   *                       projectId: 1
+   *                   success: null
+   *       401:
+   *         description: 인증 실패
    *         content:
    *           application/json:
-   *             schema:
-   *               $ref: "#/components/schemas/ErrorResponse"
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "A004"
+   *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+   *                 data: null
+   *               success: null
    */
 
   try {
@@ -356,6 +503,13 @@ export async function handleGetVideoDetail(req, res, next) {
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "A004"
+   *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+   *                 data: null
+   *               success: null
    *       404:
    *         description: 영상 없음
    *         content:
@@ -443,6 +597,15 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
    *               success: null
    *       401:
    *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "A004"
+   *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+   *                 data: null
+   *               success: null
    *       404:
    *         description: 영상 없음
    *         content:
@@ -664,7 +827,6 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *                   format: date-time
  *             timeline:
  *               type: object
- *               nullable: true
  *               properties:
  *                 reactions:
  *                   type: array
