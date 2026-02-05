@@ -11,7 +11,7 @@ export const postCommentReply = async (req, res, next) => {
    *     description: |
    *       특정 댓글(comment)에 대한 답글을 작성합니다.
    *       - 답글은 parentId가 설정된 comment로 저장됩니다.
-   *       - 작성자는 본인 세션을 통해 인증되어야 합니다.
+   *       - 작성자는 JWT 인증이 필요합니다.
    *     tags: [Comment]
    *     security:
    *       - bearerAuth: []
@@ -34,7 +34,7 @@ export const postCommentReply = async (req, res, next) => {
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/CommentResponse"
+   *               $ref: "#/components/schemas/CommentCreateResponse"
    *       400:
    *         description: 잘못된 요청
    *         content:
@@ -102,9 +102,7 @@ export const getCommentReplies = async (req, res, next) => {
    *         content:
    *           application/json:
    *             schema:
-   *               type: array
-   *               items:
-   *                 $ref: "#/components/schemas/CommentResponse"
+   *               $ref: "#/components/schemas/CommentListResponse"
    *       400:
    *         description: 잘못된 요청
    *         content:
@@ -150,22 +148,44 @@ export const getCommentReplies = async (req, res, next) => {
  *     CommentResponse:
  *       type: object
  *       properties:
- *         id:
+ *         commentId:
  *           type: string
  *           example: "12"
  *         content:
  *           type: string
  *           example: "좋은 의견 감사합니다"
- *         parentId:
- *           type: string
- *           nullable: true
- *           example: "5"
  *         userId:
  *           type: string
  *           example: "3"
  *         createdAt:
  *           type: string
  *           format: date-time
+
+ *     CommentCreateResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *           example: null
+ *         success:
+ *           $ref: "#/components/schemas/CommentResponse"
+
+ *     CommentListResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *           example: null
+ *         success:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/CommentResponse"
  *
  *     SuccessResponse:
  *       type: object

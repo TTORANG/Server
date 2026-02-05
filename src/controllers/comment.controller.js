@@ -72,6 +72,21 @@ export const postSlideComment = async (req, res, next) => {
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *       403:
+   *         description: 댓글 작성 권한 없음 (프로젝트 소유자 아님)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               noPermission:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: C006
+   *                     reason: 댓글을 수정 또는 삭제할 권한이 없습니다.
+   *                     data: null
+   *                   success: null
    *       404:
    *         description: 슬라이드 없음
    *         content:
@@ -191,7 +206,7 @@ export const patchComment = async (req, res, next) => {
    *                   resultType: FAILURE
    *                   error:
    *                     errorCode: C006
-   *                     reason: 수정 권한이 없습니다.
+   *                     reason: 댓글을 수정 또는 삭제할 권한이 없습니다.
    *                     data: null
    *                   success: null
    *       404:
@@ -294,7 +309,7 @@ export const deleteCommentController = async (req, res, next) => {
    *                   resultType: FAILURE
    *                   error:
    *                     errorCode: C006
-   *                     reason: 삭제 권한이 없습니다.
+   *                     reason: 댓글을 수정 또는 삭제할 권한이 없습니다.
    *                     data: null
    *                   success: null
    *       404:
@@ -381,6 +396,21 @@ export const getSlideCommentsController = async (req, res, next) => {
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *       403:
+   *         description: 조회 권한 없음 (프로젝트 소유자 아님)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               noPermission:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: C006
+   *                     reason: 댓글을 수정 또는 삭제할 권한이 없습니다.
+   *                     data: null
+   *                   success: null
    *       500:
    *         description: 댓글 조회 실패
    *         content:
@@ -421,7 +451,7 @@ export async function handleCreateVideoComment(req, res, next) {
    *       특정 영상의 특정 시점(timestampMs)에 댓글을 생성합니다.
    *
    *       **주의사항**
-   *       - 본 API는 인증(JWT) + 세션(sessionId)이 필요합니다.
+   *       - 본 API는 인증(JWT)이 필요합니다.
    *       - `content`는 공백만 있는 문자열은 허용하지 않습니다.
    *       - `timestampMs`는 0 이상의 정수(ms)만 허용합니다.
    *     tags: [Comment]
@@ -448,7 +478,7 @@ export async function handleCreateVideoComment(req, res, next) {
    *                 content: "여기 설명 좋아요"
    *                 timestampMs: 2000
    *     responses:
-   *       200:
+   *       201:
    *         description: 댓글 생성 성공
    *         content:
    *           application/json:
@@ -481,22 +511,11 @@ export async function handleCreateVideoComment(req, res, next) {
    *                       content: ""
    *                   success: null
    *       401:
-   *         description: 인증/세션 정보 누락
+   *         description: 인증 실패 (JWT 누락/만료)
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
-   *             examples:
-   *               noSession:
-   *                 value:
-   *                   resultType: "FAILURE"
-   *                   error:
-   *                     errorCode: "A004"
-   *                     reason: "인증 세션 정보가 없습니다."
-   *                     data:
-   *                       userId: "1"
-   *                       videoId: "2"
-   *                   success: null
    *       404:
    *         description: 영상 없음
    *         content:
@@ -625,7 +644,7 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
    *                   resultType: FAILURE
    *                   error:
    *                     errorCode: C006
-   *                     reason: "댓글을 조회할 권한이 없습니다."
+   *                     reason: "댓글을 수정 또는 삭제할 권한이 없습니다."
    *                     data: null
    *                   success: null
    *
@@ -691,7 +710,7 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *     Comment:
  *       type: object
  *       properties:
- *         id:
+ *         commentId:
  *           type: string
  *           description: 댓글 ID(BigInt → string)
  *           example: "20"
@@ -814,7 +833,7 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *     CommentListItem:
  *       type: object
  *       properties:
- *         id:
+ *         commentId:
  *           type: string
  *           example: "10"
  *         content:
@@ -823,7 +842,7 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *         user:
  *           type: object
  *           properties:
- *             id:
+ *             userId:
  *               type: string
  *               example: "3"
  *             nickName:
@@ -884,7 +903,7 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *     VideoCommentListItem:
  *       type: object
  *       properties:
- *         id:
+ *         commentId:
  *           type: string
  *           example: "15"
  *         content:
@@ -896,7 +915,7 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *         user:
  *           type: object
  *           properties:
- *             id:
+ *             userId:
  *               type: string
  *               example: "3"
  *             nickName:
