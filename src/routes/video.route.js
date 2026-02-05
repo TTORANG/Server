@@ -13,6 +13,7 @@ import { MAX_SIZE_BYTES } from "../constants/files.js";
 import {
   handleGetVideoExits,
   handleGetVideoTimeline,
+  handleGetVideoRetention,
 } from "../controllers/analytics.controller.js";
 
 const router = express.Router();
@@ -42,5 +43,6 @@ router.get("/presentations/:projectId/videos", isLogin, handleGetVideoList);
 
 router.get("/videos/:videoId/analytics/timeline", isLogin, handleGetVideoTimeline);
 router.get("/videos/:videoId/analytics/exits", isLogin, handleGetVideoExits);
+router.get("/videos/:videoId/analytics/retention", isLogin, handleGetVideoRetention);
 
 export default router;
