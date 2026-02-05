@@ -6,7 +6,7 @@ export const findProjectById = async (projectId) => {
       id: projectId,
       isDeleted: false,
     },
-    select: { id: true },
+    select: { id: true, userId: true },
   });
 };
 

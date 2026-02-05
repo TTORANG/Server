@@ -85,7 +85,10 @@ export async function startRecording(req, res, next) {
    *               $ref: "#/components/schemas/ErrorResponse"
    */
   try {
-    const result = await videoService.createVideo(req.body);
+    const result = await videoService.createVideo({
+      ...req.body,
+      userId: req.user?.id,
+    });
     res.json(result);
   } catch (e) {
     next(e);

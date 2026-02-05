@@ -398,6 +398,8 @@ export const getVideoReactionMarkers = async (req, res, next) => {
    *       - 기본 intervalMs=5000 (5초)
    *       - timestampMs가 없는 리액션은 집계에서 제외됩니다.
    *     tags: [Reaction]
+   *     security:
+   *       - bearerAuth: []
    *     parameters:
    *       - in: path
    *         name: videoId
@@ -446,6 +448,7 @@ export const getVideoReactionMarkers = async (req, res, next) => {
     const result = await getReactionMarkers({
       videoId: req.params.videoId,
       intervalMs,
+      userId: req.user.id,
     });
 
     res.status(200).json({
@@ -469,6 +472,8 @@ export const getVideoReactionsByTimeController = async (req, res, next) => {
    *       영상의 현재 재생 시간 기준으로 ±2초 범위 내 리액션을 조회합니다.
    *       동일 시간대의 리액션은 이모지 타입별로 집계되어 반환됩니다.
    *     tags: [Reaction]
+   *     security:
+   *       - bearerAuth: []
    *     parameters:
    *       - in: path
    *         name: videoId
@@ -543,6 +548,7 @@ export const getVideoReactionsByTimeController = async (req, res, next) => {
       videoId: req.params.videoId,
       timestampMs,
       windowMs,
+      userId: req.user.id,
     });
 
     res.json({

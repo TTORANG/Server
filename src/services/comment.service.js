@@ -6,7 +6,9 @@ import {
   EmptyCommentContentError,
   InvalidCommentIdError,
   InvalidSlideIdError,
+  NoCommentCreatePermissionError,
   NoCommentPermissionError,
+  NoCommentViewPermissionError,
   SlideNotFoundError,
 } from "../errors/comment.error.js";
 import { InvalidParameterError, VideoNotFoundError } from "../errors/video.error.js";
@@ -42,7 +44,7 @@ export const createSlideComment = async ({ slideId, content, userId }) => {
 
   //권한 체크 (프로젝트 소유자 기준)
   if (slide.project.userId !== userId) {
-    throw new NoCommentPermissionError();
+    throw new NoCommentCreatePermissionError();
   }
 
   return createComment({
@@ -112,7 +114,7 @@ export const getSlideComments = async ({ slideId, userId, page = 1, limit = 20 }
 
   // userId 검증
   if (userId === undefined || userId === null) {
-    throw new NoCommentPermissionError();
+    throw new NoCommentViewPermissionError();
   }
 
   const project = await prisma.project.findFirst({
@@ -127,7 +129,7 @@ export const getSlideComments = async ({ slideId, userId, page = 1, limit = 20 }
   });
 
   if (!project) {
-    throw new NoCommentPermissionError();
+    throw new NoCommentViewPermissionError();
   }
 
   // pagination 보정
@@ -172,10 +174,13 @@ export async function createVideoComment({ videoId, content, timestampMs, userId
     throw new InvalidParameterError({ timestampMs }, "타임스탬프는 0 이상의 정수여야 합니다.");
   }
 
-  const video = await findVideoByIdWithProject(vid);
-
+  const video = await findVideoByIdWithOwner(vid, userId);
   if (!video) {
-    throw new VideoNotFoundError({ videoId: String(videoId) });
+    const videoExists = await findVideoByIdWithProject(vid);
+    if (!videoExists) {
+      throw new VideoNotFoundError({ videoId: String(videoId) });
+    }
+    throw new NoCommentCreatePermissionError();
   }
 
   const comment = await createVideoCommentRepo({
@@ -219,7 +224,7 @@ export const getVideoCommentsByTimestamp = async ({
     if (!videoExists) {
       throw new VideoNotFoundError({ videoId: String(videoId) });
     }
-    throw new NoCommentPermissionError();
+    throw new NoCommentViewPermissionError();
   }
 
   return findVideoCommentsByTimestamp({

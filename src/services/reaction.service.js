@@ -168,7 +168,7 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
 }
 
 // 영상 리액션 집계
-export const getReactionMarkers = async ({ videoId, intervalMs }) => {
+export const getReactionMarkers = async ({ videoId, intervalMs, userId }) => {
   let vid;
   try {
     vid = BigInt(videoId);
@@ -185,7 +185,7 @@ export const getReactionMarkers = async ({ videoId, intervalMs }) => {
     throw new InvalidParameterError({ intervalMs });
   }
   // video 존재 검증
-  const video = await findVideoById(vid);
+  const video = await findVideoByIdWithOwner(vid, userId);
   if (!video) {
     throw new VideoNotFoundError({ videoId: String(videoId) });
   }
@@ -216,7 +216,12 @@ export const getReactionMarkers = async ({ videoId, intervalMs }) => {
 };
 
 // 시간대별 리액션 조회
-export const getVideoReactionsByTime = async ({ videoId, timestampMs, windowMs }) => {
+export const getVideoReactionsByTime = async ({
+  videoId,
+  timestampMs,
+  windowMs,
+  userId,
+}) => {
   let vid;
   try {
     vid = BigInt(videoId);
@@ -231,7 +236,7 @@ export const getVideoReactionsByTime = async ({ videoId, timestampMs, windowMs }
   const safeWindowMs =
     windowMs === undefined || windowMs === null ? 2000 : Number(windowMs);
 
-  const video = await findVideoById(vid);
+  const video = await findVideoByIdWithOwner(vid, userId);
   if (!video) {
     throw new VideoNotFoundError({ videoId: String(videoId) });
   }

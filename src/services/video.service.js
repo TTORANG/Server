@@ -53,7 +53,7 @@ function requireProjectId(projectId) {
 }
 
 // 영상 세션 생성
-export async function createVideo({ projectId, title }) {
+export async function createVideo({ projectId, title, userId }) {
   let pid = null;
 
   if (projectId !== undefined) {
@@ -62,6 +62,17 @@ export async function createVideo({ projectId, title }) {
     const project = await findProjectById(pid);
     if (!project) {
       throw new InvalidUploadError({ projectId: pid }, "존재하지 않는 프로젝트입니다.");
+    }
+
+    if (!userId) {
+      throw new AuthSessionRequiredError({ projectId: String(pid) });
+    }
+
+    if (project.userId !== userId) {
+      throw new AuthSessionRequiredError({
+        projectId: String(pid),
+        userId: String(userId),
+      });
     }
   }
 
