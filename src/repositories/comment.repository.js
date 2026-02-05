@@ -106,6 +106,24 @@ export const findVideoCommentsByTimestamp = async ({ videoId, fromMs, toMs }) =>
   });
 };
 
+export const createVideoComment = async ({ userId, videoId, timestampMs, content }) => {
+  return prisma.comment.create({
+    data: {
+      userId,
+      targetType: "video",
+      targetId: videoId,
+      timestampMs,
+      content,
+    },
+    select: {
+      id: true,
+      content: true,
+      timestampMs: true,
+      createdAt: true,
+    },
+  });
+};
+
 /**
  * 프로젝트의 최근 영상 댓글 조회 (슬라이드 정보 포함)
  * @param {Object} params

@@ -2,6 +2,7 @@ import {
   commentListResponseDTO,
   commentResponseDTO,
   createSlideCommentRequestDTO,
+  videoCommentResponseDTO,
   videoCommentListResponseDTO,
 } from "../dtos/comment.dto.js";
 import {
@@ -528,12 +529,7 @@ export async function handleCreateVideoComment(req, res, next) {
     res.status(201).json({
       resultType: "SUCCESS",
       error: null,
-      success: {
-        id: comment.id.toString(),
-        content: comment.content,
-        timestampMs: comment.timestampMs,
-        createdAt: comment.createdAt,
-      },
+      success: videoCommentResponseDTO(comment),
     });
   } catch (e) {
     next(e);
