@@ -127,6 +127,12 @@ export async function postUploadPresentationFile(req, res, next) {
    *                     reason: "인증 세션 정보가 없거나 유효하지 않습니다."
    *                     data: null
    *                   success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ApiResponseBase"
    */
 
   try {

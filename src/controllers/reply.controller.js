@@ -53,6 +53,12 @@ export const postCommentReply = async (req, res, next) => {
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
 
   try {
@@ -111,6 +117,12 @@ export const getCommentReplies = async (req, res, next) => {
    *               $ref: "#/components/schemas/ErrorResponse"
    *       404:
    *         description: 부모 댓글 없음
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       500:
+   *         description: 서버 내부 오류
    *         content:
    *           application/json:
    *             schema:

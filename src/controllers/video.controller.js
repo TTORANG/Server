@@ -77,6 +77,12 @@ export async function startRecording(req, res, next) {
    *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
    *                 data: null
    *               success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
   try {
     const result = await videoService.createVideo(req.body);
@@ -193,6 +199,12 @@ export async function uploadVideoChunk(req, res, next) {
    *                   videoId: "12"
    *                   status: "processing"
    *               success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
 
   try {
@@ -336,6 +348,12 @@ export async function finishRecording(req, res, next) {
    *                   videoId: "12"
    *                   status: "processing"
    *               success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
 
   try {
@@ -413,6 +431,12 @@ export async function handleGetVideoList(req, res, next) {
    *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
    *                 data: null
    *               success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
 
   try {
@@ -512,6 +536,12 @@ export async function handleGetVideoDetail(req, res, next) {
    *               success: null
    *       404:
    *         description: 영상 없음
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       500:
+   *         description: 서버 내부 오류
    *         content:
    *           application/json:
    *             schema:
@@ -631,6 +661,12 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
    *                   videoId: "1"
    *                   status: "processing"
    *               success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
   try {
     const { videoId } = req.params;

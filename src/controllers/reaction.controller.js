@@ -109,6 +109,12 @@ export async function toggleSlideReactionController(req, res, next) {
    *                     data:
    *                       slideId: "10"
    *                   success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    *
    */
   try {
@@ -213,6 +219,12 @@ export async function getSlideReactionSummaryController(req, res, next) {
    *                     data:
    *                       slideId: "10"
    *                   success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    *
    */
   try {
@@ -344,6 +356,12 @@ export async function handleToggleVideoReaction(req, res, next) {
    *                     data:
    *                       videoId: "9999"
    *                   success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
 
   try {
@@ -409,6 +427,12 @@ export const getVideoReactionMarkers = async (req, res, next) => {
    *               $ref: "#/components/schemas/ErrorResponse"
    *       404:
    *         description: 영상 없음
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       500:
+   *         description: 서버 내부 오류
    *         content:
    *           application/json:
    *             schema:
@@ -504,6 +528,12 @@ export const getVideoReactionsByTimeController = async (req, res, next) => {
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
   try {
     const timestampMs = req.query.timestampMs;
@@ -569,6 +599,12 @@ export async function getProjectSlidesReactionSummaryController(req, res, next) 
    *               $ref: "#/components/schemas/ErrorResponse"
    *       404:
    *         description: 프로젝트 없음
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       500:
+   *         description: 서버 내부 오류
    *         content:
    *           application/json:
    *             schema:

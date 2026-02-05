@@ -103,6 +103,12 @@ export const postSlideComment = async (req, res, next) => {
    *                     data:
    *                       slideId: "5"
    *                   success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
   try {
     const slideId = BigInt(req.params.slideId);
@@ -225,6 +231,12 @@ export const patchComment = async (req, res, next) => {
    *                     data:
    *                       commentId: "10"
    *                   success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
   try {
     const commentId = BigInt(req.params.commentId);
@@ -328,6 +340,12 @@ export const deleteCommentController = async (req, res, next) => {
    *                     data:
    *                       commentId: "10"
    *                   success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
 
   try {
@@ -552,6 +570,12 @@ export async function handleCreateVideoComment(req, res, next) {
    *                     data:
    *                       videoId: "9999"
    *                   success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
 
   try {
