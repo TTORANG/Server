@@ -1,11 +1,31 @@
 import { prisma } from "../db.config.js";
 
+export const findProjectById = async (projectId) => {
+  return prisma.project.findFirst({
+    where: {
+      id: projectId,
+      isDeleted: false,
+    },
+    select: { id: true, userId: true },
+  });
+};
+
 export const findVideoById = async (videoId) => {
   return prisma.video.findFirst({
     where: {
       id: videoId,
     },
     select: { id: true },
+  });
+};
+
+export const findVideoByIdWithProject = async (videoId) => {
+  return prisma.video.findFirst({
+    where: {
+      id: videoId,
+      deletedAt: null,
+    },
+    select: { id: true, projectId: true },
   });
 };
 
@@ -24,6 +44,127 @@ export async function findVideoByIdWithOwner(videoId, userId) {
     select: { id: true, projectId: true },
   });
 }
+
+export const createVideoSession = async ({ projectId, title }) => {
+  return prisma.video.create({
+    data: {
+      projectId,
+      title,
+      status: "recording",
+    },
+    select: { id: true },
+  });
+};
+
+export const findVideoForChunkUpload = async (videoId) => {
+  return prisma.video.findFirst({
+    where: { id: videoId, deletedAt: null },
+    select: {
+      id: true,
+      status: true,
+      projectId: true,
+      container: true,
+    },
+  });
+};
+
+export const setVideoUploadingWithContainer = async (videoId, container) => {
+  return prisma.video.update({
+    where: { id: videoId },
+    data: {
+      status: "uploading",
+      container,
+    },
+  });
+};
+
+export const createVideoChunk = async ({
+  videoId,
+  chunkIndex,
+  sizeBytes,
+  sha256,
+  storageBucket,
+  storageKey,
+  url,
+}) => {
+  return prisma.videoChunk.create({
+    data: {
+      videoId,
+      chunkIndex,
+      sizeBytes,
+      sha256,
+      storageBucket,
+      storageKey,
+      url,
+    },
+  });
+};
+
+export const countVideoChunks = async (videoId) => {
+  return prisma.videoChunk.count({
+    where: { videoId },
+  });
+};
+
+export const findVideoForFinish = async (videoId) => {
+  return prisma.video.findFirst({
+    where: { id: videoId, deletedAt: null },
+    select: {
+      id: true,
+      status: true,
+      projectId: true,
+      project: { select: { userId: true } },
+    },
+  });
+};
+
+export const saveVideoSlideLogsAndSetStatus = async ({
+  videoId,
+  slideEvents,
+  durationUpserts,
+  status,
+}) => {
+  const durationOps = durationUpserts.map((d) =>
+    prisma.videoSlideDuration.upsert({
+      where: {
+        videoId_slideId: { videoId, slideId: d.slideId },
+      },
+      update: {
+        totalDurationMs: { increment: d.durationMs },
+      },
+      create: {
+        videoId,
+        slideId: d.slideId,
+        totalDurationMs: d.durationMs,
+      },
+    })
+  );
+
+  return prisma.$transaction([
+    prisma.videoSlideEvent.deleteMany({
+      where: { videoId },
+    }),
+    prisma.videoSlideEvent.createMany({
+      data: slideEvents,
+    }),
+    ...durationOps,
+    prisma.video.update({
+      where: { id: videoId },
+      data: { status },
+    }),
+  ]);
+};
+
+export const findVideoSlideDurations = async (videoId) => {
+  return prisma.videoSlideDuration.findMany({
+    where: { videoId },
+    orderBy: { slideId: "asc" },
+    select: {
+      slideId: true,
+      totalDurationMs: true,
+    },
+  });
+};
 
 export async function findVideosByProjectId(projectId) {
   return prisma.video.findMany({

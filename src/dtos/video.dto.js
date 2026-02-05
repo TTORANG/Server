@@ -11,6 +11,14 @@ export const videoListResponseDTO = (videos) => ({
   videos: videos.map(videoListItemDTO),
 });
 
+export const recordingStartSuccessDTO = (video) => ({
+  videoId: video.id.toString(),
+});
+
+export const videoChunkUploadSuccessDTO = () => ({
+  ok: true,
+});
+
 export const videoDetailDTO = (video) => ({
   videoId: video.id.toString(),
   title: video.title,
@@ -58,4 +66,14 @@ export const videoSlideTimelineItemDTO = (event) => ({
 
 export const videoSlideTimelineResponseDTO = (events) => ({
   slides: events.map(videoSlideTimelineItemDTO),
+});
+
+export const recordingFinishSuccessDTO = ({ videoId, status, slideDurations }) => ({
+  videoId: videoId.toString(),
+  status,
+  slideCount: slideDurations.length,
+  slideDurations: slideDurations.map((s) => ({
+    slideId: s.slideId.toString(),
+    totalDurationMs: s.totalDurationMs,
+  })),
 });
