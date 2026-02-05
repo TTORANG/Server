@@ -148,3 +148,52 @@ export async function findVideoSlideEnterEvents(videoId) {
     },
   });
 }
+
+/**
+ * 특정 타임스탬프에 표시되는 슬라이드 찾기
+ * @param {bigint} videoId - 영상 ID
+ * @param {number} timestampMs - 타임스탬프 (ms)
+ * @returns {Promise<Object|null>} 슬라이드 정보와 이미지
+ */
+export async function findSlideByTimestamp(videoId, timestampMs) {
+  // 해당 타임스탬프 이하의 가장 최근 enter 이벤트 찾기
+  const event = await prisma.videoSlideEvent.findFirst({
+    where: {
+      videoId,
+      eventType: "enter",
+      timestampMs: { lte: timestampMs },
+    },
+    orderBy: {
+      timestampMs: "desc",
+    },
+    include: {
+      slide: {
+        include: {
+          assets: {
+            where: {
+              assetType: "image",
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+            take: 1,
+            select: {
+              url: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!event || !event.slide) {
+    return null;
+  }
+
+  return {
+    slideId: event.slide.id,
+    slideNum: event.slide.slideNum,
+    title: event.slide.title,
+    imageUrl: event.slide.assets[0]?.url || null,
+  };
+}

@@ -7,6 +7,7 @@ import {
   getSlideAnalytics,
   getVideoTimeline,
   getVideoExits,
+  getRecentComments,
 } from "../services/analytics.service.js";
 
 /**
@@ -457,6 +458,68 @@ export const handleGetVideoExits = async (req, res, next) => {
 
 /**
  * @swagger
+ * /presentations/{projectId}/analytics/recent-comments:
+ *   get:
+ *     summary: 최근 댓글 피드백 조회
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 프로젝트 ID
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           minimum: 1
+ *           maximum: 50
+ *         description: 조회할 댓글 수 (최대 50)
+ *     responses:
+ *       200:
+ *         description: 최근 댓글 피드백 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/RecentCommentsResponse'
+ *       400:
+ *         description: 잘못된 요청 파라미터
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError400'
+ *       401:
+ *         description: 세션 정보 필요
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError401'
+ *       404:
+ *         description: 프로젝트를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError404Project'
+ */
+export const handleGetRecentComments = async (req, res, next) => {
+  try {
+    const result = await getRecentComments({
+      projectId: req.params.projectId,
+      limit: req.query.limit,
+    });
+    res.json(result);
+  } catch (e) {
+    next(e);
+  }
+};
+
+/**
+ * @swagger
  * components:
  *   schemas:
  *     AnalyticsRecordResponse:
@@ -717,4 +780,66 @@ export const handleGetVideoExits = async (req, res, next) => {
  *                     type: integer
  *                   exitRate:
  *                     type: integer
+ *
+ *     RecentCommentsResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *         success:
+ *           type: object
+ *           properties:
+ *             comments:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   commentId:
+ *                     type: string
+ *                     description: 댓글 ID
+ *                   content:
+ *                     type: string
+ *                     description: 댓글 내용
+ *                   timestampMs:
+ *                     type: integer
+ *                     description: 영상 내 타임스탬프 (ms)
+ *                   createdAt:
+ *                     type: string
+ *                     format: date-time
+ *                     description: 댓글 작성 시간
+ *                   user:
+ *                     type: object
+ *                     properties:
+ *                       userId:
+ *                         type: string
+ *                         description: 사용자 ID
+ *                       nickName:
+ *                         type: string
+ *                         description: 사용자 닉네임
+ *                       name:
+ *                         type: string
+ *                         description: 사용자 이름
+ *                   slide:
+ *                     type: object
+ *                     nullable: true
+ *                     description: 해당 타임스탬프의 슬라이드 정보
+ *                     properties:
+ *                       slideId:
+ *                         type: string
+ *                         description: 슬라이드 ID
+ *                       slideNum:
+ *                         type: integer
+ *                         nullable: true
+ *                         description: 슬라이드 번호
+ *                       title:
+ *                         type: string
+ *                         nullable: true
+ *                         description: 슬라이드 제목
+ *                       imageUrl:
+ *                         type: string
+ *                         nullable: true
+ *                         description: 슬라이드 이미지 URL
  */

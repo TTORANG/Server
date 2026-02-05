@@ -105,3 +105,34 @@ export const findVideoCommentsByTimestamp = async ({ videoId, fromMs, toMs }) =>
     },
   });
 };
+
+/**
+ * 프로젝트의 최근 영상 댓글 조회 (슬라이드 정보 포함)
+ * @param {Object} params
+ * @param {bigint} params.projectId - 프로젝트 ID
+ * @param {number} params.limit - 조회할 댓글 수
+ */
+export const findRecentVideoCommentsByProjectId = async ({ projectId, limit = 10 }) => {
+  // 프로젝트의 모든 영상 댓글 조회 (최신순)
+  const comments = await prisma.comment.findMany({
+    where: {
+      projectId,
+      targetType: "video",
+      isDeleted: false,
+      timestampMs: { not: null }, // 타임스탬프가 있는 댓글만
+    },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    include: {
+      user: {
+        select: {
+          id: true,
+          nickName: true,
+          name: true,
+        },
+      },
+    },
+  });
+
+  return comments;
+};
