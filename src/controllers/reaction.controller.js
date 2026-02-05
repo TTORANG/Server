@@ -63,6 +63,17 @@ export async function toggleSlideReactionController(req, res, next) {
    *                     data:
    *                       emojiType: angry
    *                   success: null
+   *               REACTION_PROCESS_FAILED:
+   *                 summary: 리액션 처리 실패
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: R003
+   *                     reason: 리액션을 처리할 수 없습니다.
+   *                     data:
+   *                       slideId: "10"
+   *                       emojiType: "thumbs_up"
+   *                   success: null
    *
    *       401:
    *         description: 인증 실패
@@ -76,8 +87,8 @@ export async function toggleSlideReactionController(req, res, next) {
    *                 value:
    *                   resultType: FAILURE
    *                   error:
-   *                     errorCode: A001
-   *                     reason: 인증이 필요합니다.
+   *                     errorCode: A004
+   *                     reason: 인증 세션 정보가 없거나 유효하지 않습니다.
    *                     data: null
    *                   success: null
    *
@@ -99,22 +110,6 @@ export async function toggleSlideReactionController(req, res, next) {
    *                       slideId: "10"
    *                   success: null
    *
-   *       500:
-   *         description: 서버 내부 오류
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: "#/components/schemas/ErrorResponse"
-   *             examples:
-   *               INTERNAL_ERROR:
-   *                 summary: 서버 내부 오류
-   *                 value:
-   *                   resultType: FAILURE
-   *                   error:
-   *                     errorCode: INTERNAL_SERVER_ERROR
-   *                     reason: Internal Server Error
-   *                     data: null
-   *                   success: null
    */
   try {
     const dto = ToggleReactionDto(req.body);
@@ -196,8 +191,8 @@ export async function getSlideReactionSummaryController(req, res, next) {
    *                 value:
    *                   resultType: FAILURE
    *                   error:
-   *                     errorCode: A001
-   *                     reason: 인증이 필요합니다.
+   *                     errorCode: A004
+   *                     reason: 인증 세션 정보가 없거나 유효하지 않습니다.
    *                     data: null
    *                   success: null
    *
@@ -219,22 +214,6 @@ export async function getSlideReactionSummaryController(req, res, next) {
    *                       slideId: "10"
    *                   success: null
    *
-   *       500:
-   *         description: 서버 오류
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: "#/components/schemas/ErrorResponse"
-   *             examples:
-   *               INTERNAL_ERROR:
-   *                 summary: 서버 내부 오류
-   *                 value:
-   *                   resultType: FAILURE
-   *                   error:
-   *                     errorCode: R999
-   *                     reason: 서버 오류
-   *                     data: null
-   *                   success: null
    */
   try {
     const result = await getSlideReactionSummary({
@@ -345,8 +324,8 @@ export async function handleToggleVideoReaction(req, res, next) {
    *                 value:
    *                   resultType: "FAILURE"
    *                   error:
-   *                     errorCode: "A001"
-   *                     reason: "인증이 필요합니다."
+   *                     errorCode: "A004"
+   *                     reason: "인증 세션 정보가 없거나 유효하지 않습니다."
    *                     data: null
    *                   success: null
    *       404:

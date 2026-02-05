@@ -396,6 +396,16 @@ export const getSlideCommentsController = async (req, res, next) => {
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               invalidSlideId:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: C003
+   *                     reason: 유효하지 않은 슬라이드 ID입니다.
+   *                     data:
+   *                       slideId: "abc"
+   *                   success: null
    *       403:
    *         description: 조회 권한 없음 (프로젝트 소유자 아님)
    *         content:
@@ -417,6 +427,16 @@ export const getSlideCommentsController = async (req, res, next) => {
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               listFetchFailed:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: C007
+   *                     reason: 댓글을 불러올 수 없습니다.
+   *                     data:
+   *                       slideId: "5"
+   *                   success: null
    */
 
   try {
@@ -627,8 +647,8 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
    *                 value:
    *                   resultType: FAILURE
    *                   error:
-   *                     errorCode: A001
-   *                     reason: "인증 정보가 없습니다."
+   *                     errorCode: A004
+   *                     reason: "인증 세션 정보가 없거나 유효하지 않습니다."
    *                     data: null
    *                   success: null
    *
