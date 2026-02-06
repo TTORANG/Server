@@ -543,7 +543,7 @@ export const handleGetRecentComments = async (req, res, next) => {
  *       properties:
  *         resultType:
  *           type: string
- *           example: FAIL
+ *           example: FAILURE
  *         error:
  *           type: object
  *           properties:
@@ -565,7 +565,7 @@ export const handleGetRecentComments = async (req, res, next) => {
  *       properties:
  *         resultType:
  *           type: string
- *           example: FAIL
+ *           example: FAILURE
  *         error:
  *           type: object
  *           properties:
@@ -586,7 +586,7 @@ export const handleGetRecentComments = async (req, res, next) => {
  *       properties:
  *         resultType:
  *           type: string
- *           example: FAIL
+ *           example: FAILURE
  *         error:
  *           type: object
  *           properties:
@@ -607,7 +607,7 @@ export const handleGetRecentComments = async (req, res, next) => {
  *       properties:
  *         resultType:
  *           type: string
- *           example: FAIL
+ *           example: FAILURE
  *         error:
  *           type: object
  *           properties:
@@ -628,7 +628,7 @@ export const handleGetRecentComments = async (req, res, next) => {
  *       properties:
  *         resultType:
  *           type: string
- *           example: FAIL
+ *           example: FAILURE
  *         error:
  *           type: object
  *           properties:
@@ -649,7 +649,7 @@ export const handleGetRecentComments = async (req, res, next) => {
  *       properties:
  *         resultType:
  *           type: string
- *           example: FAIL
+ *           example: FAILURE
  *         error:
  *           type: object
  *           properties:
