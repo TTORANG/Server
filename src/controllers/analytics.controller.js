@@ -8,6 +8,8 @@ import {
   getVideoTimeline,
   getVideoExits,
   getRecentComments,
+  getSlideRetention,
+  getVideoRetention,
 } from "../services/analytics.service.js";
 
 /**
@@ -366,6 +368,52 @@ export const handleGetSlideAnalytics = async (req, res, next) => {
 
 /**
  * @swagger
+ * /presentations/{projectId}/analytics/slide-retention:
+ *   get:
+ *     summary: 슬라이드별 잔존률 조회
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 프로젝트 ID
+ *     responses:
+ *       200:
+ *         description: 슬라이드별 잔존률 분석
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SlideRetentionResponse'
+ *       400:
+ *         description: 잘못된 요청 파라미터
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError400'
+ *       404:
+ *         description: 프로젝트를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError404Project'
+ */
+export const handleGetSlideRetention = async (req, res, next) => {
+  try {
+    const result = await getSlideRetention({
+      projectId: req.params.projectId,
+    });
+    res.json(result);
+  } catch (e) {
+    next(e);
+  }
+};
+
+/**
+ * @swagger
  * /videos/{videoId}/analytics/timeline:
  *   get:
  *     summary: 영상 타임라인 분석 조회
@@ -448,6 +496,52 @@ export const handleGetVideoTimeline = async (req, res, next) => {
 export const handleGetVideoExits = async (req, res, next) => {
   try {
     const result = await getVideoExits({
+      videoId: req.params.videoId,
+    });
+    res.json(result);
+  } catch (e) {
+    next(e);
+  }
+};
+
+/**
+ * @swagger
+ * /videos/{videoId}/analytics/retention:
+ *   get:
+ *     summary: 영상 시청 잔존률 조회
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: videoId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 영상 ID
+ *     responses:
+ *       200:
+ *         description: 잔존률 분석
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/VideoRetentionResponse'
+ *       400:
+ *         description: 잘못된 요청 파라미터
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError400'
+ *       404:
+ *         description: 영상을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError404Video'
+ */
+export const handleGetVideoRetention = async (req, res, next) => {
+  try {
+    const result = await getVideoRetention({
       videoId: req.params.videoId,
     });
     res.json(result);
