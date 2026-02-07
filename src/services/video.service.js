@@ -25,6 +25,10 @@ import {
   findVideoSlideEnterEvents,
   findVideoStatusById,
   findVideoSlideDurations,
+  groupVideoPlaySessionsByVideoIds,
+  groupVideoRepliesByVideoIds,
+  groupVideoRootCommentsByVideoIds,
+  groupVideoReactionsByVideoIds,
   saveVideoSlideLogsAndSetStatus,
   setVideoUploadingWithContainer,
 } from "../repositories/video.repository.js";
@@ -51,6 +55,50 @@ function requireProjectId(projectId) {
     throw new InvalidParameterError({ projectId }, "프로젝트 ID가 올바르지 않습니다.");
   }
   return pid;
+}
+
+async function attachVideoStats(videos) {
+  if (!videos.length) return videos;
+
+  const videoIds = videos.map((video) => video.id);
+  const [reactionGroups, rootCommentGroups, replyGroups, playSessionGroups] = await Promise.all([
+    groupVideoReactionsByVideoIds(videoIds),
+    groupVideoRootCommentsByVideoIds(videoIds),
+    groupVideoRepliesByVideoIds(videoIds),
+    groupVideoPlaySessionsByVideoIds(videoIds),
+  ]);
+
+  const reactionCountMap = new Map();
+  reactionGroups.forEach((group) => {
+    reactionCountMap.set(group.targetId.toString(), group._count._all);
+  });
+
+  const rootCommentCountMap = new Map();
+  rootCommentGroups.forEach((group) => {
+    rootCommentCountMap.set(group.targetId.toString(), group._count._all);
+  });
+
+  const replyCountMap = new Map();
+  replyGroups.forEach((group) => {
+    replyCountMap.set(group.targetId.toString(), group._count._all);
+  });
+
+  const viewCountMap = new Map();
+  playSessionGroups.forEach((group) => {
+    const key = group.videoId.toString();
+    viewCountMap.set(key, (viewCountMap.get(key) || 0) + 1);
+  });
+
+  return videos.map((video) => {
+    const key = video.id.toString();
+    return {
+      ...video,
+      reactionCount: reactionCountMap.get(key) || 0,
+      rootCommentCount: rootCommentCountMap.get(key) || 0,
+      replyCount: replyCountMap.get(key) || 0,
+      viewCount: viewCountMap.get(key) || 0,
+    };
+  });
 }
 
 // 영상 세션 생성
@@ -285,11 +333,12 @@ export async function getVideoList({ projectId }) {
   }
 
   const videos = await findVideosByProjectId(pid);
+  const videosWithStats = await attachVideoStats(videos);
 
   return {
     resultType: "SUCCESS",
     error: null,
-    success: videoListResponseDTO(videos),
+    success: videoListResponseDTO(videosWithStats),
   };
 }
 
@@ -300,11 +349,12 @@ export async function getMyVideoList({ userId }) {
   }
 
   const videos = await findVideosByOwnerId(userId);
+  const videosWithStats = await attachVideoStats(videos);
 
   return {
     resultType: "SUCCESS",
     error: null,
-    success: videoListResponseDTO(videos),
+    success: videoListResponseDTO(videosWithStats),
   };
 }
 
