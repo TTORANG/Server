@@ -16,6 +16,7 @@ import {
   createVideoChunk,
   createVideoSession,
   countVideoChunks,
+  findVideosByOwnerId,
   findProjectById,
   findVideoForChunkUpload,
   findVideoForFinish,
@@ -284,6 +285,21 @@ export async function getVideoList({ projectId }) {
   }
 
   const videos = await findVideosByProjectId(pid);
+
+  return {
+    resultType: "SUCCESS",
+    error: null,
+    success: videoListResponseDTO(videos),
+  };
+}
+
+// 내 영상 목록 조회
+export async function getMyVideoList({ userId }) {
+  if (!userId) {
+    throw new AuthSessionRequiredError();
+  }
+
+  const videos = await findVideosByOwnerId(userId);
 
   return {
     resultType: "SUCCESS",

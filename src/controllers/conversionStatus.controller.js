@@ -13,8 +13,8 @@ export const handleGetPresentationStatus = async (req, res, next) => {
    *       전체 변환 파이프라인 상태를 집계하여 반환합니다.
    *
    *       - status 값: queued | processing | failed | completed | partial_done
-   *       - progress는 completed/partial_done일 때만 반환되며, 그 외에는 null 입니다.
-   *     tags: [Presentation]
+   *       - progress는 모든 상태에서 반환되며, percent(0~100)를 포함합니다.
+   *     tags: [File]
    *     security:
    *       - bearerAuth: []
    *     parameters:
@@ -35,7 +35,13 @@ export const handleGetPresentationStatus = async (req, res, next) => {
    *               error: null
    *               success:
    *                 status: "processing"
-   *                 progress: null
+   *                 progress:
+   *                   percent: 65
+   *                   slides:
+   *                     total: 12
+   *                     generated: 12
+   *                   thumbnail: "processing"
+   *                   metadata: "queued"
    *       401:
    *         description: 인증 실패
    *         content:

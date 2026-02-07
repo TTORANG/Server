@@ -7,7 +7,6 @@ import {
   InvalidCommentIdError,
   InvalidSlideIdError,
   NoCommentCreatePermissionError,
-  NoCommentPermissionError,
   NoCommentViewPermissionError,
   SlideNotFoundError,
 } from "../errors/comment.error.js";
@@ -24,7 +23,7 @@ import {
   updateCommentContent,
 } from "../repositories/comment.repository.js";
 import { getSlideWithProject } from "../repositories/slide.repository.js";
-import { findVideoByIdWithOwner, findVideoByIdWithProject } from "../repositories/video.repository.js";
+import { findVideoByIdWithProject } from "../repositories/video.repository.js";
 
 // 댓글 작성
 export const createSlideComment = async ({ slideId, content, userId }) => {
@@ -56,7 +55,7 @@ export const createSlideComment = async ({ slideId, content, userId }) => {
 };
 
 // 댓글 수정
-export const updateComment = async ({ commentId, content, userId }) => {
+export const updateComment = async ({ commentId, content }) => {
   if (
     commentId === undefined ||
     commentId === null ||
@@ -75,15 +74,11 @@ export const updateComment = async ({ commentId, content, userId }) => {
     throw new CommentNotFoundError(commentId);
   }
 
-  if (comment.userId !== userId) {
-    throw new NoCommentPermissionError();
-  }
-
   return updateCommentContent(commentId, content);
 };
 
 // 댓글 삭제
-export const deleteComment = async ({ commentId, userId }) => {
+export const deleteComment = async ({ commentId }) => {
   if (
     commentId === undefined ||
     commentId === null ||
@@ -98,11 +93,12 @@ export const deleteComment = async ({ commentId, userId }) => {
     throw new CommentNotFoundError(commentId);
   }
 
-  if (comment.userId !== userId) {
-    throw new NoCommentPermissionError();
-  }
-
   await softDeleteComment(commentId);
+
+  return {
+    commentId: comment.id,
+    parentCommentId: comment.parentId ?? null,
+  };
 };
 
 // 댓글 목록 조회
@@ -174,13 +170,9 @@ export async function createVideoComment({ videoId, content, timestampMs, userId
     throw new InvalidParameterError({ timestampMs }, "타임스탬프는 0 이상의 정수여야 합니다.");
   }
 
-  const video = await findVideoByIdWithOwner(vid, userId);
+  const video = await findVideoByIdWithProject(vid);
   if (!video) {
-    const videoExists = await findVideoByIdWithProject(vid);
-    if (!videoExists) {
-      throw new VideoNotFoundError({ videoId: String(videoId) });
-    }
-    throw new NoCommentCreatePermissionError();
+    throw new VideoNotFoundError({ videoId: String(videoId) });
   }
 
   const comment = await createVideoCommentRepo({
@@ -209,7 +201,6 @@ export const getVideoCommentsByTimestamp = async ({
   videoId,
   timestampMs,
   windowMs = 10000, // 10초
-  userId,
 }) => {
   const vid = BigInt(videoId);
   const ts = Number(timestampMs);
@@ -218,13 +209,9 @@ export const getVideoCommentsByTimestamp = async ({
     throw new InvalidParameterError({ timestampMs }, "timestampMs 오류");
   }
 
-  const ownedVideo = await findVideoByIdWithOwner(vid, userId);
-  if (!ownedVideo) {
-    const videoExists = await findVideoByIdWithProject(vid);
-    if (!videoExists) {
-      throw new VideoNotFoundError({ videoId: String(videoId) });
-    }
-    throw new NoCommentViewPermissionError();
+  const videoExists = await findVideoByIdWithProject(vid);
+  if (!videoExists) {
+    throw new VideoNotFoundError({ videoId: String(videoId) });
   }
 
   return findVideoCommentsByTimestamp({
