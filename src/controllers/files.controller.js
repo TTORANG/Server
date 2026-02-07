@@ -1,9 +1,4 @@
-import {
-  // completeFileUpload,
-  uploadPresentationAndCreateProject,
-} from "../services/files.service.js";
-// import { createUploadUrl } from "../services/gcs.service.js";
-// import { success } from "../utils/response.util.js";
+import { uploadPresentationAndCreateProject } from "../services/files.service.js";
 
 export async function postUploadPresentationFile(req, res, next) {
   /**
@@ -70,7 +65,7 @@ export async function postUploadPresentationFile(req, res, next) {
    *                 description: 프로젝트 제목(선택)
    *                 example: "테스트 프로젝트"
    *     responses:
-   *       200:
+   *       201:
    *         description: 업로드 성공 (프로젝트 자동 생성 및 변환 시작)
    *         content:
    *           application/json:
@@ -128,10 +123,16 @@ export async function postUploadPresentationFile(req, res, next) {
    *                 value:
    *                   resultType: "FAILURE"
    *                   error:
-   *                     errorCode: "AUTH_001"
-   *                     reason: "UNAUTHORIZED"
+   *                     errorCode: "A004"
+   *                     reason: "인증 세션 정보가 없거나 유효하지 않습니다."
    *                     data: null
    *                   success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ApiResponseBase"
    */
 
   try {

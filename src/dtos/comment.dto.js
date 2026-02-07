@@ -47,3 +47,10 @@ export const videoCommentListItemDTO = (comment) => ({
 export const videoCommentListResponseDTO = (comments) => ({
   comments: comments.map(videoCommentListItemDTO),
 });
+
+export const videoCommentResponseDTO = (comment) => ({
+  id: comment.id.toString(),
+  content: comment.content,
+  timestampMs: comment.timestampMs,
+  createdAt: comment.createdAt,
+});

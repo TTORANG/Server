@@ -1,4 +1,3 @@
-import { prisma } from "../db.config.js";
 import { InvalidUploadError } from "../errors/files.error.js";
 import { startVideoEncodingPipeline } from "./conversion-job.service.js";
 import {
@@ -14,12 +13,25 @@ import crypto from "crypto";
 import { ALLOWED_VIDEO_MIME } from "../constants/files.js";
 import { MAX_SLIDE_DURATION_MS } from "../constants/videos.js";
 import {
+  createVideoChunk,
+  createVideoSession,
+  countVideoChunks,
+  findProjectById,
+  findVideoForChunkUpload,
+  findVideoForFinish,
   findVideoDetailById,
   findVideosByProjectId,
   findVideoSlideEnterEvents,
   findVideoStatusById,
+  findVideoSlideDurations,
+  saveVideoSlideLogsAndSetStatus,
+  setVideoUploadingWithContainer,
 } from "../repositories/video.repository.js";
+import { countSlidesByIdsAndProjectId } from "../repositories/slide.repository.js";
 import {
+  recordingFinishSuccessDTO,
+  recordingStartSuccessDTO,
+  videoChunkUploadSuccessDTO,
   videoDetailResponseDTO,
   videoListResponseDTO,
   videoSlideTimelineResponseDTO,
@@ -41,36 +53,36 @@ function requireProjectId(projectId) {
 }
 
 // 영상 세션 생성
-export async function createVideo({ projectId, title }) {
+export async function createVideo({ projectId, title, userId }) {
   let pid = null;
 
   if (projectId !== undefined) {
     pid = requireProjectId(projectId);
 
-    const project = await prisma.project.findFirst({
-      where: { id: pid, isDeleted: false },
-      select: { id: true },
-    });
+    const project = await findProjectById(pid);
     if (!project) {
       throw new InvalidUploadError({ projectId: pid }, "존재하지 않는 프로젝트입니다.");
+    }
+
+    if (!userId) {
+      throw new AuthSessionRequiredError({ projectId: String(pid) });
+    }
+
+    if (project.userId !== userId) {
+      throw new AuthSessionRequiredError({
+        projectId: String(pid),
+        userId: String(userId),
+      });
     }
   }
 
   // 비디오 생성
-  const video = await prisma.video.create({
-    data: {
-      projectId: pid,
-      title,
-      status: "recording",
-    },
-  });
+  const video = await createVideoSession({ projectId: pid, title });
 
   return {
     resultType: "SUCCESS",
     error: null,
-    success: {
-      videoId: video.id.toString(),
-    },
+    success: recordingStartSuccessDTO(video),
   };
 }
 
@@ -90,15 +102,7 @@ export async function uploadVideoChunk({ videoId, chunkIndex, file }) {
     throw new InvalidVideoChunkError({ contentType: file.mimetype });
   }
 
-  const video = await prisma.video.findFirst({
-    where: { id: vid, deletedAt: null },
-    select: {
-      id: true,
-      status: true,
-      projectId: true,
-      container: true,
-    },
-  });
+  const video = await findVideoForChunkUpload(vid);
 
   if (!video) throw new VideoNotFoundError({ videoId: String(vid) });
   if (!["recording", "uploading"].includes(video.status)) {
@@ -119,13 +123,7 @@ export async function uploadVideoChunk({ videoId, chunkIndex, file }) {
 
   // 첫 청크면 Video.container 저장
   if (video.status === "recording" && !video.container) {
-    await prisma.video.update({
-      where: { id: vid },
-      data: {
-        status: "uploading",
-        container: ext,
-      },
-    });
+    await setVideoUploadingWithContainer(vid, ext);
   }
 
   const env = process.env.NODE_ENV || "dev";
@@ -142,22 +140,20 @@ export async function uploadVideoChunk({ videoId, chunkIndex, file }) {
   const sha256 = crypto.createHash("sha256").update(file.buffer).digest("hex");
   const sizeBytes = BigInt(file.size);
 
-  await prisma.videoChunk.create({
-    data: {
-      videoId: vid,
-      chunkIndex: idx,
-      sizeBytes,
-      sha256,
-      storageBucket: uploaded.storageBucket,
-      storageKey: uploaded.storageKey,
-      url: uploaded.url,
-    },
+  await createVideoChunk({
+    videoId: vid,
+    chunkIndex: idx,
+    sizeBytes,
+    sha256,
+    storageBucket: uploaded.storageBucket,
+    storageKey: uploaded.storageKey,
+    url: uploaded.url,
   });
 
   return {
     resultType: "SUCCESS",
     error: null,
-    success: { ok: true },
+    success: videoChunkUploadSuccessDTO(),
   };
 }
 
@@ -172,15 +168,7 @@ export async function finishRecording({ videoId, slideLogs, userId }) {
     throw new InvalidParameterError({ slideLogs }, "slideLogs가 필요합니다.");
   }
 
-  const video = await prisma.video.findFirst({
-    where: { id: vid, deletedAt: null },
-    select: {
-      id: true,
-      status: true,
-      projectId: true,
-      project: { select: { userId: true } },
-    },
-  });
+  const video = await findVideoForFinish(vid);
 
   if (!video) throw new VideoNotFoundError({ videoId: String(videoId) });
   if (!["recording", "uploading"].includes(video.status)) {
@@ -215,11 +203,9 @@ export async function finishRecording({ videoId, slideLogs, userId }) {
   }
 
   if (video.projectId && uniqueSlideIds.length > 0) {
-    const validCount = await prisma.slide.count({
-      where: {
-        id: { in: uniqueSlideIds },
-        projectId: video.projectId,
-      },
+    const validCount = await countSlidesByIdsAndProjectId({
+      projectId: video.projectId,
+      slideIds: uniqueSlideIds,
     });
 
     if (validCount !== uniqueSlideIds.length) {
@@ -231,9 +217,7 @@ export async function finishRecording({ videoId, slideLogs, userId }) {
   }
 
   // 업로드 검증
-  const chunkCount = await prisma.videoChunk.count({
-    where: { videoId: vid },
-  });
+  const chunkCount = await countVideoChunks(vid);
   if (chunkCount <= 0) {
     throw new NoVideoChunksError({ videoId: String(videoId) });
   }
@@ -256,51 +240,23 @@ export async function finishRecording({ videoId, slideLogs, userId }) {
 
     if (durationMs <= 0) continue;
 
-    durationUpserts.push(
-      prisma.videoSlideDuration.upsert({
-        where: {
-          videoId_slideId: { videoId: vid, slideId },
-        },
-        update: {
-          totalDurationMs: { increment: durationMs },
-        },
-        create: {
-          videoId: vid,
-          slideId,
-          totalDurationMs: durationMs,
-        },
-      })
-    );
+    durationUpserts.push({ slideId, durationMs });
   }
 
   // 트랜잭션: 슬라이드 로그 저장 + 상태 변경
-  await prisma.$transaction([
-    prisma.videoSlideEvent.deleteMany({
-      where: { videoId: vid },
-    }),
-    prisma.videoSlideEvent.createMany({
-      data: sorted.map((l) => ({
-        videoId: vid,
-        slideId: toInt(l.slideId),
-        timestampMs: toInt(l.timestampMs),
-        eventType: "enter",
-      })),
-    }),
-    ...durationUpserts,
-    prisma.video.update({
-      where: { id: vid },
-      data: { status: "processing" },
-    }),
-  ]);
-
-  const slideDurations = await prisma.videoSlideDuration.findMany({
-    where: { videoId: vid },
-    orderBy: { slideId: "asc" },
-    select: {
-      slideId: true,
-      totalDurationMs: true,
-    },
+  await saveVideoSlideLogsAndSetStatus({
+    videoId: vid,
+    slideEvents: sorted.map((l) => ({
+      videoId: vid,
+      slideId: toInt(l.slideId),
+      timestampMs: toInt(l.timestampMs),
+      eventType: "enter",
+    })),
+    durationUpserts,
+    status: "processing",
   });
+
+  const slideDurations = await findVideoSlideDurations(vid);
 
   // 인코딩 파이프라인 시작
   await startVideoEncodingPipeline({ videoId: vid });
@@ -308,15 +264,11 @@ export async function finishRecording({ videoId, slideLogs, userId }) {
   return {
     resultType: "SUCCESS",
     error: null,
-    success: {
-      videoId: vid.toString(),
+    success: recordingFinishSuccessDTO({
+      videoId: vid,
       status: "processing",
-      slideCount: slideDurations.length,
-      slideDurations: slideDurations.map((s) => ({
-        slideId: s.slideId.toString(),
-        totalDurationMs: s.totalDurationMs,
-      })),
-    },
+      slideDurations,
+    }),
   };
 }
 
@@ -325,13 +277,7 @@ export async function getVideoList({ projectId }) {
   const pid = requireProjectId(projectId);
 
   // 프로젝트 존재 검증
-  const project = await prisma.project.findFirst({
-    where: {
-      id: pid,
-      isDeleted: false,
-    },
-    select: { id: true },
-  });
+  const project = await findProjectById(pid);
 
   if (!project) {
     throw new InvalidUploadError({ projectId: pid }, "존재하지 않는 프로젝트입니다.");

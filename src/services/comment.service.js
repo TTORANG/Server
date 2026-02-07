@@ -6,7 +6,9 @@ import {
   EmptyCommentContentError,
   InvalidCommentIdError,
   InvalidSlideIdError,
+  NoCommentCreatePermissionError,
   NoCommentPermissionError,
+  NoCommentViewPermissionError,
   SlideNotFoundError,
 } from "../errors/comment.error.js";
 import { InvalidParameterError, VideoNotFoundError } from "../errors/video.error.js";
@@ -14,6 +16,7 @@ import eventBus from "../events/eventBus.js";
 import { EventTypes } from "../events/eventTypes.js";
 import {
   createComment,
+  createVideoComment as createVideoCommentRepo,
   findCommentById,
   findCommentsBySlideId,
   findVideoCommentsByTimestamp,
@@ -21,6 +24,7 @@ import {
   updateCommentContent,
 } from "../repositories/comment.repository.js";
 import { getSlideWithProject } from "../repositories/slide.repository.js";
+import { findVideoByIdWithOwner, findVideoByIdWithProject } from "../repositories/video.repository.js";
 
 // 댓글 작성
 export const createSlideComment = async ({ slideId, content, userId }) => {
@@ -40,7 +44,7 @@ export const createSlideComment = async ({ slideId, content, userId }) => {
 
   //권한 체크 (프로젝트 소유자 기준)
   if (slide.project.userId !== userId) {
-    throw new NoCommentPermissionError();
+    throw new NoCommentCreatePermissionError();
   }
 
   return createComment({
@@ -110,7 +114,7 @@ export const getSlideComments = async ({ slideId, userId, page = 1, limit = 20 }
 
   // userId 검증
   if (userId === undefined || userId === null) {
-    throw new NoCommentPermissionError();
+    throw new NoCommentViewPermissionError();
   }
 
   const project = await prisma.project.findFirst({
@@ -125,7 +129,7 @@ export const getSlideComments = async ({ slideId, userId, page = 1, limit = 20 }
   });
 
   if (!project) {
-    throw new NoCommentPermissionError();
+    throw new NoCommentViewPermissionError();
   }
 
   // pagination 보정
@@ -170,29 +174,20 @@ export async function createVideoComment({ videoId, content, timestampMs, userId
     throw new InvalidParameterError({ timestampMs }, "타임스탬프는 0 이상의 정수여야 합니다.");
   }
 
-  const video = await prisma.video.findFirst({
-    where: { id: vid, deletedAt: null },
-    select: { id: true, projectId: true },
-  });
-
+  const video = await findVideoByIdWithOwner(vid, userId);
   if (!video) {
-    throw new VideoNotFoundError({ videoId: String(videoId) });
+    const videoExists = await findVideoByIdWithProject(vid);
+    if (!videoExists) {
+      throw new VideoNotFoundError({ videoId: String(videoId) });
+    }
+    throw new NoCommentCreatePermissionError();
   }
 
-  const comment = await prisma.comment.create({
-    data: {
-      userId,
-      targetType: "video",
-      targetId: vid,
-      timestampMs: ts,
-      content,
-    },
-    select: {
-      id: true,
-      content: true,
-      timestampMs: true,
-      createdAt: true,
-    },
+  const comment = await createVideoCommentRepo({
+    userId,
+    videoId: vid,
+    timestampMs: ts,
+    content,
   });
 
   // 실시간 알림을 위한 이벤트 발행
@@ -223,28 +218,13 @@ export const getVideoCommentsByTimestamp = async ({
     throw new InvalidParameterError({ timestampMs }, "timestampMs 오류");
   }
 
-  const video = await prisma.video.findFirst({
-    where: {
-      id: vid,
-      deletedAt: null,
-      project: {
-        userId,
-        isDeleted: false,
-      },
-    },
-    select: { id: true },
-  });
-
-  if (!video) {
-    const videoExists = await prisma.video.findFirst({
-      where: { id: vid, deletedAt: null },
-      select: { id: true },
-    });
+  const ownedVideo = await findVideoByIdWithOwner(vid, userId);
+  if (!ownedVideo) {
+    const videoExists = await findVideoByIdWithProject(vid);
     if (!videoExists) {
       throw new VideoNotFoundError({ videoId: String(videoId) });
-    } else {
-      throw new NoCommentPermissionError();
     }
+    throw new NoCommentViewPermissionError();
   }
 
   return findVideoCommentsByTimestamp({
