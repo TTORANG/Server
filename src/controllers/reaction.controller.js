@@ -706,6 +706,12 @@ export async function getProjectSlidesReactionSummaryController(req, res, next) 
  *         emojiType:
  *           type: string
  *           description: 리액션 이모지 타입
+ *           enum:
+ *             - fire
+ *             - good
+ *             - bad
+ *             - sleepy
+ *             - confused
  *           example: "fire"
  *         timestampMs:
  *           type: integer
