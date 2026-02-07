@@ -37,13 +37,18 @@ export async function postUploadPresentationFile(req, res, next) {
    *                   type: string
    *                   description: 생성된 프로젝트 ID(BigInt → string)
    *                   example: "123"
+   *                 status:
+   *                   type: string
+   *                   description: 파일 변환 상태
+   *                   enum: [queued, processing, failed, completed, partial_done]
+   *                   example: "queued"
    *
    * /files/upload:
    *   post:
-   *     summary: 파일 업로드 (발표자료/발표영상)
+   *     summary: 파일 업로드 (발표자료)
    *     description: >
-   *       발표 자료(PPT/PDF) 또는 발표 영상(MP4/WEBM)을 업로드합니다.
-   *       업로드 완료 시 프로젝트가 자동 생성되며, 파일 타입에 따라 변환 파이프라인이 자동으로 시작됩니다.
+   *       발표 자료(PPT/PDF)를 업로드합니다.
+   *       업로드 완료 시 프로젝트가 자동 생성되며, 변환 파이프라인이 자동으로 시작됩니다.
    *     tags: [File]
    *     security:
    *       - bearerAuth: []
@@ -59,7 +64,7 @@ export async function postUploadPresentationFile(req, res, next) {
    *               file:
    *                 type: string
    *                 format: binary
-   *                 description: pptx / pdf / mp4 / webm
+   *                 description: pptx / pdf
    *               title:
    *                 type: string
    *                 description: 프로젝트 제목(선택)
@@ -78,6 +83,7 @@ export async function postUploadPresentationFile(req, res, next) {
    *                   error: null
    *                   success:
    *                     projectId: "123"
+   *                     status: "queued"
    *       400:
    *         description: 잘못된 요청 (파일 없음/형식 불일치/용량 초과 등)
    *         content:
@@ -150,6 +156,7 @@ export async function postUploadPresentationFile(req, res, next) {
       error: null,
       success: {
         projectId: result.projectId,
+        status: result.status,
       },
     });
   } catch (e) {
