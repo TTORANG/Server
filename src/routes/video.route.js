@@ -3,6 +3,7 @@ import {
   finishRecording,
   handleGetVideoDetail,
   handleGetVideoList,
+  handleGetMyVideoList,
   handleGetVideoSlideTimeline,
   startRecording,
   uploadVideoChunk,
@@ -40,6 +41,8 @@ router.post(
 router.get("/videos/:videoId/slides", isLogin, handleGetVideoSlideTimeline);
 // 프로젝트 하위 녹화 영상 목록 조회
 router.get("/presentations/:projectId/videos", isLogin, handleGetVideoList);
+// 내 녹화 영상 목록 조회
+router.get("/me/videos", isLogin, handleGetMyVideoList);
 
 router.get("/videos/:videoId/analytics/timeline", isLogin, handleGetVideoTimeline);
 router.get("/videos/:videoId/analytics/exits", isLogin, handleGetVideoExits);
