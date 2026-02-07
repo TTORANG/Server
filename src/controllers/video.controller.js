@@ -451,6 +451,55 @@ export async function handleGetVideoList(req, res, next) {
   }
 }
 
+// 내 영상 목록 조회
+export async function handleGetMyVideoList(req, res, next) {
+  /**
+   * @swagger
+   * /me/videos:
+   *   get:
+   *     summary: 내 영상 목록 조회
+   *     description: |
+   *       로그인한 사용자가 소유한 프로젝트의 영상 목록을 최신순으로 조회합니다.
+   *       영상이 없는 경우 빈 목록을 반환합니다.
+   *     tags:
+   *       - Video
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: 영상 목록 조회 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/VideoListResponse"
+   *       401:
+   *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "A004"
+   *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+   *                 data: null
+   *               success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   */
+  try {
+    const result = await videoService.getMyVideoList({
+      userId: req.user?.id,
+    });
+    res.json(result);
+  } catch (e) {
+    next(e);
+  }
+}
+
 // 영상 상세 조회
 export async function handleGetVideoDetail(req, res, next) {
   /**

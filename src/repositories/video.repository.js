@@ -185,6 +185,30 @@ export async function findVideosByProjectId(projectId) {
   });
 }
 
+export async function findVideosByOwnerId(userId) {
+  return prisma.video.findMany({
+    where: {
+      deletedAt: null,
+      status: { not: "deleted" },
+      project: {
+        is: {
+          userId,
+          isDeleted: false,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      durationSeconds: true,
+      thumbnailUrl: true,
+      createdAt: true,
+    },
+  });
+}
+
 export async function findVideoDetailById(videoId) {
   return prisma.video.findFirst({
     where: {
