@@ -725,7 +725,7 @@ export async function handleDeleteVideo(req, res, next) {
    *                 errorCode: "P001"
    *                 reason: "videoId가 올바르지 않습니다."
    *                 data:
-   *                   videoId: "abc"
+   *                   videoId: 0
    *               success: null
    *       401:
    *         description: 인증 실패
