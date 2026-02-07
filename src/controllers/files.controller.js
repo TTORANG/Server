@@ -37,11 +37,6 @@ export async function postUploadPresentationFile(req, res, next) {
    *                   type: string
    *                   description: 생성된 프로젝트 ID(BigInt → string)
    *                   example: "123"
-   *                 status:
-   *                   type: string
-   *                   description: 파일 변환 상태
-   *                   enum: [queued, processing, failed, completed, partial_done]
-   *                   example: "queued"
    *
    * /files/upload:
    *   post:
@@ -83,7 +78,6 @@ export async function postUploadPresentationFile(req, res, next) {
    *                   error: null
    *                   success:
    *                     projectId: "123"
-   *                     status: "queued"
    *       400:
    *         description: 잘못된 요청 (파일 없음/형식 불일치/용량 초과 등)
    *         content:
@@ -156,7 +150,6 @@ export async function postUploadPresentationFile(req, res, next) {
       error: null,
       success: {
         projectId: result.projectId,
-        status: result.status,
       },
     });
   } catch (e) {
