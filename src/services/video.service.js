@@ -68,20 +68,15 @@ async function attachVideoStats(videos) {
     groupVideoPlaySessionsByVideoIds(videoIds),
   ]);
 
-  const reactionCountMap = new Map();
-  reactionGroups.forEach((group) => {
-    reactionCountMap.set(group.targetId.toString(), group._count._all);
-  });
-
-  const rootCommentCountMap = new Map();
-  rootCommentGroups.forEach((group) => {
-    rootCommentCountMap.set(group.targetId.toString(), group._count._all);
-  });
-
-  const replyCountMap = new Map();
-  replyGroups.forEach((group) => {
-    replyCountMap.set(group.targetId.toString(), group._count._all);
-  });
+  const reactionCountMap = new Map(
+    reactionGroups.map((group) => [group.targetId.toString(), group._count._all])
+  );
+  const rootCommentCountMap = new Map(
+    rootCommentGroups.map((group) => [group.targetId.toString(), group._count._all])
+  );
+  const replyCountMap = new Map(
+    replyGroups.map((group) => [group.targetId.toString(), group._count._all])
+  );
 
   const viewCountMap = new Map();
   playSessionGroups.forEach((group) => {
