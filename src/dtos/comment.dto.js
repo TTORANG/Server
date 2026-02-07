@@ -12,25 +12,26 @@ export const commentResponseDTO = (comment) => ({
 });
 
 export const updateCommentResponseDTO = (comment) => {
-  if (comment.parentId) {
-    return {
-      updatedTargetType: "reply",
-      parentCommentId: comment.parentId.toString(),
-      replyId: comment.id.toString(),
-      content: comment.content,
-      userId: comment.userId?.toString(),
-      createdAt: comment.createdAt,
-      updatedAt: comment.updatedAt,
-    };
-  }
-
-  return {
-    updatedTargetType: "comment",
-    commentId: comment.id.toString(),
+  const baseResponse = {
     content: comment.content,
     userId: comment.userId?.toString(),
     createdAt: comment.createdAt,
     updatedAt: comment.updatedAt,
+  };
+
+  if (comment.parentId) {
+    return {
+      ...baseResponse,
+      updatedTargetType: "reply",
+      parentCommentId: comment.parentId.toString(),
+      replyId: comment.id.toString(),
+    };
+  }
+
+  return {
+    ...baseResponse,
+    updatedTargetType: "comment",
+    commentId: comment.id.toString(),
   };
 };
 
