@@ -381,6 +381,8 @@ export async function handleGetVideoList(req, res, next) {
    *     description:
    *       특정 프로젝트에 속한 모든 녹화 영상을 최신순으로 조회합니다.
    *       영상이 없는 경우에도 오류가 아닌 빈 목록을 반환합니다.
+   *       각 영상에는 일반 댓글 수(rootCommentCount), 답글 수(replyCount),
+   *       리액션 수(reactionCount), 조회 수(viewCount)가 함께 포함됩니다.
    *     tags:
    *       - Video
    *     security:
@@ -400,6 +402,21 @@ export async function handleGetVideoList(req, res, next) {
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/VideoListResponse"
+   *             example:
+   *               resultType: "SUCCESS"
+   *               error: null
+   *               success:
+   *                 videos:
+   *                   - videoId: "10"
+   *                     title: "발표 연습 1"
+   *                     status: "ready"
+   *                     durationSeconds: 120
+   *                     rootCommentCount: 5
+   *                     replyCount: 3
+   *                     reactionCount: 12
+   *                     viewCount: 8
+   *                     thumbnailUrl: "https://example.com/thumb.jpg"
+   *                     createdAt: "2026-02-01T09:00:00.000Z"
    *       400:
    *         description: 잘못된 요청 (유효하지 않은 프로젝트 ID 또는 존재하지 않는 프로젝트)
    *         content:
@@ -461,6 +478,8 @@ export async function handleGetMyVideoList(req, res, next) {
    *     description: |
    *       로그인한 사용자가 소유한 프로젝트의 영상 목록을 최신순으로 조회합니다.
    *       영상이 없는 경우 빈 목록을 반환합니다.
+   *       각 영상에는 일반 댓글 수(rootCommentCount), 답글 수(replyCount),
+   *       리액션 수(reactionCount), 조회 수(viewCount)가 함께 포함됩니다.
    *     tags:
    *       - Video
    *     security:
@@ -472,6 +491,21 @@ export async function handleGetMyVideoList(req, res, next) {
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/VideoListResponse"
+   *             example:
+   *               resultType: "SUCCESS"
+   *               error: null
+   *               success:
+   *                 videos:
+   *                   - videoId: "21"
+   *                     title: "내 발표 리허설"
+   *                     status: "ready"
+   *                     durationSeconds: 95
+   *                     rootCommentCount: 2
+   *                     replyCount: 1
+   *                     reactionCount: 7
+   *                     viewCount: 4
+   *                     thumbnailUrl: "https://example.com/thumb2.jpg"
+   *                     createdAt: "2026-02-03T13:20:00.000Z"
    *       401:
    *         description: 인증 실패
    *         content:
@@ -845,6 +879,22 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *           type: integer
  *           nullable: true
  *           example: 120
+ *         rootCommentCount:
+ *           type: integer
+ *           description: 영상 일반 댓글 수(parentId=null)
+ *           example: 5
+ *         replyCount:
+ *           type: integer
+ *           description: 영상 답글 수(parentId!=null)
+ *           example: 3
+ *         reactionCount:
+ *           type: integer
+ *           description: 영상 리액션 수
+ *           example: 12
+ *         viewCount:
+ *           type: integer
+ *           description: 영상 조회 수(재생 play 이벤트의 고유 세션 수)
+ *           example: 8
  *         thumbnailUrl:
  *           type: string
  *           nullable: true
