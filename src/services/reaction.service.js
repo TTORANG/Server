@@ -98,6 +98,9 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
   if (!emojiType || typeof emojiType !== "string") {
     throw new InvalidParameterError({ emojiType }, "잘못된 이모지 타입입니다.");
   }
+  if (!ALLOWED_EMOJIS.includes(emojiType)) {
+    throw new InvalidEmojiTypeError({ emojiType });
+  }
   if (!Number.isInteger(ts) || ts < 0) {
     throw new InvalidParameterError({ timestampMs }, "타임스탬프는 0 이상의 정수여야 합니다.");
   }
