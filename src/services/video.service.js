@@ -17,6 +17,7 @@ import {
   createVideoSession,
   countVideoChunks,
   findVideosByOwnerId,
+  findVideoByIdWithOwner,
   findProjectById,
   findVideoForChunkUpload,
   findVideoForFinish,
@@ -31,11 +32,13 @@ import {
   groupVideoReactionsByVideoIds,
   saveVideoSlideLogsAndSetStatus,
   setVideoUploadingWithContainer,
+  updateVideoStatus,
 } from "../repositories/video.repository.js";
 import { countSlidesByIdsAndProjectId } from "../repositories/slide.repository.js";
 import {
   recordingFinishSuccessDTO,
   recordingStartSuccessDTO,
+  videoDeleteSuccessDTO,
   videoChunkUploadSuccessDTO,
   videoDetailResponseDTO,
   videoListResponseDTO,
@@ -440,6 +443,31 @@ export async function getVideoDetail({ videoId }) {
       reactions,
       comments,
     }),
+  };
+}
+
+// 영상 삭제 (Soft Delete)
+export async function deleteVideo({ videoId, userId }) {
+  const vid = toInt(videoId);
+  if (!Number.isInteger(vid) || vid <= 0) {
+    throw new InvalidParameterError({ videoId: String(videoId) }, "videoId가 올바르지 않습니다.");
+  }
+
+  if (!userId) {
+    throw new AuthSessionRequiredError({ videoId: String(videoId) });
+  }
+
+  const video = await findVideoByIdWithOwner(vid, userId);
+  if (!video) {
+    throw new VideoNotFoundError({ videoId: String(videoId) });
+  }
+
+  await updateVideoStatus(vid, "deleted", { deletedAt: new Date() });
+
+  return {
+    resultType: "SUCCESS",
+    error: null,
+    success: videoDeleteSuccessDTO({ videoId: vid }),
   };
 }
 

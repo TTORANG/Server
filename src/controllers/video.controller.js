@@ -681,6 +681,94 @@ export async function handleGetVideoDetail(req, res, next) {
   }
 }
 
+// 영상 삭제
+export async function handleDeleteVideo(req, res, next) {
+  /**
+   * @swagger
+   * /videos/{videoId}:
+   *   delete:
+   *     summary: 영상 삭제 (Soft Delete)
+   *     description: |
+   *       특정 영상을 소프트 삭제합니다.
+   *       삭제 시 영상 상태를 `deleted`로 변경하고 `deletedAt`을 기록합니다.
+   *       본인이 생성한 영상(본인 프로젝트에 속한 영상)만 삭제할 수 있습니다.
+   *     tags: [Video]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: videoId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *           example: 2
+   *         description: 영상 ID
+   *     responses:
+   *       200:
+   *         description: 영상 삭제 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/VideoDeleteResponse"
+   *             example:
+   *               resultType: "SUCCESS"
+   *               error: null
+   *               success:
+   *                 videoId: "2"
+   *       400:
+   *         description: 잘못된 videoId 파라미터
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "P001"
+   *                 reason: "videoId가 올바르지 않습니다."
+   *                 data:
+   *                   videoId: "abc"
+   *               success: null
+   *       401:
+   *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "A004"
+   *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+   *                 data: null
+   *               success: null
+   *       404:
+   *         description: 영상 없음 또는 본인이 생성한 영상이 아님
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "V001"
+   *                 reason: "영상을 찾을 수 없습니다."
+   *                 data:
+   *                   videoId: "2"
+   *               success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   */
+  try {
+    const { videoId } = req.params;
+    const result = await videoService.deleteVideo({
+      videoId,
+      userId: req.user?.id,
+    });
+    res.json(result);
+  } catch (e) {
+    next(e);
+  }
+}
+
 // 영상-슬라이드 동기화 조회
 export async function handleGetVideoSlideTimeline(req, res, next) {
   /**
@@ -1067,4 +1155,20 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *               type: array
  *               items:
  *                 $ref: "#/components/schemas/VideoSlideTimelineItem"
+ *
+ *     VideoDeleteResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *         success:
+ *           type: object
+ *           properties:
+ *             videoId:
+ *               type: string
+ *               description: 삭제된 영상 ID(BigInt → string)
+ *               example: "2"
  */
