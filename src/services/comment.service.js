@@ -4,6 +4,7 @@ import {
   EmptyCommentContentError,
   InvalidCommentIdError,
   InvalidSlideIdError,
+  NoCommentViewPermissionError,
   SlideNotFoundError,
 } from "../errors/comment.error.js";
 import { InvalidParameterError, VideoNotFoundError } from "../errors/video.error.js";
@@ -94,7 +95,7 @@ export const deleteComment = async ({ commentId }) => {
 };
 
 // 댓글 목록 조회
-export const getSlideComments = async ({ slideId, page = 1, limit = 20 }) => {
+export const getSlideComments = async ({ slideId, userId, page = 1, limit = 20 }) => {
   // slideId 검증
   if (slideId === undefined || slideId === null || typeof slideId !== "bigint" || slideId <= 0n) {
     throw new InvalidSlideIdError(slideId?.toString());
@@ -103,6 +104,21 @@ export const getSlideComments = async ({ slideId, page = 1, limit = 20 }) => {
   const slide = await getSlideWithProject(slideId);
   if (!slide) {
     throw new SlideNotFoundError(slideId?.toString());
+  }
+
+  if (userId === undefined || userId === null) {
+    throw new NoCommentViewPermissionError();
+  }
+
+  let requesterId;
+  try {
+    requesterId = typeof userId === "bigint" ? userId : BigInt(userId);
+  } catch {
+    throw new NoCommentViewPermissionError();
+  }
+
+  if (slide.project.userId !== requesterId) {
+    throw new NoCommentViewPermissionError();
   }
 
   // pagination 보정

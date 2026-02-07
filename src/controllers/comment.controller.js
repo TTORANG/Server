@@ -430,6 +430,7 @@ export const getSlideCommentsController = async (req, res, next) => {
    *
    *       - 작성 시간 기준 오름차순 정렬
    *       - Soft delete된 댓글은 제외됩니다.
+   *       - 프로젝트 소유자만 조회할 수 있습니다.
    *       - 페이지네이션을 지원합니다.
    *     tags: [Comment]
    *     security:
@@ -476,6 +477,21 @@ export const getSlideCommentsController = async (req, res, next) => {
    *                     data:
    *                       slideId: "abc"
    *                   success: null
+   *       403:
+   *         description: 조회 권한 없음 (프로젝트 소유자 아님)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               noPermission:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: C006
+   *                     reason: 댓글을 조회할 권한이 없습니다.
+   *                     data: null
+   *                   success: null
    *       500:
    *         description: 댓글 조회 실패
    *         content:
@@ -500,6 +516,7 @@ export const getSlideCommentsController = async (req, res, next) => {
 
     const result = await getSlideComments({
       slideId,
+      userId: req.user.id,
       page,
       limit,
     });
