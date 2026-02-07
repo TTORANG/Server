@@ -24,6 +24,7 @@ export async function toggleSlideReactionController(req, res, next) {
    *       가능한 이모지 타입: fire, good, bad, sleepy, confused
    *
    *       슬라이드 리액션은 timestampMs=null 기준으로 처리된다.
+   *       인증된 사용자라면 리소스 소유자와 무관하게 호출할 수 있다.
    *     tags:
    *       - Reaction
    *     security:
@@ -150,6 +151,7 @@ export async function getSlideReactionSummaryController(req, res, next) {
    *
    *       - 취소된 리액션(isDeleted=true)은 집계에서 제외된다.
    *       - 리액션이 없는 이모지는 0으로 반환된다.
+   *       - 인증된 사용자라면 리소스 소유자와 무관하게 조회할 수 있다.
    *     tags:
    *       - Reaction
    *     security:
@@ -262,6 +264,7 @@ export async function handleToggleVideoReaction(req, res, next) {
    *
    *       **주의사항**
    *       - 본 API는 인증(JWT)이 필요합니다.
+   *       - 인증된 사용자라면 리소스 소유자와 무관하게 호출할 수 있습니다.
    *       - `timestampMs`는 필수이며 0 이상의 정수(ms)만 허용합니다.
    *       - `emojiType`은 문자열이며, 서버/클라이언트에서 합의된 타입을 사용해야 합니다.
    *     tags: [Reaction]
@@ -344,7 +347,7 @@ export async function handleToggleVideoReaction(req, res, next) {
    *                     data: null
    *                   success: null
    *       404:
-   *         description: 영상 없음
+   *         description: 영상을 찾을 수 없음(미존재 또는 삭제됨)
    *         content:
    *           application/json:
    *             schema:
@@ -400,6 +403,7 @@ export const getVideoReactionMarkers = async (req, res, next) => {
    *
    *       - 기본 intervalMs=5000 (5초)
    *       - timestampMs가 없는 리액션은 집계에서 제외됩니다.
+   *       - 인증된 사용자라면 리소스 소유자와 무관하게 조회할 수 있습니다.
    *     tags: [Reaction]
    *     security:
    *       - bearerAuth: []
@@ -431,7 +435,7 @@ export const getVideoReactionMarkers = async (req, res, next) => {
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
    *       404:
-   *         description: 영상 없음
+   *         description: 영상을 찾을 수 없음(미존재 또는 삭제됨)
    *         content:
    *           application/json:
    *             schema:
@@ -474,6 +478,7 @@ export const getVideoReactionsByTimeController = async (req, res, next) => {
    *     description: |
    *       영상의 현재 재생 시간 기준으로 ±2초 범위 내 리액션을 조회합니다.
    *       동일 시간대의 리액션은 이모지 타입별로 집계되어 반환됩니다.
+   *       인증된 사용자라면 리소스 소유자와 무관하게 조회할 수 있습니다.
    *     tags: [Reaction]
    *     security:
    *       - bearerAuth: []
@@ -531,7 +536,7 @@ export const getVideoReactionsByTimeController = async (req, res, next) => {
    *                       windowMs: -1
    *                   success: null
    *       404:
-   *         description: 영상 없음
+   *         description: 영상을 찾을 수 없음(미존재 또는 삭제됨)
    *         content:
    *           application/json:
    *             schema:
@@ -577,6 +582,7 @@ export async function getProjectSlidesReactionSummaryController(req, res, next) 
    *       - 취소된 리액션(isDeleted=true)은 제외됩니다.
    *       - 슬라이드에 리액션이 없어도 허용 이모지 키는 0으로 채워 반환됩니다.
    *       - 슬라이드별 상세 목록은 반환하지 않고, 프로젝트 전체 합계만 반환합니다.
+   *       - 인증된 사용자라면 리소스 소유자와 무관하게 조회할 수 있습니다.
    *     tags: [Reaction]
    *     security:
    *       - bearerAuth: []
