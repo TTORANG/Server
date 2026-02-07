@@ -53,6 +53,16 @@ export const postSlideComment = async (req, res, next) => {
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/CreateSlideCommentResponse"
+   *             examples:
+   *               created:
+   *                 value:
+   *                   resultType: SUCCESS
+   *                   error: null
+   *                   success:
+   *                     commentId: "20"
+   *                     content: "이 슬라이드 설명이 이해하기 쉬워요"
+   *                     userId: "3"
+   *                     createdAt: "2026-02-02T04:10:00.000Z"
    *       400:
    *         description: 잘못된 요청 (댓글 내용 없음)
    *         content:
@@ -420,6 +430,7 @@ export const getSlideCommentsController = async (req, res, next) => {
    *
    *       - 작성 시간 기준 오름차순 정렬
    *       - Soft delete된 댓글은 제외됩니다.
+   *       - 프로젝트 소유자만 조회할 수 있습니다.
    *       - 페이지네이션을 지원합니다.
    *     tags: [Comment]
    *     security:
@@ -478,7 +489,7 @@ export const getSlideCommentsController = async (req, res, next) => {
    *                   resultType: FAILURE
    *                   error:
    *                     errorCode: C006
-   *                     reason: 댓글을 수정 또는 삭제할 권한이 없습니다.
+   *                     reason: 댓글을 조회할 권한이 없습니다.
    *                     data: null
    *                   success: null
    *       500:

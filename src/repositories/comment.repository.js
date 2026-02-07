@@ -106,9 +106,10 @@ export const findVideoCommentsByTimestamp = async ({ videoId, fromMs, toMs }) =>
   });
 };
 
-export const createVideoComment = async ({ userId, videoId, timestampMs, content }) => {
+export const createVideoComment = async ({ projectId, userId, videoId, timestampMs, content }) => {
   return prisma.comment.create({
     data: {
+      projectId,
       userId,
       targetType: "video",
       targetId: videoId,
@@ -117,6 +118,7 @@ export const createVideoComment = async ({ userId, videoId, timestampMs, content
     },
     select: {
       id: true,
+      projectId: true,
       content: true,
       timestampMs: true,
       createdAt: true,

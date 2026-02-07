@@ -82,3 +82,7 @@ export const recordingFinishSuccessDTO = ({ videoId, status, slideDurations }) =
     totalDurationMs: s.totalDurationMs,
   })),
 });
+
+export const videoDeleteSuccessDTO = ({ videoId }) => ({
+  videoId: videoId.toString(),
+});
