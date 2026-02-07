@@ -875,6 +875,93 @@ export const handleGetRecentComments = async (req, res, next) => {
  *                   exitRate:
  *                     type: integer
  *
+ *     SlideRetentionResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *         success:
+ *           type: object
+ *           properties:
+ *             totalSessions:
+ *               type: integer
+ *               description: 첫 번째 슬라이드를 본 총 세션 수 (기준값)
+ *               example: 150
+ *             slideRetention:
+ *               type: array
+ *               description: 슬라이드별 잔존률 목록
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   slideId:
+ *                     type: string
+ *                     description: 슬라이드 ID
+ *                     example: "1"
+ *                   slideNum:
+ *                     type: integer
+ *                     nullable: true
+ *                     description: 슬라이드 번호
+ *                     example: 1
+ *                   title:
+ *                     type: string
+ *                     nullable: true
+ *                     description: 슬라이드 제목
+ *                     example: "서론"
+ *                   sessionCount:
+ *                     type: integer
+ *                     description: 해당 슬라이드를 본 세션 수
+ *                     example: 150
+ *                   retentionRate:
+ *                     type: integer
+ *                     description: 잔존률 (%)
+ *                     example: 100
+ *
+ *     VideoRetentionResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *         success:
+ *           type: object
+ *           properties:
+ *             totalSessions:
+ *               type: integer
+ *               description: 영상을 시작한 총 세션 수
+ *               example: 100
+ *             durationSeconds:
+ *               type: integer
+ *               nullable: true
+ *               description: 영상 전체 길이 (초)
+ *               example: 180
+ *             intervalMs:
+ *               type: integer
+ *               description: 잔존률 측정 간격 (ms)
+ *               example: 30000
+ *             videoRetention:
+ *               type: array
+ *               description: 시점별 잔존률 목록 (30초 단위)
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   timestampMs:
+ *                     type: integer
+ *                     description: 영상 내 시점 (ms)
+ *                     example: 0
+ *                   sessionCount:
+ *                     type: integer
+ *                     description: 해당 시점까지 도달한 세션 수
+ *                     example: 100
+ *                   retentionRate:
+ *                     type: integer
+ *                     description: 잔존률 (%)
+ *                     example: 100
+ *
  *     RecentCommentsResponse:
  *       type: object
  *       properties:
