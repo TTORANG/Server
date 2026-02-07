@@ -129,17 +129,6 @@ export function createVideoReaction({ userId, videoId, timestampMs, emojiType })
   });
 }
 
-export function findProjectByIdWithOwner(projectId, userId) {
-  return prisma.project.findFirst({
-    where: {
-      id: projectId,
-      userId,
-      isDeleted: false,
-    },
-    select: { id: true },
-  });
-}
-
 export function findProjectWithSlides(projectId) {
   return prisma.project.findFirst({
     where: {

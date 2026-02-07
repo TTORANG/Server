@@ -235,7 +235,6 @@ export async function getSlideReactionSummaryController(req, res, next) {
   try {
     const result = await getSlideReactionSummary({
       slideId: req.params.slideId,
-      userId: req.user.id,
     });
 
     res.json({
@@ -455,7 +454,6 @@ export const getVideoReactionMarkers = async (req, res, next) => {
     const result = await getReactionMarkers({
       videoId: req.params.videoId,
       intervalMs,
-      userId: req.user.id,
     });
 
     res.status(200).json({
@@ -556,7 +554,6 @@ export const getVideoReactionsByTimeController = async (req, res, next) => {
       videoId: req.params.videoId,
       timestampMs,
       windowMs,
-      userId: req.user.id,
     });
 
     res.json({
@@ -628,7 +625,6 @@ export async function getProjectSlidesReactionSummaryController(req, res, next) 
   try {
     const result = await getProjectSlidesReactionSummary({
       projectId: req.params.projectId,
-      userId: req.user.id,
     });
 
     res.json({

@@ -70,7 +70,7 @@ export async function toggleSlideReaction({ slideId, emojiType, userId }) {
 }
 
 // 리액션 집계 조회
-export async function getSlideReactionSummary({ slideId, userId }) {
+export async function getSlideReactionSummary({ slideId }) {
   const slide = await findSlideById(slideId);
   if (!slide) throw new SlideNotFoundError({ slideId });
 
@@ -171,7 +171,7 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
 }
 
 // 영상 리액션 집계
-export const getReactionMarkers = async ({ videoId, intervalMs, userId }) => {
+export const getReactionMarkers = async ({ videoId, intervalMs }) => {
   let vid;
   try {
     vid = BigInt(videoId);
@@ -223,7 +223,6 @@ export const getVideoReactionsByTime = async ({
   videoId,
   timestampMs,
   windowMs,
-  userId,
 }) => {
   let vid;
   try {
