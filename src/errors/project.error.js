@@ -23,3 +23,9 @@ export class SearchQueryTooShortError extends BaseError {
     super("검색어는 최소 2글자 이상이어야 합니다.", 400, "P004", data);
   }
 }
+
+export class InvalidProjectParameterError extends BaseError {
+  constructor(data) {
+    super("프로젝트 ID가 올바르지 않습니다.", 400, "P005", data);
+  }
+}
