@@ -53,6 +53,16 @@ export const postSlideComment = async (req, res, next) => {
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/CreateSlideCommentResponse"
+   *             examples:
+   *               created:
+   *                 value:
+   *                   resultType: SUCCESS
+   *                   error: null
+   *                   success:
+   *                     commentId: "20"
+   *                     content: "이 슬라이드 설명이 이해하기 쉬워요"
+   *                     userId: "3"
+   *                     createdAt: "2026-02-02T04:10:00.000Z"
    *       400:
    *         description: 잘못된 요청 (댓글 내용 없음)
    *         content:
@@ -466,21 +476,6 @@ export const getSlideCommentsController = async (req, res, next) => {
    *                     data:
    *                       slideId: "abc"
    *                   success: null
-   *       403:
-   *         description: 조회 권한 없음 (프로젝트 소유자 아님)
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: "#/components/schemas/ErrorResponse"
-   *             examples:
-   *               noPermission:
-   *                 value:
-   *                   resultType: FAILURE
-   *                   error:
-   *                     errorCode: C006
-   *                     reason: 댓글을 수정 또는 삭제할 권한이 없습니다.
-   *                     data: null
-   *                   success: null
    *       500:
    *         description: 댓글 조회 실패
    *         content:
@@ -505,7 +500,6 @@ export const getSlideCommentsController = async (req, res, next) => {
 
     const result = await getSlideComments({
       slideId,
-      userId: req.user.id,
       page,
       limit,
     });
