@@ -93,24 +93,20 @@ function parseVideoListQuery({ sort, filter, search }) {
 }
 
 function sortVideos(videos, sort) {
+  if (sort === "recent") return videos;
+
   const sorted = [...videos];
 
   if (sort === "name") {
     sorted.sort((a, b) => (a.title || "").localeCompare(b.title || "", "ko"));
-    return sorted;
-  }
-
-  if (sort === "commentCount") {
+  } else if (sort === "commentCount") {
     sorted.sort((a, b) => {
-      const aFeedback = (a.rootCommentCount || 0) + (a.replyCount || 0);
-      const bFeedback = (b.rootCommentCount || 0) + (b.replyCount || 0);
-      if (bFeedback !== aFeedback) return bFeedback - aFeedback;
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      const aFeedback = a.feedbackCount ?? 0;
+      const bFeedback = b.feedbackCount ?? 0;
+      return bFeedback !== aFeedback ? bFeedback - aFeedback : b.createdAt - a.createdAt;
     });
-    return sorted;
   }
 
-  sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   return sorted;
 }
 
@@ -143,11 +139,14 @@ async function attachVideoStats(videos) {
 
   return videos.map((video) => {
     const key = video.id.toString();
+    const rootCommentCount = rootCommentCountMap.get(key) || 0;
+    const replyCount = replyCountMap.get(key) || 0;
     return {
       ...video,
       reactionCount: reactionCountMap.get(key) || 0,
-      rootCommentCount: rootCommentCountMap.get(key) || 0,
-      replyCount: replyCountMap.get(key) || 0,
+      rootCommentCount,
+      replyCount,
+      feedbackCount: rootCommentCount + replyCount,
       viewCount: viewCountMap.get(key) || 0,
     };
   });
