@@ -1,6 +1,7 @@
 import express from "express";
 import {
   finishRecording,
+  handleDeleteVideo,
   handleGetVideoDetail,
   handleGetVideoList,
   handleGetMyVideoList,
@@ -30,6 +31,8 @@ router.post("/videos/start", isLogin, startRecording);
 router.post("/videos/:videoId/finish", isLogin, finishRecording);
 // 영상 상세 조회
 router.get("/videos/:videoId", isLogin, handleGetVideoDetail);
+// 영상 삭제
+router.delete("/videos/:videoId", isLogin, handleDeleteVideo);
 // 영상 청크 업로드
 router.post(
   "/videos/:videoId/chunks/:chunkIndex",
