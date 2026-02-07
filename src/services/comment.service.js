@@ -1,12 +1,9 @@
-import { prisma } from "../db.config.js";
-import { AuthSessionRequiredError } from "../errors/auth.error.js";
 import {
   CommentListFetchFailedError,
   CommentNotFoundError,
   EmptyCommentContentError,
   InvalidCommentIdError,
   InvalidSlideIdError,
-  NoCommentCreatePermissionError,
   NoCommentViewPermissionError,
   SlideNotFoundError,
 } from "../errors/comment.error.js";
@@ -41,12 +38,8 @@ export const createSlideComment = async ({ slideId, content, userId }) => {
     throw new SlideNotFoundError(slideId?.toString());
   }
 
-  //권한 체크 (프로젝트 소유자 기준)
-  if (slide.project.userId !== userId) {
-    throw new NoCommentCreatePermissionError();
-  }
-
   return createComment({
+    projectId: slide.project.id,
     userId,
     targetType: "slide",
     targetId: slideId,
@@ -108,23 +101,23 @@ export const getSlideComments = async ({ slideId, userId, page = 1, limit = 20 }
     throw new InvalidSlideIdError(slideId?.toString());
   }
 
-  // userId 검증
+  const slide = await getSlideWithProject(slideId);
+  if (!slide) {
+    throw new SlideNotFoundError(slideId?.toString());
+  }
+
   if (userId === undefined || userId === null) {
     throw new NoCommentViewPermissionError();
   }
 
-  const project = await prisma.project.findFirst({
-    where: {
-      slides: {
-        some: { id: slideId },
-      },
-      userId,
-      isDeleted: false,
-    },
-    select: { id: true },
-  });
+  let requesterId;
+  try {
+    requesterId = typeof userId === "bigint" ? userId : BigInt(userId);
+  } catch {
+    throw new NoCommentViewPermissionError();
+  }
 
-  if (!project) {
+  if (slide.project.userId !== requesterId) {
     throw new NoCommentViewPermissionError();
   }
 
@@ -176,6 +169,7 @@ export async function createVideoComment({ videoId, content, timestampMs, userId
   }
 
   const comment = await createVideoCommentRepo({
+    projectId: video.projectId,
     userId,
     videoId: vid,
     timestampMs: ts,
