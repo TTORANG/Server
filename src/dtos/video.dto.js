@@ -5,6 +5,7 @@ export const videoListItemDTO = (video) => ({
   durationSeconds: video.durationSeconds,
   rootCommentCount: video.rootCommentCount ?? 0,
   replyCount: video.replyCount ?? 0,
+  feedbackCount: (video.rootCommentCount ?? 0) + (video.replyCount ?? 0),
   reactionCount: video.reactionCount ?? 0,
   viewCount: video.viewCount ?? 0,
   thumbnailUrl: video.thumbnailUrl,

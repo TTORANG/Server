@@ -375,26 +375,58 @@ export async function finishRecording(req, res, next) {
 export async function handleGetVideoList(req, res, next) {
   /**
    * @swagger
-   * /presentations/{projectId}/videos:
-   *   get:
-   *     summary: 프로젝트 녹화 영상 목록 조회
-   *     description:
-   *       특정 프로젝트에 속한 모든 녹화 영상을 최신순으로 조회합니다.
-   *       영상이 없는 경우에도 오류가 아닌 빈 목록을 반환합니다.
-   *       각 영상에는 일반 댓글 수(rootCommentCount), 답글 수(replyCount),
-   *       리액션 수(reactionCount), 조회 수(viewCount)가 함께 포함됩니다.
+ * /presentations/{projectId}/videos:
+ *   get:
+ *     summary: 프로젝트 녹화 영상 목록 조회
+ *     description:
+ *       특정 프로젝트에 속한 녹화 영상 목록을 조회합니다.
+ *       정렬(sort), 길이 필터(filter), 제목 검색(search)을 지원합니다.
+ *       영상이 없는 경우에도 오류가 아닌 빈 목록을 반환합니다.
+ *       각 영상에는 일반 댓글 수(rootCommentCount), 답글 수(replyCount),
+ *       리액션 수(reactionCount), 조회 수(viewCount)가 함께 포함됩니다.
    *     tags:
    *       - Video
    *     security:
    *       - bearerAuth: []
    *     parameters:
-   *       - in: path
-   *         name: projectId
-   *         required: true
-   *         description: 프로젝트 ID
-   *         schema:
-   *           type: string
-   *           example: "1"
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         description: 프로젝트 ID
+ *         schema:
+ *           type: string
+ *           example: "1"
+ *       - in: query
+ *         name: sort
+ *         required: false
+ *         description: |
+ *           정렬 조건
+ *           - recent: 최신순(기본값)
+ *           - commentCount: 피드백 많은 순(feedbackCount 내림차순)
+ *           - name: 가나다순(title 오름차순)
+ *         schema:
+ *           type: string
+ *           enum: [recent, commentCount, name]
+ *           default: recent
+ *       - in: query
+ *         name: filter
+ *         required: false
+ *         description: |
+ *           길이 필터
+ *           - all: 전체(기본값)
+ *           - 3m: 3분 이하(durationSeconds <= 180)
+ *           - 5m: 5분 이하(durationSeconds <= 300)
+ *         schema:
+ *           type: string
+ *           enum: [all, 3m, 5m]
+ *           default: all
+ *       - in: query
+ *         name: search
+ *         required: false
+ *         description: 영상 제목 검색어(부분 일치, 대소문자 구분 없음)
+ *         schema:
+ *           type: string
+ *           example: "발표"
    *     responses:
    *       200:
    *         description: 영상 목록 조회 성공
@@ -461,7 +493,13 @@ export async function handleGetVideoList(req, res, next) {
 
   try {
     const { projectId } = req.params;
-    const result = await videoService.getVideoList({ projectId });
+    const { sort, filter, search } = req.query;
+    const result = await videoService.getVideoList({
+      projectId,
+      sort,
+      filter,
+      search,
+    });
     res.json(result);
   } catch (e) {
     next(e);
@@ -887,6 +925,10 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *           type: integer
  *           description: 영상 답글 수(parentId!=null)
  *           example: 3
+ *         feedbackCount:
+ *           type: integer
+ *           description: 영상 피드백 수(rootCommentCount + replyCount)
+ *           example: 8
  *         reactionCount:
  *           type: integer
  *           description: 영상 리액션 수

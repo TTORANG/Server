@@ -57,6 +57,63 @@ function requireProjectId(projectId) {
   return pid;
 }
 
+const VIDEO_LIST_SORT_OPTIONS = new Set(["recent", "commentCount", "name"]);
+const VIDEO_LIST_FILTER_TO_MAX_DURATION = {
+  all: null,
+  "3m": 180,
+  "5m": 300,
+};
+
+function parseVideoListQuery({ sort, filter, search }) {
+  const normalizedSort = typeof sort === "string" && sort.length > 0 ? sort : "recent";
+  const normalizedFilter = typeof filter === "string" && filter.length > 0 ? filter : "all";
+  const normalizedSearch =
+    typeof search === "string" && search.trim().length > 0 ? search.trim() : null;
+
+  if (!VIDEO_LIST_SORT_OPTIONS.has(normalizedSort)) {
+    throw new InvalidParameterError(
+      { sort: normalizedSort },
+      "sort는 recent, commentCount, name 중 하나여야 합니다."
+    );
+  }
+
+  if (!(normalizedFilter in VIDEO_LIST_FILTER_TO_MAX_DURATION)) {
+    throw new InvalidParameterError(
+      { filter: normalizedFilter },
+      "filter는 all, 3m, 5m 중 하나여야 합니다."
+    );
+  }
+
+  return {
+    sort: normalizedSort,
+    filter: normalizedFilter,
+    search: normalizedSearch,
+    maxDurationSeconds: VIDEO_LIST_FILTER_TO_MAX_DURATION[normalizedFilter],
+  };
+}
+
+function sortVideos(videos, sort) {
+  const sorted = [...videos];
+
+  if (sort === "name") {
+    sorted.sort((a, b) => (a.title || "").localeCompare(b.title || "", "ko"));
+    return sorted;
+  }
+
+  if (sort === "commentCount") {
+    sorted.sort((a, b) => {
+      const aFeedback = (a.rootCommentCount || 0) + (a.replyCount || 0);
+      const bFeedback = (b.rootCommentCount || 0) + (b.replyCount || 0);
+      if (bFeedback !== aFeedback) return bFeedback - aFeedback;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+    return sorted;
+  }
+
+  sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return sorted;
+}
+
 async function attachVideoStats(videos) {
   if (!videos.length) return videos;
 
@@ -317,8 +374,9 @@ export async function finishRecording({ videoId, slideLogs, userId }) {
 }
 
 // 영상 목록 조회
-export async function getVideoList({ projectId }) {
+export async function getVideoList({ projectId, sort, filter, search }) {
   const pid = requireProjectId(projectId);
+  const query = parseVideoListQuery({ sort, filter, search });
 
   // 프로젝트 존재 검증
   const project = await findProjectById(pid);
@@ -327,13 +385,17 @@ export async function getVideoList({ projectId }) {
     throw new InvalidUploadError({ projectId: pid }, "존재하지 않는 프로젝트입니다.");
   }
 
-  const videos = await findVideosByProjectId(pid);
+  const videos = await findVideosByProjectId(pid, {
+    search: query.search,
+    maxDurationSeconds: query.maxDurationSeconds,
+  });
   const videosWithStats = await attachVideoStats(videos);
+  const sortedVideos = sortVideos(videosWithStats, query.sort);
 
   return {
     resultType: "SUCCESS",
     error: null,
-    success: videoListResponseDTO(videosWithStats),
+    success: videoListResponseDTO(sortedVideos),
   };
 }
 
