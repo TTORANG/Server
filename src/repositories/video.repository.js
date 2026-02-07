@@ -166,13 +166,27 @@ export const findVideoSlideDurations = async (videoId) => {
   });
 };
 
-export async function findVideosByProjectId(projectId) {
+export async function findVideosByProjectId(projectId, { search, maxDurationSeconds } = {}) {
+  const where = {
+    projectId,
+    deletedAt: null,
+    status: { not: "deleted" },
+  };
+
+  if (typeof search === "string" && search.trim().length > 0) {
+    where.title = {
+      contains: search.trim(),
+    };
+  }
+
+  if (Number.isInteger(maxDurationSeconds)) {
+    where.durationSeconds = {
+      lte: maxDurationSeconds,
+    };
+  }
+
   return prisma.video.findMany({
-    where: {
-      projectId,
-      deletedAt: null,
-      status: { not: "deleted" },
-    },
+    where,
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
