@@ -661,21 +661,23 @@ export async function getProjectSlidesReactionSummaryController(req, res, next) 
  *           type: object
  *           nullable: true
  *           example: null
+ *     EmojiTypeEnum:
+ *       type: string
+ *       description: 리액션 이모지 타입
+ *       enum:
+ *         - fire
+ *         - good
+ *         - bad
+ *         - sleepy
+ *         - confused
  *     ToggleSlideReactionRequest:
  *       type: object
  *       required:
  *         - emojiType
  *       properties:
  *         emojiType:
- *           type: string
- *           description: 리액션 이모지 타입
- *           enum:
- *             - fire
- *             - good
- *             - bad
- *             - sleepy
- *             - confused
- *           example: fire
+ *           $ref: "#/components/schemas/EmojiTypeEnum"
+ *           example: "fire"
  *
  *     ToggleSlideReactionResponse:
  *       type: object
@@ -704,14 +706,7 @@ export async function getProjectSlidesReactionSummaryController(req, res, next) 
  *         - timestampMs
  *       properties:
  *         emojiType:
- *           type: string
- *           description: 리액션 이모지 타입
- *           enum:
- *             - fire
- *             - good
- *             - bad
- *             - sleepy
- *             - confused
+ *           $ref: "#/components/schemas/EmojiTypeEnum"
  *           example: "fire"
  *         timestampMs:
  *           type: integer
