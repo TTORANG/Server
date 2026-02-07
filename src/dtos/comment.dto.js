@@ -11,6 +11,29 @@ export const commentResponseDTO = (comment) => ({
   createdAt: comment.createdAt,
 });
 
+export const updateCommentResponseDTO = (comment) => {
+  if (comment.parentId) {
+    return {
+      updatedTargetType: "reply",
+      parentCommentId: comment.parentId.toString(),
+      replyId: comment.id.toString(),
+      content: comment.content,
+      userId: comment.userId?.toString(),
+      createdAt: comment.createdAt,
+      updatedAt: comment.updatedAt,
+    };
+  }
+
+  return {
+    updatedTargetType: "comment",
+    commentId: comment.id.toString(),
+    content: comment.content,
+    userId: comment.userId?.toString(),
+    createdAt: comment.createdAt,
+    updatedAt: comment.updatedAt,
+  };
+};
+
 export const commentListItemDTO = (comment) => ({
   commentId: comment.id.toString(),
   content: comment.content,
@@ -33,6 +56,14 @@ export const createCommentReplyRequestDTO = (body) => {
   };
 };
 
+export const replyCreateResponseDTO = (reply) => ({
+  parentCommentId: reply.parentId?.toString(),
+  replyId: reply.id?.toString(),
+  content: reply.content,
+  userId: reply.userId?.toString(),
+  createdAt: reply.createdAt,
+});
+
 export const videoCommentListItemDTO = (comment) => ({
   commentId: comment.id.toString(),
   content: comment.content,
@@ -49,8 +80,23 @@ export const videoCommentListResponseDTO = (comments) => ({
 });
 
 export const videoCommentResponseDTO = (comment) => ({
-  id: comment.id.toString(),
+  commentId: comment.id.toString(),
   content: comment.content,
   timestampMs: comment.timestampMs,
   createdAt: comment.createdAt,
 });
+
+export const deleteCommentResponseDTO = ({ commentId, parentCommentId }) => {
+  if (parentCommentId) {
+    return {
+      deletedTargetType: "reply",
+      parentCommentId: parentCommentId.toString(),
+      replyId: commentId.toString(),
+    };
+  }
+
+  return {
+    deletedTargetType: "comment",
+    commentId: commentId.toString(),
+  };
+};
