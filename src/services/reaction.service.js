@@ -24,12 +24,12 @@ import {
   createVideoReaction,
   findProjectWithSlides,
   findReaction,
-  findSlideByIdWithOwner,
+  findSlideById,
   findVideoReaction,
   updateReaction,
   updateReactionIsDeleted,
 } from "../repositories/reaction.repository.js";
-import { findVideoById, findVideoByIdWithOwner } from "../repositories/video.repository.js";
+import { findVideoByIdWithProject } from "../repositories/video.repository.js";
 
 // 리액션 추가 및 취소
 export async function toggleSlideReaction({ slideId, emojiType, userId }) {
@@ -37,7 +37,7 @@ export async function toggleSlideReaction({ slideId, emojiType, userId }) {
     throw new InvalidEmojiTypeError({ emojiType });
   }
 
-  const slide = await findSlideByIdWithOwner(slideId, userId);
+  const slide = await findSlideById(slideId);
   if (!slide) {
     throw new SlideNotFoundError({ slideId });
   }
@@ -70,8 +70,8 @@ export async function toggleSlideReaction({ slideId, emojiType, userId }) {
 }
 
 // 리액션 집계 조회
-export async function getSlideReactionSummary({ slideId, userId }) {
-  const slide = await findSlideByIdWithOwner(slideId, userId);
+export async function getSlideReactionSummary({ slideId }) {
+  const slide = await findSlideById(slideId);
   if (!slide) throw new SlideNotFoundError({ slideId });
 
   const rows = await countSlideReactions(slideId);
@@ -105,7 +105,7 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
     throw new InvalidParameterError({ timestampMs }, "타임스탬프는 0 이상의 정수여야 합니다.");
   }
 
-  const video = await findVideoByIdWithOwner(vid, userId);
+  const video = await findVideoByIdWithProject(vid);
 
   if (!video) {
     throw new VideoNotFoundError({ videoId: String(videoId) });
@@ -171,7 +171,7 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
 }
 
 // 영상 리액션 집계
-export const getReactionMarkers = async ({ videoId, intervalMs, userId }) => {
+export const getReactionMarkers = async ({ videoId, intervalMs }) => {
   let vid;
   try {
     vid = BigInt(videoId);
@@ -188,7 +188,7 @@ export const getReactionMarkers = async ({ videoId, intervalMs, userId }) => {
     throw new InvalidParameterError({ intervalMs });
   }
   // video 존재 검증
-  const video = await findVideoByIdWithOwner(vid, userId);
+  const video = await findVideoByIdWithProject(vid);
   if (!video) {
     throw new VideoNotFoundError({ videoId: String(videoId) });
   }
@@ -223,7 +223,6 @@ export const getVideoReactionsByTime = async ({
   videoId,
   timestampMs,
   windowMs,
-  userId,
 }) => {
   let vid;
   try {
@@ -239,7 +238,7 @@ export const getVideoReactionsByTime = async ({
   const safeWindowMs =
     windowMs === undefined || windowMs === null ? 2000 : Number(windowMs);
 
-  const video = await findVideoByIdWithOwner(vid, userId);
+  const video = await findVideoByIdWithProject(vid);
   if (!video) {
     throw new VideoNotFoundError({ videoId: String(videoId) });
   }
@@ -285,11 +284,10 @@ function parsePositiveBigIntParam(value, fieldName) {
 }
 
 // 프로젝트 모든 리액션 집계 조회
-export async function getProjectSlidesReactionSummary({ projectId, userId }) {
+export async function getProjectSlidesReactionSummary({ projectId }) {
   const projectIdBigInt = parsePositiveBigIntParam(projectId, "projectId");
-  const userIdBigInt = parsePositiveBigIntParam(userId, "userId");
 
-  const project = await findProjectWithSlides(projectIdBigInt, userIdBigInt);
+  const project = await findProjectWithSlides(projectIdBigInt);
   if (!project) {
     throw new ProjectNotFoundError({ projectId: projectIdBigInt.toString() });
   }

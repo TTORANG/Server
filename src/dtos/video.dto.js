@@ -3,6 +3,11 @@ export const videoListItemDTO = (video) => ({
   title: video.title,
   status: video.status,
   durationSeconds: video.durationSeconds,
+  rootCommentCount: video.rootCommentCount ?? 0,
+  replyCount: video.replyCount ?? 0,
+  feedbackCount: video.feedbackCount ?? 0,
+  reactionCount: video.reactionCount ?? 0,
+  viewCount: video.viewCount ?? 0,
   thumbnailUrl: video.thumbnailUrl,
   createdAt: video.createdAt,
 });

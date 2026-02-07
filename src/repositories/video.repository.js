@@ -166,13 +166,27 @@ export const findVideoSlideDurations = async (videoId) => {
   });
 };
 
-export async function findVideosByProjectId(projectId) {
+export async function findVideosByProjectId(projectId, { search, maxDurationSeconds } = {}) {
+  const where = {
+    projectId,
+    deletedAt: null,
+    status: { not: "deleted" },
+  };
+
+  if (typeof search === "string" && search.trim().length > 0) {
+    where.title = {
+      contains: search.trim(),
+    };
+  }
+
+  if (Number.isInteger(maxDurationSeconds)) {
+    where.durationSeconds = {
+      lte: maxDurationSeconds,
+    };
+  }
+
   return prisma.video.findMany({
-    where: {
-      projectId,
-      deletedAt: null,
-      status: { not: "deleted" },
-    },
+    where,
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -208,6 +222,50 @@ export async function findVideosByOwnerId(userId) {
     },
   });
 }
+
+export const groupVideoReactionsByVideoIds = (videoIds) =>
+  prisma.reaction.groupBy({
+    by: ["targetId"],
+    where: {
+      targetType: "video",
+      isDeleted: false,
+      targetId: { in: videoIds },
+    },
+    _count: { _all: true },
+  });
+
+export const groupVideoRootCommentsByVideoIds = (videoIds) =>
+  prisma.comment.groupBy({
+    by: ["targetId"],
+    where: {
+      targetType: "video",
+      isDeleted: false,
+      parentId: null,
+      targetId: { in: videoIds },
+    },
+    _count: { _all: true },
+  });
+
+export const groupVideoRepliesByVideoIds = (videoIds) =>
+  prisma.comment.groupBy({
+    by: ["targetId"],
+    where: {
+      targetType: "video",
+      isDeleted: false,
+      parentId: { not: null },
+      targetId: { in: videoIds },
+    },
+    _count: { _all: true },
+  });
+
+export const groupVideoPlaySessionsByVideoIds = (videoIds) =>
+  prisma.analyticsVideoEvent.groupBy({
+    by: ["videoId", "sessionId"],
+    where: {
+      eventType: "play",
+      videoId: { in: videoIds },
+    },
+  });
 
 export async function findVideoDetailById(videoId) {
   return prisma.video.findFirst({

@@ -25,6 +25,10 @@ import {
   findVideoSlideEnterEvents,
   findVideoStatusById,
   findVideoSlideDurations,
+  groupVideoPlaySessionsByVideoIds,
+  groupVideoRepliesByVideoIds,
+  groupVideoRootCommentsByVideoIds,
+  groupVideoReactionsByVideoIds,
   saveVideoSlideLogsAndSetStatus,
   setVideoUploadingWithContainer,
 } from "../repositories/video.repository.js";
@@ -51,6 +55,101 @@ function requireProjectId(projectId) {
     throw new InvalidParameterError({ projectId }, "프로젝트 ID가 올바르지 않습니다.");
   }
   return pid;
+}
+
+const VIDEO_LIST_SORT_OPTIONS = new Set(["recent", "commentCount", "name"]);
+const VIDEO_LIST_FILTER_TO_MAX_DURATION = {
+  all: null,
+  "3m": 180,
+  "5m": 300,
+};
+
+function parseVideoListQuery({ sort, filter, search }) {
+  const normalizedSort = typeof sort === "string" && sort.length > 0 ? sort : "recent";
+  const normalizedFilter = typeof filter === "string" && filter.length > 0 ? filter : "all";
+  const normalizedSearch =
+    typeof search === "string" && search.trim().length > 0 ? search.trim() : null;
+
+  if (!VIDEO_LIST_SORT_OPTIONS.has(normalizedSort)) {
+    throw new InvalidParameterError(
+      { sort: normalizedSort },
+      "sort는 recent, commentCount, name 중 하나여야 합니다."
+    );
+  }
+
+  if (!(normalizedFilter in VIDEO_LIST_FILTER_TO_MAX_DURATION)) {
+    throw new InvalidParameterError(
+      { filter: normalizedFilter },
+      "filter는 all, 3m, 5m 중 하나여야 합니다."
+    );
+  }
+
+  return {
+    sort: normalizedSort,
+    filter: normalizedFilter,
+    search: normalizedSearch,
+    maxDurationSeconds: VIDEO_LIST_FILTER_TO_MAX_DURATION[normalizedFilter],
+  };
+}
+
+function sortVideos(videos, sort) {
+  if (sort === "recent") return videos;
+
+  const sorted = [...videos];
+
+  if (sort === "name") {
+    sorted.sort((a, b) => (a.title || "").localeCompare(b.title || "", "ko"));
+  } else if (sort === "commentCount") {
+    sorted.sort((a, b) => {
+      const aFeedback = a.feedbackCount ?? 0;
+      const bFeedback = b.feedbackCount ?? 0;
+      return bFeedback !== aFeedback ? bFeedback - aFeedback : b.createdAt - a.createdAt;
+    });
+  }
+
+  return sorted;
+}
+
+async function attachVideoStats(videos) {
+  if (!videos.length) return videos;
+
+  const videoIds = videos.map((video) => video.id);
+  const [reactionGroups, rootCommentGroups, replyGroups, playSessionGroups] = await Promise.all([
+    groupVideoReactionsByVideoIds(videoIds),
+    groupVideoRootCommentsByVideoIds(videoIds),
+    groupVideoRepliesByVideoIds(videoIds),
+    groupVideoPlaySessionsByVideoIds(videoIds),
+  ]);
+
+  const reactionCountMap = new Map(
+    reactionGroups.map((group) => [group.targetId.toString(), group._count._all])
+  );
+  const rootCommentCountMap = new Map(
+    rootCommentGroups.map((group) => [group.targetId.toString(), group._count._all])
+  );
+  const replyCountMap = new Map(
+    replyGroups.map((group) => [group.targetId.toString(), group._count._all])
+  );
+
+  const viewCountMap = new Map();
+  playSessionGroups.forEach((group) => {
+    const key = group.videoId.toString();
+    viewCountMap.set(key, (viewCountMap.get(key) || 0) + 1);
+  });
+
+  return videos.map((video) => {
+    const key = video.id.toString();
+    const rootCommentCount = rootCommentCountMap.get(key) || 0;
+    const replyCount = replyCountMap.get(key) || 0;
+    return {
+      ...video,
+      reactionCount: reactionCountMap.get(key) || 0,
+      rootCommentCount,
+      replyCount,
+      feedbackCount: rootCommentCount + replyCount,
+      viewCount: viewCountMap.get(key) || 0,
+    };
+  });
 }
 
 // 영상 세션 생성
@@ -274,8 +373,9 @@ export async function finishRecording({ videoId, slideLogs, userId }) {
 }
 
 // 영상 목록 조회
-export async function getVideoList({ projectId }) {
+export async function getVideoList({ projectId, sort, filter, search }) {
   const pid = requireProjectId(projectId);
+  const query = parseVideoListQuery({ sort, filter, search });
 
   // 프로젝트 존재 검증
   const project = await findProjectById(pid);
@@ -284,12 +384,17 @@ export async function getVideoList({ projectId }) {
     throw new InvalidUploadError({ projectId: pid }, "존재하지 않는 프로젝트입니다.");
   }
 
-  const videos = await findVideosByProjectId(pid);
+  const videos = await findVideosByProjectId(pid, {
+    search: query.search,
+    maxDurationSeconds: query.maxDurationSeconds,
+  });
+  const videosWithStats = await attachVideoStats(videos);
+  const sortedVideos = sortVideos(videosWithStats, query.sort);
 
   return {
     resultType: "SUCCESS",
     error: null,
-    success: videoListResponseDTO(videos),
+    success: videoListResponseDTO(sortedVideos),
   };
 }
 
@@ -300,11 +405,12 @@ export async function getMyVideoList({ userId }) {
   }
 
   const videos = await findVideosByOwnerId(userId);
+  const videosWithStats = await attachVideoStats(videos);
 
   return {
     resultType: "SUCCESS",
     error: null,
-    success: videoListResponseDTO(videos),
+    success: videoListResponseDTO(videosWithStats),
   };
 }
 
