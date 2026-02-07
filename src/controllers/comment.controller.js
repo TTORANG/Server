@@ -1,7 +1,9 @@
 import {
   commentListResponseDTO,
+  deleteCommentResponseDTO,
   commentResponseDTO,
   createSlideCommentRequestDTO,
+  updateCommentResponseDTO,
   videoCommentResponseDTO,
   videoCommentListResponseDTO,
 } from "../dtos/comment.dto.js";
@@ -136,11 +138,11 @@ export const patchComment = async (req, res, next) => {
    * @swagger
    * /comments/{commentId}:
    *   patch:
-   *     summary: 댓글 수정
+   *     summary: 댓글/답글 수정
    *     description: |
-   *       작성한 댓글의 내용을 수정합니다.
+   *       작성한 댓글 또는 답글의 내용을 수정합니다.
    *
-   *       - 본인 댓글만 수정할 수 있습니다.
+   *       - 본인 댓글/답글만 수정할 수 있습니다.
    *       - 공백/빈 문자열은 허용하지 않습니다.
    *     tags: [Comment]
    *     security:
@@ -149,7 +151,7 @@ export const patchComment = async (req, res, next) => {
    *       - in: path
    *         name: commentId
    *         required: true
-   *         description: 댓글 ID
+   *         description: 댓글(답글) ID
    *         schema:
    *           type: integer
    *     requestBody:
@@ -165,9 +167,33 @@ export const patchComment = async (req, res, next) => {
    *                 content: "수정된 댓글 내용입니다."
    *     responses:
    *       200:
-   *         description: 댓글 수정 성공
+   *         description: 댓글/답글 수정 성공
    *         content:
    *           application/json:
+   *             examples:
+   *               updatedComment:
+   *                 value:
+   *                   resultType: SUCCESS
+   *                   error: null
+   *                   success:
+   *                     updatedTargetType: comment
+   *                     commentId: "10"
+   *                     content: "수정된 댓글 내용입니다."
+   *                     userId: "3"
+   *                     createdAt: "2026-02-07T09:00:00.000Z"
+   *                     updatedAt: "2026-02-07T10:00:00.000Z"
+   *               updatedReply:
+   *                 value:
+   *                   resultType: SUCCESS
+   *                   error: null
+   *                   success:
+   *                     updatedTargetType: reply
+   *                     parentCommentId: "10"
+   *                     replyId: "22"
+   *                     content: "수정된 답글 내용입니다."
+   *                     userId: "3"
+   *                     createdAt: "2026-02-07T09:30:00.000Z"
+   *                     updatedAt: "2026-02-07T10:05:00.000Z"
    *             schema:
    *               $ref: "#/components/schemas/UpdateCommentResponse"
    *       400:
@@ -201,7 +227,7 @@ export const patchComment = async (req, res, next) => {
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
    *       403:
-   *         description: 수정 권한 없음
+   *         description: 수정 권한 없음 (본인 댓글/답글 아님)
    *         content:
    *           application/json:
    *             schema:
@@ -251,7 +277,7 @@ export const patchComment = async (req, res, next) => {
     res.status(200).json({
       resultType: "SUCCESS",
       error: null,
-      success: commentResponseDTO(updated),
+      success: updateCommentResponseDTO(updated),
     });
   } catch (e) {
     next(e);
@@ -264,11 +290,11 @@ export const deleteCommentController = async (req, res, next) => {
    * @swagger
    * /comments/{commentId}:
    *   delete:
-   *     summary: 댓글 및 답글 삭제
+   *     summary: 댓글/답글 삭제
    *     description: |
-   *       작성한 댓글과 답글을 삭제합니다. (Soft Delete)
+   *       작성한 댓글/답글을 삭제합니다. (Soft Delete)
    *
-   *       - 본인 댓글만 삭제할 수 있습니다.
+   *       - 본인 댓글/답글만 삭제할 수 있습니다.
    *       - 삭제 시 실제 row 삭제가 아니라 `isDeleted=true`로 처리됩니다.
    *     tags: [Comment]
    *     security:
@@ -282,9 +308,25 @@ export const deleteCommentController = async (req, res, next) => {
    *           type: integer
    *     responses:
    *       200:
-   *         description: 댓글 삭제 성공
+   *         description: 댓글/답글 삭제 성공
    *         content:
    *           application/json:
+   *             examples:
+   *               deletedComment:
+   *                 value:
+   *                   resultType: SUCCESS
+   *                   error: null
+   *                   success:
+   *                     deletedTargetType: comment
+   *                     commentId: "10"
+   *               deletedReply:
+   *                 value:
+   *                   resultType: SUCCESS
+   *                   error: null
+   *                   success:
+   *                     deletedTargetType: reply
+   *                     parentCommentId: "10"
+   *                     replyId: "22"
    *             schema:
    *               $ref: "#/components/schemas/DeleteCommentResponse"
    *       400:
@@ -351,7 +393,7 @@ export const deleteCommentController = async (req, res, next) => {
   try {
     const commentId = BigInt(req.params.commentId);
 
-    await deleteComment({
+    const deleted = await deleteComment({
       commentId,
       userId: req.user.id,
     });
@@ -359,7 +401,7 @@ export const deleteCommentController = async (req, res, next) => {
     res.status(200).json({
       resultType: "SUCCESS",
       error: null,
-      success: null,
+      success: deleteCommentResponseDTO(deleted),
     });
   } catch (e) {
     next(e);
@@ -528,7 +570,7 @@ export async function handleCreateVideoComment(req, res, next) {
    *                   resultType: "SUCCESS"
    *                   error: null
    *                   success:
-   *                     id: "15"
+   *                     commentId: "15"
    *                     content: "여기 설명 좋아요"
    *                     timestampMs: 2000
    *                     createdAt: "2026-01-24T12:34:56.000Z"
@@ -816,7 +858,7 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *     VideoComment:
  *       type: object
  *       properties:
- *         id:
+ *         commentId:
  *           type: string
  *           description: 댓글 ID(BigInt → string)
  *           example: "15"
@@ -841,6 +883,70 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *           description: 수정할 댓글 내용(공백 불가)
  *           example: "수정된 댓글 내용입니다."
  *
+ *     UpdatedCommentSuccess:
+ *       type: object
+ *       properties:
+ *         updatedTargetType:
+ *           type: string
+ *           enum: [comment]
+ *           example: comment
+ *         commentId:
+ *           type: string
+ *           example: "10"
+ *         content:
+ *           type: string
+ *           example: "수정된 댓글 내용입니다."
+ *         userId:
+ *           type: string
+ *           example: "3"
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *       required:
+ *         - updatedTargetType
+ *         - commentId
+ *         - content
+ *         - userId
+ *         - createdAt
+ *         - updatedAt
+ *
+ *     UpdatedReplySuccess:
+ *       type: object
+ *       properties:
+ *         updatedTargetType:
+ *           type: string
+ *           enum: [reply]
+ *           example: reply
+ *         parentCommentId:
+ *           type: string
+ *           example: "10"
+ *         replyId:
+ *           type: string
+ *           example: "22"
+ *         content:
+ *           type: string
+ *           example: "수정된 답글 내용입니다."
+ *         userId:
+ *           type: string
+ *           example: "3"
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *       required:
+ *         - updatedTargetType
+ *         - parentCommentId
+ *         - replyId
+ *         - content
+ *         - userId
+ *         - createdAt
+ *         - updatedAt
+ *
  *     UpdateCommentResponse:
  *       type: object
  *       properties:
@@ -851,7 +957,41 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *           nullable: true
  *           example: null
  *         success:
- *           $ref: "#/components/schemas/Comment"
+ *           oneOf:
+ *             - $ref: "#/components/schemas/UpdatedCommentSuccess"
+ *             - $ref: "#/components/schemas/UpdatedReplySuccess"
+ *
+ *     DeletedCommentSuccess:
+ *       type: object
+ *       properties:
+ *         deletedTargetType:
+ *           type: string
+ *           enum: [comment]
+ *           example: comment
+ *         commentId:
+ *           type: string
+ *           example: "10"
+ *       required:
+ *         - deletedTargetType
+ *         - commentId
+ *
+ *     DeletedReplySuccess:
+ *       type: object
+ *       properties:
+ *         deletedTargetType:
+ *           type: string
+ *           enum: [reply]
+ *           example: reply
+ *         parentCommentId:
+ *           type: string
+ *           example: "10"
+ *         replyId:
+ *           type: string
+ *           example: "22"
+ *       required:
+ *         - deletedTargetType
+ *         - parentCommentId
+ *         - replyId
  *
  *     DeleteCommentResponse:
  *       type: object
@@ -863,8 +1003,9 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *           nullable: true
  *           example: null
  *         success:
- *           nullable: true
- *           example: null
+ *           oneOf:
+ *             - $ref: "#/components/schemas/DeletedCommentSuccess"
+ *             - $ref: "#/components/schemas/DeletedReplySuccess"
  *
  *     ErrorResponse:
  *       type: object
@@ -877,14 +1018,13 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *           properties:
  *             errorCode:
  *               type: string
- *               example: C005
+ *               example: INTERNAL_SERVER_ERROR
  *             reason:
  *               type: string
- *               example: 댓글을 찾을 수 없습니다.
+ *               example: 서버 내부 오류
  *             data:
  *               nullable: true
- *               example:
- *                 commentId: "10"
+ *               example: null
  *         success:
  *           nullable: true
  *           example: null
