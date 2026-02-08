@@ -4,7 +4,7 @@ import { InvalidUploadError } from "../errors/files.error.js";
 import { extFromContentType } from "../utils/file-ext.util.js";
 import crypto from "crypto";
 import { uploadBufferToGCS } from "./gcs.service.js";
-import { startConversionPipeline, startVideoEncodingPipeline } from "./conversion-job.service.js";
+import { startConversionPipeline } from "./conversion-job.service.js";
 
 export async function uploadPresentationAndCreateProject({ userId, title, file }) {
   if (!file) {
@@ -22,7 +22,7 @@ export async function uploadPresentationAndCreateProject({ userId, title, file }
 
   // 확장자 결정
   const ext = extFromContentType(mimetype);
-  if (!ext || !["pptx", "pdf", "mp4", "webm"].includes(ext)) {
+  if (!ext || !["pptx", "pdf"].includes(ext)) {
     throw new InvalidUploadError({ contentType: mimetype }, "지원하지 않는 파일 형식입니다.");
   }
 
@@ -42,7 +42,7 @@ export async function uploadPresentationAndCreateProject({ userId, title, file }
   const sha256 = crypto.createHash("sha256").update(buffer).digest("hex");
 
   // 5) DB 생성
-  const { project, uf, video } = await prisma.$transaction(async (tx) => {
+  const { project, uf } = await prisma.$transaction(async (tx) => {
     const project = await tx.project.create({
       data: {
         userId: BigInt(userId),
@@ -63,26 +63,7 @@ export async function uploadPresentationAndCreateProject({ userId, title, file }
         storageUrl: uploaded.url,
       },
     });
-
-    // mp4/webm이면 video 생성
-    let video = null;
-    if (ext === "mp4" || ext === "webm") {
-      video = await tx.video.create({
-        data: {
-          projectId: project.id,
-          title: title?.trim() ? title.trim() : originalname,
-          // 파일 업로드는 이미 끝난 상태이므로 바로 processing으로 두고 인코딩 큐잉
-          status: "processing",
-          sourceStorageBucket: uploaded.storageBucket,
-          sourceStorageKey: uploaded.storageKey,
-          sourceUrl: uploaded.url,
-          container: ext, // mp4 | webm
-        },
-        select: { id: true },
-      });
-    }
-
-    return { project, uf, video };
+    return { project, uf };
   });
 
   if (ext === "pptx" || ext === "pdf") {

@@ -1,6 +1,6 @@
 import { reactionMarkersResponseDTO, ToggleReactionDto } from "../dtos/reaction.dto.js";
-import { InvalidParameterError } from "../errors/video.error.js";
 import {
+  getProjectSlidesReactionSummary,
   getReactionMarkers,
   getSlideReactionSummary,
   getVideoReactionsByTime,
@@ -21,7 +21,10 @@ export async function toggleSlideReactionController(req, res, next) {
    *       - 이미 존재하면 취소(isDeleted=true)
    *       - 취소된 리액션이 있으면 재활성화
    *
+   *       가능한 이모지 타입: fire, good, bad, sleepy, confused
+   *
    *       슬라이드 리액션은 timestampMs=null 기준으로 처리된다.
+   *       인증된 사용자라면 리소스 소유자와 무관하게 호출할 수 있다.
    *     tags:
    *       - Reaction
    *     security:
@@ -63,6 +66,17 @@ export async function toggleSlideReactionController(req, res, next) {
    *                     data:
    *                       emojiType: angry
    *                   success: null
+   *               REACTION_PROCESS_FAILED:
+   *                 summary: 리액션 처리 실패
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: R003
+   *                     reason: 리액션을 처리할 수 없습니다.
+   *                     data:
+   *                       slideId: "10"
+   *                       emojiType: "fire"
+   *                   success: null
    *
    *       401:
    *         description: 인증 실패
@@ -76,8 +90,8 @@ export async function toggleSlideReactionController(req, res, next) {
    *                 value:
    *                   resultType: FAILURE
    *                   error:
-   *                     errorCode: A001
-   *                     reason: 인증이 필요합니다.
+   *                     errorCode: A004
+   *                     reason: 인증 세션 정보가 없거나 유효하지 않습니다.
    *                     data: null
    *                   success: null
    *
@@ -98,23 +112,13 @@ export async function toggleSlideReactionController(req, res, next) {
    *                     data:
    *                       slideId: "10"
    *                   success: null
-   *
    *       500:
-   *         description: 서버 오류
+   *         description: 서버 내부 오류
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
-   *             examples:
-   *               INTERNAL_ERROR:
-   *                 summary: 서버 내부 오류
-   *                 value:
-   *                   resultType: FAILURE
-   *                   error:
-   *                     errorCode: R999
-   *                     reason: 서버 오류
-   *                     data: null
-   *                   success: null
+   *
    */
   try {
     const dto = ToggleReactionDto(req.body);
@@ -147,6 +151,7 @@ export async function getSlideReactionSummaryController(req, res, next) {
    *
    *       - 취소된 리액션(isDeleted=true)은 집계에서 제외된다.
    *       - 리액션이 없는 이모지는 0으로 반환된다.
+   *       - 인증된 사용자라면 리소스 소유자와 무관하게 조회할 수 있다.
    *     tags:
    *       - Reaction
    *     security:
@@ -175,12 +180,15 @@ export async function getSlideReactionSummaryController(req, res, next) {
    *                   example: null
    *                 success:
    *                   type: object
-   *                   description: 이모지 타입별 리액션 개수
+   *                   description: 슬라이드 리액션 집계 결과
    *                   example:
-   *                     thumbs_up: 5
-   *                     heart: 3
-   *                     eyes: 0
-   *                     clap: 1
+   *                     slideId: "10"
+   *                     reactions:
+   *                       fire: 5
+   *                       good: 3
+   *                       bad: 0
+   *                       sleepy: 1
+   *                       confused: 2
    *
    *       401:
    *         description: 인증 실패
@@ -194,8 +202,8 @@ export async function getSlideReactionSummaryController(req, res, next) {
    *                 value:
    *                   resultType: FAILURE
    *                   error:
-   *                     errorCode: A001
-   *                     reason: 인증이 필요합니다.
+   *                     errorCode: A004
+   *                     reason: 인증 세션 정보가 없거나 유효하지 않습니다.
    *                     data: null
    *                   success: null
    *
@@ -216,28 +224,17 @@ export async function getSlideReactionSummaryController(req, res, next) {
    *                     data:
    *                       slideId: "10"
    *                   success: null
-   *
    *       500:
-   *         description: 서버 오류
+   *         description: 서버 내부 오류
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
-   *             examples:
-   *               INTERNAL_ERROR:
-   *                 summary: 서버 내부 오류
-   *                 value:
-   *                   resultType: FAILURE
-   *                   error:
-   *                     errorCode: R999
-   *                     reason: 서버 오류
-   *                     data: null
-   *                   success: null
+   *
    */
   try {
     const result = await getSlideReactionSummary({
       slideId: req.params.slideId,
-      userId: req.user.id,
     });
 
     res.json({
@@ -260,13 +257,14 @@ export async function handleToggleVideoReaction(req, res, next) {
    *     description: |
    *       특정 영상의 특정 시점(timestampMs)에 대해 이모지 리액션을 **생성 또는 토글(활성/비활성)** 합니다.
    *
-   *       - 동일 사용자(userId) + 동일 세션(sessionId) + 동일 영상(videoId) + 동일 timestampMs + 동일 emojiType 조합이 이미 존재하면,
+   *       - 동일 사용자(userId) + 동일 영상(videoId) + 동일 timestampMs + 동일 emojiType 조합이 이미 존재하면,
    *         `isDeleted`를 토글하여 활성/비활성 상태를 변경합니다.
    *       - 존재하지 않으면 새 리액션을 생성합니다.
    *
    *       **주의사항**
    *       - 본 API는 인증(JWT)이 필요합니다.
-   *       - `timestampMs`는 0 이상의 정수(ms)만 허용합니다.
+   *       - 인증된 사용자라면 리소스 소유자와 무관하게 호출할 수 있습니다.
+   *       - `timestampMs`는 필수이며 0 이상의 정수(ms)만 허용합니다.
    *       - `emojiType`은 문자열이며, 서버/클라이언트에서 합의된 타입을 사용해야 합니다.
    *     tags: [Reaction]
    *     security:
@@ -277,7 +275,7 @@ export async function handleToggleVideoReaction(req, res, next) {
    *         required: true
    *         schema:
    *           type: integer
-   *         description: 영상 ID
+   *         description: 영상 ID (양의 정수)
    *     requestBody:
    *       required: true
    *       content:
@@ -285,10 +283,10 @@ export async function handleToggleVideoReaction(req, res, next) {
    *           schema:
    *             $ref: "#/components/schemas/VideoReactionCreateRequest"
    *           examples:
-   *             thumbsUpAt2s:
-   *               summary: 2초 지점 thumbs_up 리액션
+   *             fireAt2s:
+   *               summary: 2초 지점 fire 리액션
    *               value:
-   *                 emojiType: "thumbs_up"
+   *                 emojiType: "fire"
    *                 timestampMs: 2000
    *     responses:
    *       200:
@@ -304,6 +302,8 @@ export async function handleToggleVideoReaction(req, res, next) {
    *                   resultType: "SUCCESS"
    *                   error: null
    *                   success:
+   *                     reactionId: "123"
+   *                     videoId: "21"
    *                     active: true
    *               deactivated:
    *                 summary: 기존 리액션 비활성화됨
@@ -311,9 +311,11 @@ export async function handleToggleVideoReaction(req, res, next) {
    *                   resultType: "SUCCESS"
    *                   error: null
    *                   success:
+   *                     reactionId: "123"
+   *                     videoId: "21"
    *                     active: false
    *       400:
-   *         description: 잘못된 입력(emojiType/timestampMs 형식 오류 등)
+   *         description: 잘못된 입력(videoId/emojiType/timestampMs 형식 오류 등)
    *         content:
    *           application/json:
    *             schema:
@@ -329,24 +331,22 @@ export async function handleToggleVideoReaction(req, res, next) {
    *                       timestampMs: -1
    *                   success: null
    *       401:
-   *         description: 인증/세션 정보 누락
+   *         description: 인증 실패
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
    *             examples:
-   *               noSession:
+   *               unauthorized:
    *                 value:
    *                   resultType: "FAILURE"
    *                   error:
    *                     errorCode: "A004"
-   *                     reason: "인증 세션 정보가 없습니다."
-   *                     data:
-   *                       userId: "1"
-   *                       videoId: "2"
+   *                     reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+   *                     data: null
    *                   success: null
    *       404:
-   *         description: 영상 없음
+   *         description: 영상을 찾을 수 없음(미존재 또는 삭제됨)
    *         content:
    *           application/json:
    *             schema:
@@ -361,14 +361,19 @@ export async function handleToggleVideoReaction(req, res, next) {
    *                     data:
    *                       videoId: "9999"
    *                   success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
 
   try {
-    const videoId = BigInt(req.params.videoId);
     const { emojiType, timestampMs } = req.body;
 
     const result = await toggleVideoReaction({
-      videoId,
+      videoId: req.params.videoId,
       emojiType,
       timestampMs,
       userId: req.user.id,
@@ -397,14 +402,17 @@ export const getVideoReactionMarkers = async (req, res, next) => {
    *
    *       - 기본 intervalMs=5000 (5초)
    *       - timestampMs가 없는 리액션은 집계에서 제외됩니다.
+   *       - 인증된 사용자라면 리소스 소유자와 무관하게 조회할 수 있습니다.
    *     tags: [Reaction]
+   *     security:
+   *       - bearerAuth: []
    *     parameters:
    *       - in: path
    *         name: videoId
    *         required: true
    *         schema:
    *           type: integer
-   *         description: 영상 ID
+   *         description: 영상 ID (양의 정수)
    *       - in: query
    *         name: intervalMs
    *         required: false
@@ -425,14 +433,14 @@ export const getVideoReactionMarkers = async (req, res, next) => {
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
-   *       401:
-   *         description: 인증 실패
+   *       404:
+   *         description: 영상을 찾을 수 없음(미존재 또는 삭제됨)
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
-   *       404:
-   *         description: 영상 없음
+   *       500:
+   *         description: 서버 내부 오류
    *         content:
    *           application/json:
    *             schema:
@@ -440,13 +448,11 @@ export const getVideoReactionMarkers = async (req, res, next) => {
    */
 
   try {
-    const videoId = BigInt(req.params.videoId);
-
     // 기본 5000ms, 프론트가 바꾸고 싶으면 쿼리로 받기
-    const intervalMs = req.query.intervalMs ? Number(req.query.intervalMs) : 5000;
+    const intervalMs = req.query.intervalMs ?? 5000;
 
     const result = await getReactionMarkers({
-      videoId,
+      videoId: req.params.videoId,
       intervalMs,
     });
 
@@ -470,14 +476,17 @@ export const getVideoReactionsByTimeController = async (req, res, next) => {
    *     description: |
    *       영상의 현재 재생 시간 기준으로 ±2초 범위 내 리액션을 조회합니다.
    *       동일 시간대의 리액션은 이모지 타입별로 집계되어 반환됩니다.
+   *       인증된 사용자라면 리소스 소유자와 무관하게 조회할 수 있습니다.
    *     tags: [Reaction]
+   *     security:
+   *       - bearerAuth: []
    *     parameters:
    *       - in: path
    *         name: videoId
    *         required: true
    *         schema:
    *           type: integer
-   *         description: 영상 ID
+   *         description: 영상 ID (양의 정수)
    *       - in: query
    *         name: timestampMs
    *         required: true
@@ -491,7 +500,7 @@ export const getVideoReactionsByTimeController = async (req, res, next) => {
    *         schema:
    *           type: integer
    *           default: 2000
-   *         description: 조회 범위(ms). 기본값 ±2000ms
+   *         description: 조회 범위(ms). 0 이상의 정수. 기본값 ±2000ms
    *     responses:
    *       200:
    *         description: 시간대별 리액션 조회 성공
@@ -515,24 +524,34 @@ export const getVideoReactionsByTimeController = async (req, res, next) => {
    *                     data:
    *                       timestampMs: "abc"
    *                   success: null
+   *               invalidWindowMs:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: P001
+   *                     reason: 요청 파라미터가 올바르지 않습니다.
+   *                     data:
+   *                       windowMs: -1
+   *                   success: null
    *       404:
-   *         description: 영상 없음
+   *         description: 영상을 찾을 수 없음(미존재 또는 삭제됨)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       500:
+   *         description: 서버 내부 오류
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
    */
   try {
-    const videoId = BigInt(req.params.videoId);
-    const timestampMs = Number(req.query.timestampMs);
-    const windowMs = Number(req.query.windowMs ?? 2000);
-
-    if (!Number.isInteger(timestampMs)) {
-      throw new InvalidParameterError({ timestampMs: req.query.timestampMs });
-    }
+    const timestampMs = req.query.timestampMs;
+    const windowMs = req.query.windowMs;
 
     const result = await getVideoReactionsByTime({
-      videoId,
+      videoId: req.params.videoId,
       timestampMs,
       windowMs,
     });
@@ -546,6 +565,77 @@ export const getVideoReactionsByTimeController = async (req, res, next) => {
     next(e);
   }
 };
+
+// 프로젝트 모든 리액션 집계 조회
+export async function getProjectSlidesReactionSummaryController(req, res, next) {
+  /**
+   * @swagger
+   * /presentations/{projectId}/slides/reactions/summary:
+   *   get:
+   *     summary: 프로젝트 전체 슬라이드 리액션 집계 조회
+   *     description: |
+   *       특정 프로젝트의 모든 슬라이드에 달린 이모지 리액션을 한 번에 집계하여 반환합니다.
+   *
+   *       - 취소된 리액션(isDeleted=true)은 제외됩니다.
+   *       - 슬라이드에 리액션이 없어도 허용 이모지 키는 0으로 채워 반환됩니다.
+   *       - 슬라이드별 상세 목록은 반환하지 않고, 프로젝트 전체 합계만 반환합니다.
+   *       - 인증된 사용자라면 리소스 소유자와 무관하게 조회할 수 있습니다.
+   *     tags: [Reaction]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: projectId
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: 프로젝트 ID
+   *     responses:
+   *       200:
+   *         description: 집계 조회 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ProjectSlidesReactionSummaryResponse"
+   *       400:
+   *         description: 잘못된 파라미터(projectId)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       401:
+   *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       404:
+   *         description: 프로젝트 없음
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   */
+  try {
+    const result = await getProjectSlidesReactionSummary({
+      projectId: req.params.projectId,
+    });
+
+    res.json({
+      resultType: "SUCCESS",
+      error: null,
+      success: result,
+    });
+  } catch (e) {
+    next(e);
+  }
+}
 
 /**
  * @swagger
@@ -573,20 +663,23 @@ export const getVideoReactionsByTimeController = async (req, res, next) => {
  *           type: object
  *           nullable: true
  *           example: null
+ *     EmojiTypeEnum:
+ *       type: string
+ *       description: 리액션 이모지 타입
+ *       enum:
+ *         - fire
+ *         - good
+ *         - bad
+ *         - sleepy
+ *         - confused
  *     ToggleSlideReactionRequest:
  *       type: object
  *       required:
  *         - emojiType
  *       properties:
  *         emojiType:
- *           type: string
- *           description: 리액션 이모지 타입
- *           enum:
- *             - thumbs_up
- *             - heart
- *             - eyes
- *             - clap
- *           example: thumbs_up
+ *           $ref: "#/components/schemas/EmojiTypeEnum"
+ *           example: "fire"
  *
  *     ToggleSlideReactionResponse:
  *       type: object
@@ -612,14 +705,14 @@ export const getVideoReactionsByTimeController = async (req, res, next) => {
  *       type: object
  *       required:
  *         - emojiType
+ *         - timestampMs
  *       properties:
  *         emojiType:
- *           type: string
- *           description: 리액션 이모지 타입
- *           example: "😂"
+ *           $ref: "#/components/schemas/EmojiTypeEnum"
+ *           example: "fire"
  *         timestampMs:
  *           type: integer
- *           description: 현재 재생 위치(ms). 선택 값
+ *           description: 현재 재생 위치(ms)
  *           example: 12500
  *
  *     VideoReactionToggleResponse:
@@ -642,7 +735,7 @@ export const getVideoReactionsByTimeController = async (req, res, next) => {
  *           example: 5000
  *         emojiType:
  *           type: string
- *           example: "😂"
+ *           example: "fire"
  *         count:
  *           type: integer
  *           example: 7
@@ -676,7 +769,7 @@ export const getVideoReactionsByTimeController = async (req, res, next) => {
  *         emojiType:
  *           type: string
  *           description: 이모지 타입
- *           example: "😂"
+ *           example: "fire"
  *         count:
  *           type: integer
  *           description: 해당 이모지 리액션 수
@@ -696,6 +789,38 @@ export const getVideoReactionsByTimeController = async (req, res, next) => {
  *           description: 시간대별 리액션 집계 결과
  *           items:
  *             $ref: "#/components/schemas/VideoReactionGroupItem"
+ *
+ *     ProjectSlidesReactionSummarySuccess:
+ *       type: object
+ *       properties:
+ *         projectId:
+ *           type: string
+ *           example: "12"
+ *         totalReactions:
+ *           type: object
+ *           additionalProperties:
+ *             type: integer
+   *           example:
+   *             fire: 10
+   *             good: 4
+   *             bad: 2
+   *             sleepy: 1
+   *             confused: 7
+ *         totalCount:
+ *           type: integer
+ *           example: 23
+ *
+ *     ProjectSlidesReactionSummaryResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *           example: null
+ *         success:
+ *           $ref: "#/components/schemas/ProjectSlidesReactionSummarySuccess"
  *
  *     VideoReactionToggleSuccess:
  *       type: object

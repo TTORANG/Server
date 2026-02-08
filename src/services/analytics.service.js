@@ -6,6 +6,8 @@ import {
   AnalyticsSessionRequiredError,
 } from "../errors/analytics.error.js";
 import * as analyticsRepository from "../repositories/analytics.repository.js";
+import { findRecentVideoCommentsByProjectId } from "../repositories/comment.repository.js";
+import { findSlideByTimestamp } from "../repositories/video.repository.js";
 
 // ==================== 수집 API ====================
 
@@ -411,6 +413,64 @@ export const getVideoExits = async ({ videoId }) => {
   };
 };
 
+/**
+ * 프로젝트의 최근 댓글 피드백 조회
+ * GET /presentations/:id/analytics/recent-comments
+ */
+export const getRecentComments = async ({ projectId, limit = 10 }) => {
+  const pid = requireProjectId(projectId);
+
+  const project = await analyticsRepository.findProjectById(pid);
+  if (!project) {
+    throw new AnalyticsProjectNotFoundError({ projectId: pid });
+  }
+
+  // limit 검증
+  const safeLimit = Math.min(50, Math.max(1, Number(limit) || 10));
+
+  // 프로젝트의 최근 영상 댓글 조회
+  const comments = await findRecentVideoCommentsByProjectId({
+    projectId: pid,
+    limit: safeLimit,
+  });
+
+  // 각 댓글에 대해 슬라이드 정보 조회
+  const commentsWithSlides = await Promise.all(
+    comments.map(async (comment) => {
+      const slideInfo = await findSlideByTimestamp(
+        BigInt(comment.targetId),
+        comment.timestampMs
+      );
+
+      return {
+        commentId: comment.id.toString(),
+        content: comment.content,
+        timestampMs: comment.timestampMs,
+        createdAt: comment.createdAt,
+        user: {
+          userId: comment.user.id.toString(),
+          nickName: comment.user.nickName || comment.user.name || "익명 사용자",
+          name: comment.user.name,
+        },
+        slide: slideInfo
+          ? {
+              slideId: slideInfo.slideId.toString(),
+              slideNum: slideInfo.slideNum ? Number(slideInfo.slideNum) : null,
+              title: slideInfo.title,
+              imageUrl: slideInfo.imageUrl,
+            }
+          : null,
+      };
+    })
+  );
+
+  return {
+    resultType: "SUCCESS",
+    error: null,
+    success: { comments: commentsWithSlides },
+  };
+};
+
 // ==================== Helper Functions ====================
 
 const toInt = (value) => {
@@ -440,4 +500,160 @@ const requireSlideId = (slideId) => {
     throw new AnalyticsInvalidParameterError({ slideId }, "슬라이드 ID가 올바르지 않습니다.");
   }
   return sid;
+};
+
+// ==================== Retention Rate API ====================
+
+/**
+ * 슬라이드별 잔존률
+ * GET /presentations/:id/analytics/slide-retention
+ */
+export const getSlideRetention = async ({ projectId }) => {
+  const pid = requireProjectId(projectId);
+
+  const project = await analyticsRepository.findProjectById(pid);
+  if (!project) {
+    throw new AnalyticsProjectNotFoundError({ projectId: pid });
+  }
+
+  // 슬라이드 목록 조회 (slideNum 순서)
+  const slides = await analyticsRepository.findSlidesByProjectId(pid);
+  if (slides.length === 0) {
+    return {
+      resultType: "SUCCESS",
+      error: null,
+      success: { totalSessions: 0, slideRetention: [] },
+    };
+  }
+
+  // 슬라이드-세션 쌍 조회
+  const slideViewPairs = await analyticsRepository.getSlideViewSessionPairs(pid);
+
+  // slideId별 고유 세션 Set 구성
+  const slideSessionMap = {};
+  slides.forEach((s) => {
+    slideSessionMap[s.id.toString()] = new Set();
+  });
+
+  slideViewPairs.forEach((pair) => {
+    const key = pair.slideId.toString();
+    if (slideSessionMap[key]) {
+      slideSessionMap[key].add(pair.sessionId);
+    }
+  });
+
+  // 첫 번째 슬라이드 세션 수 = baseline (100%)
+  const firstSlide = slides[0];
+  const baselineSessions = slideSessionMap[firstSlide.id.toString()].size;
+
+  if (baselineSessions === 0) {
+    return {
+      resultType: "SUCCESS",
+      error: null,
+      success: {
+        totalSessions: 0,
+        slideRetention: slides.map((s) => ({
+          slideId: s.id.toString(),
+          slideNum: s.slideNum ? Number(s.slideNum) : null,
+          title: s.title,
+          sessionCount: 0,
+          retentionRate: 0,
+        })),
+      },
+    };
+  }
+
+  // 각 슬라이드별 잔존률 계산
+  const slideRetention = slides.map((slide) => {
+    const sessionCount = slideSessionMap[slide.id.toString()].size;
+    const retentionRate = Math.round((sessionCount / baselineSessions) * 100);
+
+    return {
+      slideId: slide.id.toString(),
+      slideNum: slide.slideNum ? Number(slide.slideNum) : null,
+      title: slide.title,
+      sessionCount,
+      retentionRate,
+    };
+  });
+
+  return {
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      totalSessions: baselineSessions,
+      slideRetention,
+    },
+  };
+};
+
+/**
+ * 영상 시청 잔존률 (30초 단위)
+ * GET /videos/:id/analytics/retention
+ */
+export const getVideoRetention = async ({ videoId }) => {
+  const vid = requireVideoId(videoId);
+
+  const video = await analyticsRepository.findVideoById(vid);
+  if (!video) {
+    throw new AnalyticsVideoNotFoundError({ videoId: vid });
+  }
+
+  // 세션별 최대 시청 시점 조회
+  const sessionMaxTimestamps = await analyticsRepository.getMaxTimestampPerSession(vid);
+
+  if (sessionMaxTimestamps.length === 0) {
+    return {
+      resultType: "SUCCESS",
+      error: null,
+      success: {
+        totalSessions: 0,
+        durationSeconds: video.durationSeconds,
+        intervalMs: 30000,
+        videoRetention: [],
+      },
+    };
+  }
+
+  // baseline: 영상을 시작한 총 세션 수
+  const totalSessions = sessionMaxTimestamps.length;
+
+  // 영상 길이 결정 (ms 단위)
+  const durationMs = video.durationSeconds
+    ? video.durationSeconds * 1000
+    : Math.max(...sessionMaxTimestamps.map((s) => s._max.timestampMs || 0));
+
+  // 30초(30000ms) 단위 버킷 생성
+  const intervalMs = 30000;
+  const buckets = [];
+  for (let ts = 0; ts <= durationMs; ts += intervalMs) {
+    buckets.push(ts);
+  }
+
+  // 각 버킷별 잔존률 계산
+  const videoRetention = buckets.map((bucketTs) => {
+    // 해당 시점까지 도달한 세션 수
+    const sessionCount = sessionMaxTimestamps.filter(
+      (s) => (s._max.timestampMs || 0) >= bucketTs
+    ).length;
+
+    const retentionRate = Math.round((sessionCount / totalSessions) * 100);
+
+    return {
+      timestampMs: bucketTs,
+      sessionCount,
+      retentionRate,
+    };
+  });
+
+  return {
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      totalSessions,
+      durationSeconds: video.durationSeconds,
+      intervalMs,
+      videoRetention,
+    },
+  };
 };

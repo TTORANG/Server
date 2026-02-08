@@ -1,4 +1,8 @@
-import { commentResponseDTO, createCommentReplyRequestDTO } from "../dtos/comment.dto.js";
+import {
+  commentResponseDTO,
+  createCommentReplyRequestDTO,
+  replyCreateResponseDTO,
+} from "../dtos/comment.dto.js";
 import { createCommentReply, getRepliesByParentId } from "../services/reply.service.js";
 
 // 답글 작성
@@ -11,7 +15,7 @@ export const postCommentReply = async (req, res, next) => {
    *     description: |
    *       특정 댓글(comment)에 대한 답글을 작성합니다.
    *       - 답글은 parentId가 설정된 comment로 저장됩니다.
-   *       - 작성자는 본인 세션을 통해 인증되어야 합니다.
+   *       - 작성자는 JWT 인증이 필요합니다.
    *     tags: [Comment]
    *     security:
    *       - bearerAuth: []
@@ -34,7 +38,18 @@ export const postCommentReply = async (req, res, next) => {
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/CommentResponse"
+   *               $ref: "#/components/schemas/ReplyCreateResponse"
+   *             examples:
+   *               created:
+   *                 value:
+   *                   resultType: SUCCESS
+   *                   error: null
+   *                   success:
+   *                     parentCommentId: "12"
+   *                     replyId: "34"
+   *                     content: "이 부분에 공감해요!"
+   *                     userId: "3"
+   *                     createdAt: "2026-02-07T10:20:30.000Z"
    *       400:
    *         description: 잘못된 요청
    *         content:
@@ -49,6 +64,12 @@ export const postCommentReply = async (req, res, next) => {
    *               $ref: "#/components/schemas/ErrorResponse"
    *       404:
    *         description: 부모 댓글 없음
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       500:
+   *         description: 서버 내부 오류
    *         content:
    *           application/json:
    *             schema:
@@ -68,7 +89,7 @@ export const postCommentReply = async (req, res, next) => {
     res.status(201).json({
       resultType: "SUCCESS",
       error: null,
-      success: commentResponseDTO(reply),
+      success: replyCreateResponseDTO(reply),
     });
   } catch (e) {
     next(e);
@@ -102,9 +123,7 @@ export const getCommentReplies = async (req, res, next) => {
    *         content:
    *           application/json:
    *             schema:
-   *               type: array
-   *               items:
-   *                 $ref: "#/components/schemas/CommentResponse"
+   *               $ref: "#/components/schemas/CommentListResponse"
    *       400:
    *         description: 잘못된 요청
    *         content:
@@ -113,6 +132,12 @@ export const getCommentReplies = async (req, res, next) => {
    *               $ref: "#/components/schemas/ErrorResponse"
    *       404:
    *         description: 부모 댓글 없음
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       500:
+   *         description: 서버 내부 오류
    *         content:
    *           application/json:
    *             schema:
@@ -150,22 +175,77 @@ export const getCommentReplies = async (req, res, next) => {
  *     CommentResponse:
  *       type: object
  *       properties:
- *         id:
+ *         commentId:
  *           type: string
  *           example: "12"
  *         content:
  *           type: string
  *           example: "좋은 의견 감사합니다"
- *         parentId:
- *           type: string
- *           nullable: true
- *           example: "5"
  *         userId:
  *           type: string
  *           example: "3"
  *         createdAt:
  *           type: string
  *           format: date-time
+
+ *     CommentCreateResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *           example: null
+ *         success:
+ *           $ref: "#/components/schemas/CommentResponse"
+ *
+ *     ReplyCreateSuccess:
+ *       type: object
+ *       properties:
+ *         parentCommentId:
+ *           type: string
+ *           description: 부모 댓글 ID(BigInt → string)
+ *           example: "12"
+ *         replyId:
+ *           type: string
+ *           description: 생성된 답글 ID(BigInt → string)
+ *           example: "34"
+ *         content:
+ *           type: string
+ *           example: "이 부분에 공감해요!"
+ *         userId:
+ *           type: string
+ *           example: "3"
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *
+ *     ReplyCreateResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *           example: null
+ *         success:
+ *           $ref: "#/components/schemas/ReplyCreateSuccess"
+
+ *     CommentListResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *           example: null
+ *         success:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/CommentResponse"
  *
  *     SuccessResponse:
  *       type: object
@@ -193,7 +273,7 @@ export const getCommentReplies = async (req, res, next) => {
  *               example: C001
  *             reason:
  *               type: string
- *               example: 댓글을 찾을 수 없습니다.
+ *               example: 서버 내부 오류
  *             data:
  *               type: object
  *               nullable: true

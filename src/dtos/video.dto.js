@@ -3,12 +3,25 @@ export const videoListItemDTO = (video) => ({
   title: video.title,
   status: video.status,
   durationSeconds: video.durationSeconds,
+  rootCommentCount: video.rootCommentCount ?? 0,
+  replyCount: video.replyCount ?? 0,
+  feedbackCount: video.feedbackCount ?? 0,
+  reactionCount: video.reactionCount ?? 0,
+  viewCount: video.viewCount ?? 0,
   thumbnailUrl: video.thumbnailUrl,
   createdAt: video.createdAt,
 });
 
 export const videoListResponseDTO = (videos) => ({
   videos: videos.map(videoListItemDTO),
+});
+
+export const recordingStartSuccessDTO = (video) => ({
+  videoId: video.id.toString(),
+});
+
+export const videoChunkUploadSuccessDTO = () => ({
+  ok: true,
 });
 
 export const videoDetailDTO = (video) => ({
@@ -58,4 +71,18 @@ export const videoSlideTimelineItemDTO = (event) => ({
 
 export const videoSlideTimelineResponseDTO = (events) => ({
   slides: events.map(videoSlideTimelineItemDTO),
+});
+
+export const recordingFinishSuccessDTO = ({ videoId, status, slideDurations }) => ({
+  videoId: videoId.toString(),
+  status,
+  slideCount: slideDurations.length,
+  slideDurations: slideDurations.map((s) => ({
+    slideId: s.slideId.toString(),
+    totalDurationMs: s.totalDurationMs,
+  })),
+});
+
+export const videoDeleteSuccessDTO = ({ videoId }) => ({
+  videoId: videoId.toString(),
 });

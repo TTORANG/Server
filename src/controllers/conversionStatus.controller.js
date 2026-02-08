@@ -11,7 +11,10 @@ export const handleGetPresentationStatus = async (req, res, next) => {
    *       PPTX/PDF 파일의 변환 진행 상태를 조회합니다.
    *       파일 업로드 이후 슬라이드 이미지 변환, 썸네일 생성, 메타데이터 추출까지의
    *       전체 변환 파이프라인 상태를 집계하여 반환합니다.
-   *     tags: [Presentation]
+   *
+   *       - status 값: queued | processing | failed | completed | partial_done
+   *       - progress는 모든 상태에서 반환되며, percent(0~100)를 포함합니다.
+   *     tags: [File]
    *     security:
    *       - bearerAuth: []
    *     parameters:
@@ -33,11 +36,12 @@ export const handleGetPresentationStatus = async (req, res, next) => {
    *               success:
    *                 status: "processing"
    *                 progress:
+   *                   percent: 65
    *                   slides:
-   *                     total: 10
-   *                     generated: 6
-   *                   thumbnail: "completed"
-   *                   metadata: "processing"
+   *                     total: 12
+   *                     generated: 12
+   *                   thumbnail: "processing"
+   *                   metadata: "queued"
    *       401:
    *         description: 인증 실패
    *         content:
@@ -45,8 +49,9 @@ export const handleGetPresentationStatus = async (req, res, next) => {
    *             example:
    *               resultType: "FAILURE"
    *               error:
-   *                 errorCode: "AUTH_001"
-   *                 reason: "UNAUTHORIZED"
+   *                 errorCode: "A004"
+   *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+   *                 data: null
    *               success: null
    *       404:
    *         description: 프로젝트를 찾을 수 없음

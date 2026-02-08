@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  getProjectSlidesReactionSummaryController,
   getSlideReactionSummaryController,
   getVideoReactionMarkers,
   getVideoReactionsByTimeController,
@@ -17,8 +18,14 @@ router.get("/slides/:slideId/reactions/summary", isLogin, getSlideReactionSummar
 // 영상 타임스탬프 리액션 생성
 router.post("/videos/:videoId/reactions", isLogin, handleToggleVideoReaction);
 // 영상 리액션 집계
-router.get("/videos/:videoId/reactions/timeline", getVideoReactionMarkers);
+router.get("/videos/:videoId/reactions/timeline", isLogin, getVideoReactionMarkers);
 // 시간대별 리액션 조회
-router.get("/videos/:videoId/reactions", getVideoReactionsByTimeController);
+router.get("/videos/:videoId/reactions", isLogin, getVideoReactionsByTimeController);
+
+router.get(
+  "/presentations/:projectId/slides/reactions/summary",
+  isLogin,
+  getProjectSlidesReactionSummaryController
+);
 
 export default router;

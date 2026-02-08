@@ -1,7 +1,10 @@
 import {
   commentListResponseDTO,
+  deleteCommentResponseDTO,
   commentResponseDTO,
   createSlideCommentRequestDTO,
+  updateCommentResponseDTO,
+  videoCommentResponseDTO,
   videoCommentListResponseDTO,
 } from "../dtos/comment.dto.js";
 import {
@@ -50,6 +53,16 @@ export const postSlideComment = async (req, res, next) => {
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/CreateSlideCommentResponse"
+   *             examples:
+   *               created:
+   *                 value:
+   *                   resultType: SUCCESS
+   *                   error: null
+   *                   success:
+   *                     commentId: "20"
+   *                     content: "이 슬라이드 설명이 이해하기 쉬워요"
+   *                     userId: "3"
+   *                     createdAt: "2026-02-02T04:10:00.000Z"
    *       400:
    *         description: 잘못된 요청 (댓글 내용 없음)
    *         content:
@@ -71,6 +84,21 @@ export const postSlideComment = async (req, res, next) => {
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *       403:
+   *         description: 댓글 작성 권한 없음 (프로젝트 소유자 아님)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               noPermission:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: C006
+   *                     reason: 댓글을 작성할 권한이 없습니다.
+   *                     data: null
+   *                   success: null
    *       404:
    *         description: 슬라이드 없음
    *         content:
@@ -87,6 +115,12 @@ export const postSlideComment = async (req, res, next) => {
    *                     data:
    *                       slideId: "5"
    *                   success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
   try {
     const slideId = BigInt(req.params.slideId);
@@ -114,11 +148,11 @@ export const patchComment = async (req, res, next) => {
    * @swagger
    * /comments/{commentId}:
    *   patch:
-   *     summary: 댓글 수정
+   *     summary: 댓글/답글 수정
    *     description: |
-   *       작성한 댓글의 내용을 수정합니다.
+   *       작성한 댓글 또는 답글의 내용을 수정합니다.
    *
-   *       - 본인 댓글만 수정할 수 있습니다.
+   *       - 본인 댓글/답글만 수정할 수 있습니다.
    *       - 공백/빈 문자열은 허용하지 않습니다.
    *     tags: [Comment]
    *     security:
@@ -127,7 +161,7 @@ export const patchComment = async (req, res, next) => {
    *       - in: path
    *         name: commentId
    *         required: true
-   *         description: 댓글 ID
+   *         description: 댓글(답글) ID
    *         schema:
    *           type: integer
    *     requestBody:
@@ -143,9 +177,33 @@ export const patchComment = async (req, res, next) => {
    *                 content: "수정된 댓글 내용입니다."
    *     responses:
    *       200:
-   *         description: 댓글 수정 성공
+   *         description: 댓글/답글 수정 성공
    *         content:
    *           application/json:
+   *             examples:
+   *               updatedComment:
+   *                 value:
+   *                   resultType: SUCCESS
+   *                   error: null
+   *                   success:
+   *                     updatedTargetType: comment
+   *                     commentId: "10"
+   *                     content: "수정된 댓글 내용입니다."
+   *                     userId: "3"
+   *                     createdAt: "2026-02-07T09:00:00.000Z"
+   *                     updatedAt: "2026-02-07T10:00:00.000Z"
+   *               updatedReply:
+   *                 value:
+   *                   resultType: SUCCESS
+   *                   error: null
+   *                   success:
+   *                     updatedTargetType: reply
+   *                     parentCommentId: "10"
+   *                     replyId: "22"
+   *                     content: "수정된 답글 내용입니다."
+   *                     userId: "3"
+   *                     createdAt: "2026-02-07T09:30:00.000Z"
+   *                     updatedAt: "2026-02-07T10:05:00.000Z"
    *             schema:
    *               $ref: "#/components/schemas/UpdateCommentResponse"
    *       400:
@@ -179,7 +237,7 @@ export const patchComment = async (req, res, next) => {
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
    *       403:
-   *         description: 수정 권한 없음
+   *         description: 수정 권한 없음 (본인 댓글/답글 아님)
    *         content:
    *           application/json:
    *             schema:
@@ -190,7 +248,7 @@ export const patchComment = async (req, res, next) => {
    *                   resultType: FAILURE
    *                   error:
    *                     errorCode: C006
-   *                     reason: 수정 권한이 없습니다.
+   *                     reason: 댓글을 작성할 권한이 없습니다.
    *                     data: null
    *                   success: null
    *       404:
@@ -209,6 +267,12 @@ export const patchComment = async (req, res, next) => {
    *                     data:
    *                       commentId: "10"
    *                   success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
   try {
     const commentId = BigInt(req.params.commentId);
@@ -223,7 +287,7 @@ export const patchComment = async (req, res, next) => {
     res.status(200).json({
       resultType: "SUCCESS",
       error: null,
-      success: commentResponseDTO(updated),
+      success: updateCommentResponseDTO(updated),
     });
   } catch (e) {
     next(e);
@@ -236,11 +300,11 @@ export const deleteCommentController = async (req, res, next) => {
    * @swagger
    * /comments/{commentId}:
    *   delete:
-   *     summary: 댓글 및 답글 삭제
+   *     summary: 댓글/답글 삭제
    *     description: |
-   *       작성한 댓글과 답글을 삭제합니다. (Soft Delete)
+   *       작성한 댓글/답글을 삭제합니다. (Soft Delete)
    *
-   *       - 본인 댓글만 삭제할 수 있습니다.
+   *       - 본인 댓글/답글만 삭제할 수 있습니다.
    *       - 삭제 시 실제 row 삭제가 아니라 `isDeleted=true`로 처리됩니다.
    *     tags: [Comment]
    *     security:
@@ -254,9 +318,25 @@ export const deleteCommentController = async (req, res, next) => {
    *           type: integer
    *     responses:
    *       200:
-   *         description: 댓글 삭제 성공
+   *         description: 댓글/답글 삭제 성공
    *         content:
    *           application/json:
+   *             examples:
+   *               deletedComment:
+   *                 value:
+   *                   resultType: SUCCESS
+   *                   error: null
+   *                   success:
+   *                     deletedTargetType: comment
+   *                     commentId: "10"
+   *               deletedReply:
+   *                 value:
+   *                   resultType: SUCCESS
+   *                   error: null
+   *                   success:
+   *                     deletedTargetType: reply
+   *                     parentCommentId: "10"
+   *                     replyId: "22"
    *             schema:
    *               $ref: "#/components/schemas/DeleteCommentResponse"
    *       400:
@@ -293,7 +373,7 @@ export const deleteCommentController = async (req, res, next) => {
    *                   resultType: FAILURE
    *                   error:
    *                     errorCode: C006
-   *                     reason: 삭제 권한이 없습니다.
+   *                     reason: 댓글을 조회할 권한이 없습니다.
    *                     data: null
    *                   success: null
    *       404:
@@ -312,12 +392,18 @@ export const deleteCommentController = async (req, res, next) => {
    *                     data:
    *                       commentId: "10"
    *                   success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
 
   try {
     const commentId = BigInt(req.params.commentId);
 
-    await deleteComment({
+    const deleted = await deleteComment({
       commentId,
       userId: req.user.id,
     });
@@ -325,7 +411,7 @@ export const deleteCommentController = async (req, res, next) => {
     res.status(200).json({
       resultType: "SUCCESS",
       error: null,
-      success: null,
+      success: deleteCommentResponseDTO(deleted),
     });
   } catch (e) {
     next(e);
@@ -344,6 +430,7 @@ export const getSlideCommentsController = async (req, res, next) => {
    *
    *       - 작성 시간 기준 오름차순 정렬
    *       - Soft delete된 댓글은 제외됩니다.
+   *       - 프로젝트 소유자만 조회할 수 있습니다.
    *       - 페이지네이션을 지원합니다.
    *     tags: [Comment]
    *     security:
@@ -380,12 +467,47 @@ export const getSlideCommentsController = async (req, res, next) => {
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               invalidSlideId:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: C003
+   *                     reason: 유효하지 않은 슬라이드 ID입니다.
+   *                     data:
+   *                       slideId: "abc"
+   *                   success: null
+   *       403:
+   *         description: 조회 권한 없음 (프로젝트 소유자 아님)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               noPermission:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: C006
+   *                     reason: 댓글을 조회할 권한이 없습니다.
+   *                     data: null
+   *                   success: null
    *       500:
    *         description: 댓글 조회 실패
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               listFetchFailed:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: C007
+   *                     reason: 댓글을 불러올 수 없습니다.
+   *                     data:
+   *                       slideId: "5"
+   *                   success: null
    */
 
   try {
@@ -420,7 +542,7 @@ export async function handleCreateVideoComment(req, res, next) {
    *       특정 영상의 특정 시점(timestampMs)에 댓글을 생성합니다.
    *
    *       **주의사항**
-   *       - 본 API는 인증(JWT) + 세션(sessionId)이 필요합니다.
+   *       - 본 API는 인증(JWT)이 필요합니다.
    *       - `content`는 공백만 있는 문자열은 허용하지 않습니다.
    *       - `timestampMs`는 0 이상의 정수(ms)만 허용합니다.
    *     tags: [Comment]
@@ -447,7 +569,7 @@ export async function handleCreateVideoComment(req, res, next) {
    *                 content: "여기 설명 좋아요"
    *                 timestampMs: 2000
    *     responses:
-   *       200:
+   *       201:
    *         description: 댓글 생성 성공
    *         content:
    *           application/json:
@@ -459,7 +581,7 @@ export async function handleCreateVideoComment(req, res, next) {
    *                   resultType: "SUCCESS"
    *                   error: null
    *                   success:
-   *                     id: "15"
+   *                     commentId: "15"
    *                     content: "여기 설명 좋아요"
    *                     timestampMs: 2000
    *                     createdAt: "2026-01-24T12:34:56.000Z"
@@ -480,21 +602,25 @@ export async function handleCreateVideoComment(req, res, next) {
    *                       content: ""
    *                   success: null
    *       401:
-   *         description: 인증/세션 정보 누락
+   *         description: 인증 실패 (JWT 누락/만료)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       403:
+   *         description: 댓글 작성 권한 없음 (프로젝트 소유자 아님)
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
    *             examples:
-   *               noSession:
+   *               noPermission:
    *                 value:
-   *                   resultType: "FAILURE"
+   *                   resultType: FAILURE
    *                   error:
-   *                     errorCode: "A004"
-   *                     reason: "인증 세션 정보가 없습니다."
-   *                     data:
-   *                       userId: "1"
-   *                       videoId: "2"
+   *                     errorCode: C006
+   *                     reason: 댓글을 수정 또는 삭제할 권한이 없습니다.
+   *                     data: null
    *                   success: null
    *       404:
    *         description: 영상 없음
@@ -512,6 +638,12 @@ export async function handleCreateVideoComment(req, res, next) {
    *                     data:
    *                       videoId: "9999"
    *                   success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
 
   try {
@@ -528,12 +660,7 @@ export async function handleCreateVideoComment(req, res, next) {
     res.status(201).json({
       resultType: "SUCCESS",
       error: null,
-      success: {
-        id: comment.id.toString(),
-        content: comment.content,
-        timestampMs: comment.timestampMs,
-        createdAt: comment.createdAt,
-      },
+      success: videoCommentResponseDTO(comment),
     });
   } catch (e) {
     next(e);
@@ -612,8 +739,8 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
    *                 value:
    *                   resultType: FAILURE
    *                   error:
-   *                     errorCode: A001
-   *                     reason: "인증 정보가 없습니다."
+   *                     errorCode: A004
+   *                     reason: "인증 세션 정보가 없거나 유효하지 않습니다."
    *                     data: null
    *                   success: null
    *
@@ -695,7 +822,7 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *     Comment:
  *       type: object
  *       properties:
- *         id:
+ *         commentId:
  *           type: string
  *           description: 댓글 ID(BigInt → string)
  *           example: "20"
@@ -742,7 +869,7 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *     VideoComment:
  *       type: object
  *       properties:
- *         id:
+ *         commentId:
  *           type: string
  *           description: 댓글 ID(BigInt → string)
  *           example: "15"
@@ -767,6 +894,70 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *           description: 수정할 댓글 내용(공백 불가)
  *           example: "수정된 댓글 내용입니다."
  *
+ *     UpdatedCommentSuccess:
+ *       type: object
+ *       properties:
+ *         updatedTargetType:
+ *           type: string
+ *           enum: [comment]
+ *           example: comment
+ *         commentId:
+ *           type: string
+ *           example: "10"
+ *         content:
+ *           type: string
+ *           example: "수정된 댓글 내용입니다."
+ *         userId:
+ *           type: string
+ *           example: "3"
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *       required:
+ *         - updatedTargetType
+ *         - commentId
+ *         - content
+ *         - userId
+ *         - createdAt
+ *         - updatedAt
+ *
+ *     UpdatedReplySuccess:
+ *       type: object
+ *       properties:
+ *         updatedTargetType:
+ *           type: string
+ *           enum: [reply]
+ *           example: reply
+ *         parentCommentId:
+ *           type: string
+ *           example: "10"
+ *         replyId:
+ *           type: string
+ *           example: "22"
+ *         content:
+ *           type: string
+ *           example: "수정된 답글 내용입니다."
+ *         userId:
+ *           type: string
+ *           example: "3"
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *       required:
+ *         - updatedTargetType
+ *         - parentCommentId
+ *         - replyId
+ *         - content
+ *         - userId
+ *         - createdAt
+ *         - updatedAt
+ *
  *     UpdateCommentResponse:
  *       type: object
  *       properties:
@@ -777,7 +968,41 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *           nullable: true
  *           example: null
  *         success:
- *           $ref: "#/components/schemas/Comment"
+ *           oneOf:
+ *             - $ref: "#/components/schemas/UpdatedCommentSuccess"
+ *             - $ref: "#/components/schemas/UpdatedReplySuccess"
+ *
+ *     DeletedCommentSuccess:
+ *       type: object
+ *       properties:
+ *         deletedTargetType:
+ *           type: string
+ *           enum: [comment]
+ *           example: comment
+ *         commentId:
+ *           type: string
+ *           example: "10"
+ *       required:
+ *         - deletedTargetType
+ *         - commentId
+ *
+ *     DeletedReplySuccess:
+ *       type: object
+ *       properties:
+ *         deletedTargetType:
+ *           type: string
+ *           enum: [reply]
+ *           example: reply
+ *         parentCommentId:
+ *           type: string
+ *           example: "10"
+ *         replyId:
+ *           type: string
+ *           example: "22"
+ *       required:
+ *         - deletedTargetType
+ *         - parentCommentId
+ *         - replyId
  *
  *     DeleteCommentResponse:
  *       type: object
@@ -789,8 +1014,9 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *           nullable: true
  *           example: null
  *         success:
- *           nullable: true
- *           example: null
+ *           oneOf:
+ *             - $ref: "#/components/schemas/DeletedCommentSuccess"
+ *             - $ref: "#/components/schemas/DeletedReplySuccess"
  *
  *     ErrorResponse:
  *       type: object
@@ -803,14 +1029,13 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *           properties:
  *             errorCode:
  *               type: string
- *               example: C005
+ *               example: INTERNAL_SERVER_ERROR
  *             reason:
  *               type: string
- *               example: 댓글을 찾을 수 없습니다.
+ *               example: 서버 내부 오류
  *             data:
  *               nullable: true
- *               example:
- *                 commentId: "10"
+ *               example: null
  *         success:
  *           nullable: true
  *           example: null
@@ -818,7 +1043,7 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *     CommentListItem:
  *       type: object
  *       properties:
- *         id:
+ *         commentId:
  *           type: string
  *           example: "10"
  *         content:
@@ -827,7 +1052,7 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *         user:
  *           type: object
  *           properties:
- *             id:
+ *             userId:
  *               type: string
  *               example: "3"
  *             nickName:
@@ -888,7 +1113,7 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *     VideoCommentListItem:
  *       type: object
  *       properties:
- *         id:
+ *         commentId:
  *           type: string
  *           example: "15"
  *         content:
@@ -900,7 +1125,7 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *         user:
  *           type: object
  *           properties:
- *             id:
+ *             userId:
  *               type: string
  *               example: "3"
  *             nickName:

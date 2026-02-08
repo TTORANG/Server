@@ -17,6 +17,17 @@ export async function startRecording(req, res, next) {
    *       required: true
    *       content:
    *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               projectId:
+   *                 type: integer
+   *                 description: 프로젝트 ID (선택)
+   *                 example: 1
+   *               title:
+   *                 type: string
+   *                 description: 영상 제목 (선택)
+   *                 example: "테스트 영상"
    *           example:
    *             projectId: 1
    *             title: "테스트 영상"
@@ -32,9 +43,52 @@ export async function startRecording(req, res, next) {
    *               error: null
    *               success:
    *                 videoId: "4"
+   *       400:
+   *         description: 잘못된 요청 파라미터 또는 존재하지 않는 프로젝트
+   *         content:
+   *           application/json:
+   *             examples:
+   *               invalidProjectId:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "P001"
+   *                     reason: "프로젝트 ID가 올바르지 않습니다."
+   *                     data:
+   *                       projectId: "abc"
+   *                   success: null
+   *               projectNotFound:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "F001"
+   *                     reason: "존재하지 않는 프로젝트입니다."
+   *                     data:
+   *                       projectId: 1
+   *                   success: null
+   *       401:
+   *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "A004"
+   *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+   *                 data: null
+   *               success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
   try {
-    const result = await videoService.createVideo(req.body);
+    const result = await videoService.createVideo({
+      ...req.body,
+      userId: req.user?.id,
+    });
     res.json(result);
   } catch (e) {
     next(e);
@@ -49,7 +103,7 @@ export async function uploadVideoChunk(req, res, next) {
    *   post:
    *     summary: 영상 청크 업로드
    *     description: |
-   *       MediaRecorder로 생성된 영상 청크(webm)를 업로드합니다.
+   *       MediaRecorder로 생성된 영상 청크(webm/mp4)를 업로드합니다.
    *       - Content-Type: multipart/form-data
    *       - file 필드로 전송
    *     tags: [Video]
@@ -89,6 +143,71 @@ export async function uploadVideoChunk(req, res, next) {
    *               error: null
    *               success:
    *                 ok: true
+   *       400:
+   *         description: 잘못된 요청 (chunkIndex/파일 형식/업로드 형식 오류 등)
+   *         content:
+   *           application/json:
+   *             examples:
+   *               invalidChunkIndex:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "V004"
+   *                     reason: "비디오 청크 정보가 올바르지 않습니다."
+   *                     data:
+   *                       chunkIndex: -1
+   *                   success: null
+   *               invalidContentType:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "V004"
+   *                     reason: "비디오 청크 정보가 올바르지 않습니다."
+   *                     data:
+   *                       contentType: "image/png"
+   *                   success: null
+   *       401:
+   *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "A004"
+   *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+   *                 data: null
+   *               success: null
+   *       404:
+   *         description: 영상 없음
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "V001"
+   *                 reason: "영상을 찾을 수 없습니다."
+   *                 data:
+   *                   videoId: "12"
+   *               success: null
+   *       409:
+   *         description: 영상 상태 오류
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "V002"
+   *                 reason: "비디오 상태가 올바르지 않습니다."
+   *                 data:
+   *                   videoId: "12"
+   *                   status: "processing"
+   *               success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
 
   try {
@@ -165,15 +284,35 @@ export async function finishRecording(req, res, next) {
    *             schema:
    *               $ref: "#/components/schemas/RecordingFinishResponse"
    *       400:
-   *         description: 잘못된 요청 파라미터
+   *         description: 잘못된 요청 파라미터 또는 업로드 검증 실패
    *         content:
    *           application/json:
-   *             example:
-   *               resultType: "FAILURE"
-   *               error:
-   *                 errorCode: "P001"
-   *                 reason: "slideLogs가 필요합니다."
-   *               success: null
+   *             examples:
+   *               missingSlideLogs:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "P001"
+   *                     reason: "slideLogs가 필요합니다."
+   *                   success: null
+   *               invalidSlideId:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "P001"
+   *                     reason: "요청 파라미터가 올바르지 않습니다."
+   *                     data:
+   *                       slideId: "abc"
+   *                   success: null
+   *               noChunks:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "V003"
+   *                     reason: "업로드된 비디오 청크가 없습니다."
+   *                     data:
+   *                       videoId: "12"
+   *                   success: null
    *
    *       401:
    *         description: 인증 실패 또는 영상 소유자 아님
@@ -183,7 +322,8 @@ export async function finishRecording(req, res, next) {
    *               resultType: "FAILURE"
    *               error:
    *                 errorCode: "A004"
-   *                 reason: "인증 세션 정보가 없습니다."
+   *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+   *                 data: null
    *               success: null
    *
    *       404:
@@ -211,6 +351,12 @@ export async function finishRecording(req, res, next) {
    *                   videoId: "12"
    *                   status: "processing"
    *               success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
 
   try {
@@ -229,24 +375,58 @@ export async function finishRecording(req, res, next) {
 export async function handleGetVideoList(req, res, next) {
   /**
    * @swagger
-   * /presentations/{projectId}/videos:
-   *   get:
-   *     summary: 프로젝트 녹화 영상 목록 조회
-   *     description:
-   *       특정 프로젝트에 속한 모든 녹화 영상을 최신순으로 조회합니다.
-   *       영상이 없는 경우에도 오류가 아닌 빈 목록을 반환합니다.
+ * /presentations/{projectId}/videos:
+ *   get:
+ *     summary: 프로젝트 녹화 영상 목록 조회
+ *     description:
+ *       특정 프로젝트에 속한 녹화 영상 목록을 조회합니다.
+ *       정렬(sort), 길이 필터(filter), 제목 검색(search)을 지원합니다.
+ *       영상이 없는 경우에도 오류가 아닌 빈 목록을 반환합니다.
+ *       각 영상에는 일반 댓글 수(rootCommentCount), 답글 수(replyCount),
+ *       리액션 수(reactionCount), 조회 수(viewCount)가 함께 포함됩니다.
    *     tags:
-   *       - Presentation
+   *       - Video
    *     security:
    *       - bearerAuth: []
    *     parameters:
-   *       - in: path
-   *         name: projectId
-   *         required: true
-   *         description: 프로젝트 ID
-   *         schema:
-   *           type: string
-   *           example: "1"
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         description: 프로젝트 ID
+ *         schema:
+ *           type: string
+ *           example: "1"
+ *       - in: query
+ *         name: sort
+ *         required: false
+ *         description: |
+ *           정렬 조건
+ *           - recent: 최신순(기본값)
+ *           - commentCount: 피드백 많은 순(feedbackCount 내림차순)
+ *           - name: 가나다순(title 오름차순)
+ *         schema:
+ *           type: string
+ *           enum: [recent, commentCount, name]
+ *           default: recent
+ *       - in: query
+ *         name: filter
+ *         required: false
+ *         description: |
+ *           길이 필터
+ *           - all: 전체(기본값)
+ *           - 3m: 3분 이하(durationSeconds <= 180)
+ *           - 5m: 5분 이하(durationSeconds <= 300)
+ *         schema:
+ *           type: string
+ *           enum: [all, 3m, 5m]
+ *           default: all
+ *       - in: query
+ *         name: search
+ *         required: false
+ *         description: 영상 제목 검색어(부분 일치, 대소문자 구분 없음)
+ *         schema:
+ *           type: string
+ *           example: "발표"
    *     responses:
    *       200:
    *         description: 영상 목록 조회 성공
@@ -254,14 +434,57 @@ export async function handleGetVideoList(req, res, next) {
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/VideoListResponse"
+   *             example:
+   *               resultType: "SUCCESS"
+   *               error: null
+   *               success:
+   *                 videos:
+   *                   - videoId: "10"
+   *                     title: "발표 연습 1"
+   *                     status: "ready"
+   *                     durationSeconds: 120
+   *                     rootCommentCount: 5
+   *                     replyCount: 3
+   *                     reactionCount: 12
+   *                     viewCount: 8
+   *                     thumbnailUrl: "https://example.com/thumb.jpg"
+   *                     createdAt: "2026-02-01T09:00:00.000Z"
    *       400:
-   *         description: 잘못된 요청 (유효하지 않은 프로젝트 ID)
+   *         description: 잘못된 요청 (유효하지 않은 프로젝트 ID 또는 존재하지 않는 프로젝트)
    *         content:
    *           application/json:
-   *             schema:
-   *               $ref: "#/components/schemas/ErrorResponse"
-   *       404:
-   *         description: 존재하지 않는 프로젝트
+   *             examples:
+   *               invalidProjectId:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "P001"
+   *                     reason: "프로젝트 ID가 올바르지 않습니다."
+   *                     data:
+   *                       projectId: "abc"
+   *                   success: null
+   *               projectNotFound:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "F001"
+   *                     reason: "존재하지 않는 프로젝트입니다."
+   *                     data:
+   *                       projectId: 1
+   *                   success: null
+   *       401:
+   *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "A004"
+   *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+   *                 data: null
+   *               success: null
+   *       500:
+   *         description: 서버 내부 오류
    *         content:
    *           application/json:
    *             schema:
@@ -270,7 +493,79 @@ export async function handleGetVideoList(req, res, next) {
 
   try {
     const { projectId } = req.params;
-    const result = await videoService.getVideoList({ projectId });
+    const { sort, filter, search } = req.query;
+    const result = await videoService.getVideoList({
+      projectId,
+      sort,
+      filter,
+      search,
+    });
+    res.json(result);
+  } catch (e) {
+    next(e);
+  }
+}
+
+// 내 영상 목록 조회
+export async function handleGetMyVideoList(req, res, next) {
+  /**
+   * @swagger
+   * /me/videos:
+   *   get:
+   *     summary: 내 영상 목록 조회
+   *     description: |
+   *       로그인한 사용자가 소유한 프로젝트의 영상 목록을 최신순으로 조회합니다.
+   *       영상이 없는 경우 빈 목록을 반환합니다.
+   *       각 영상에는 일반 댓글 수(rootCommentCount), 답글 수(replyCount),
+   *       리액션 수(reactionCount), 조회 수(viewCount)가 함께 포함됩니다.
+   *     tags:
+   *       - Video
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: 영상 목록 조회 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/VideoListResponse"
+   *             example:
+   *               resultType: "SUCCESS"
+   *               error: null
+   *               success:
+   *                 videos:
+   *                   - videoId: "21"
+   *                     title: "내 발표 리허설"
+   *                     status: "ready"
+   *                     durationSeconds: 95
+   *                     rootCommentCount: 2
+   *                     replyCount: 1
+   *                     reactionCount: 7
+   *                     viewCount: 4
+   *                     thumbnailUrl: "https://example.com/thumb2.jpg"
+   *                     createdAt: "2026-02-03T13:20:00.000Z"
+   *       401:
+   *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "A004"
+   *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+   *                 data: null
+   *               success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   */
+  try {
+    const result = await videoService.getMyVideoList({
+      userId: req.user?.id,
+    });
     res.json(result);
   } catch (e) {
     next(e);
@@ -327,7 +622,7 @@ export async function handleGetVideoDetail(req, res, next) {
    *                   error: null
    *                   success:
    *                     video:
-   *                       id: "2"
+   *                       videoId: "2"
    *                       title: "발표 영상"
    *                       status: "ready"
    *                       durationSeconds: 300
@@ -340,14 +635,15 @@ export async function handleGetVideoDetail(req, res, next) {
    *                     timeline:
    *                       reactions:
    *                         - timestampMs: 2000
-   *                           emojiType: "thumbs_up"
+   *                           emojiType: "fire"
    *                           count: 3
    *                       comments:
-   *                         - id: "15"
+   *                         - commentId: "15"
    *                           timestampMs: 2000
    *                           content: "여기 설명 좋아요"
+   *                           createdAt: "2026-01-24T12:34:56.000Z"
    *                           user:
-   *                             id: "1"
+   *                             userId: "1"
    *                             name: "홍길동"
    *       401:
    *         description: 인증 실패
@@ -355,8 +651,21 @@ export async function handleGetVideoDetail(req, res, next) {
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "A004"
+   *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+   *                 data: null
+   *               success: null
    *       404:
    *         description: 영상 없음
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       500:
+   *         description: 서버 내부 오류
    *         content:
    *           application/json:
    *             schema:
@@ -366,6 +675,94 @@ export async function handleGetVideoDetail(req, res, next) {
   try {
     const { videoId } = req.params;
     const result = await videoService.getVideoDetail({ videoId });
+    res.json(result);
+  } catch (e) {
+    next(e);
+  }
+}
+
+// 영상 삭제
+export async function handleDeleteVideo(req, res, next) {
+  /**
+   * @swagger
+   * /videos/{videoId}:
+   *   delete:
+   *     summary: 영상 삭제 (Soft Delete)
+   *     description: |
+   *       특정 영상을 소프트 삭제합니다.
+   *       삭제 시 영상 상태를 `deleted`로 변경하고 `deletedAt`을 기록합니다.
+   *       본인이 생성한 영상(본인 프로젝트에 속한 영상)만 삭제할 수 있습니다.
+   *     tags: [Video]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: videoId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *           example: 2
+   *         description: 영상 ID
+   *     responses:
+   *       200:
+   *         description: 영상 삭제 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/VideoDeleteResponse"
+   *             example:
+   *               resultType: "SUCCESS"
+   *               error: null
+   *               success:
+   *                 videoId: "2"
+   *       400:
+   *         description: 잘못된 videoId 파라미터
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "P001"
+   *                 reason: "videoId가 올바르지 않습니다."
+   *                 data:
+   *                   videoId: 0
+   *               success: null
+   *       401:
+   *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "A004"
+   *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+   *                 data: null
+   *               success: null
+   *       404:
+   *         description: 영상 없음 또는 본인이 생성한 영상이 아님
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "V001"
+   *                 reason: "영상을 찾을 수 없습니다."
+   *                 data:
+   *                   videoId: "2"
+   *               success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   */
+  try {
+    const { videoId } = req.params;
+    const result = await videoService.deleteVideo({
+      videoId,
+      userId: req.user?.id,
+    });
     res.json(result);
   } catch (e) {
     next(e);
@@ -442,6 +839,15 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
    *               success: null
    *       401:
    *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "A004"
+   *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+   *                 data: null
+   *               success: null
    *       404:
    *         description: 영상 없음
    *         content:
@@ -467,6 +873,12 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
    *                   videoId: "1"
    *                   status: "processing"
    *               success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
   try {
     const { videoId } = req.params;
@@ -577,7 +989,7 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *     VideoListItem:
  *       type: object
  *       properties:
- *         id:
+ *         videoId:
  *           type: string
  *           description: 영상 ID(BigInt → string)
  *           example: "10"
@@ -593,6 +1005,26 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *           type: integer
  *           nullable: true
  *           example: 120
+ *         rootCommentCount:
+ *           type: integer
+ *           description: 영상 일반 댓글 수(parentId=null)
+ *           example: 5
+ *         replyCount:
+ *           type: integer
+ *           description: 영상 답글 수(parentId!=null)
+ *           example: 3
+ *         feedbackCount:
+ *           type: integer
+ *           description: 영상 피드백 수(rootCommentCount + replyCount)
+ *           example: 8
+ *         reactionCount:
+ *           type: integer
+ *           description: 영상 리액션 수
+ *           example: 12
+ *         viewCount:
+ *           type: integer
+ *           description: 영상 조회 수(재생 play 이벤트의 고유 세션 수)
+ *           example: 8
  *         thumbnailUrl:
  *           type: string
  *           nullable: true
@@ -631,7 +1063,7 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *             video:
  *               type: object
  *               properties:
- *                 id:
+ *                 videoId:
  *                   type: string
  *                   example: "2"
  *                 title:
@@ -663,7 +1095,6 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *                   format: date-time
  *             timeline:
  *               type: object
- *               nullable: true
  *               properties:
  *                 reactions:
  *                   type: array
@@ -681,16 +1112,19 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *                   items:
  *                     type: object
  *                     properties:
- *                       id:
+ *                       commentId:
  *                         type: string
  *                       timestampMs:
  *                         type: integer
  *                       content:
  *                         type: string
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
  *                       user:
  *                         type: object
  *                         properties:
- *                           id:
+ *                           userId:
  *                             type: string
  *                           name:
  *                             type: string
@@ -721,4 +1155,20 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *               type: array
  *               items:
  *                 $ref: "#/components/schemas/VideoSlideTimelineItem"
+ *
+ *     VideoDeleteResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *         success:
+ *           type: object
+ *           properties:
+ *             videoId:
+ *               type: string
+ *               description: 삭제된 영상 ID(BigInt → string)
+ *               example: "2"
  */

@@ -49,16 +49,13 @@ export function countSlideReactions(slideId) {
   });
 }
 
-export function findSlideByIdWithOwner(slideId, userId) {
-  if (!userId) return null;
-
+export function findSlideById(slideId) {
   return prisma.slide.findFirst({
     where: {
       id: BigInt(slideId),
       isDeleted: false,
       project: {
         is: {
-          userId: BigInt(userId),
           isDeleted: false,
         },
       },
@@ -129,5 +126,38 @@ export function createVideoReaction({ userId, videoId, timestampMs, emojiType })
       timestampMs,
       emojiType,
     },
+  });
+}
+
+export function findProjectWithSlides(projectId) {
+  return prisma.project.findFirst({
+    where: {
+      id: projectId,
+      isDeleted: false,
+    },
+    select: {
+      id: true,
+      slides: {
+        where: {
+          isDeleted: false,
+        },
+        select: {
+          id: true,
+        },
+      },
+    },
+  });
+}
+
+export function countProjectSlideReactionsBySlideIds(slideIds) {
+  if (!slideIds.length) return [];
+  return prisma.reaction.groupBy({
+    by: ["emojiType"],
+    where: {
+      targetType: "slide",
+      targetId: { in: slideIds },
+      isDeleted: false,
+    },
+    _count: { _all: true },
   });
 }

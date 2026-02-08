@@ -1,1 +1,1 @@
-export const ALLOWED_EMOJIS = ["thumbs_up", "heart", "eyes", "clap"];
+export const ALLOWED_EMOJIS = ["fire", "good", "bad", "sleepy", "confused"];

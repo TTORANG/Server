@@ -39,6 +39,15 @@ export const getProjectExist = async (projectId, userId) => {
   });
 };
 
+export const countSlidesByIdsAndProjectId = async ({ projectId, slideIds }) => {
+  return prisma.slide.count({
+    where: {
+      id: { in: slideIds },
+      projectId,
+    },
+  });
+};
+
 export const updateSlideTitle = async (slideId, newTitle) => {
   return await prisma.slide.update({
     where: { id: BigInt(slideId) },

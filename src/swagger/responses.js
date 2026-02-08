@@ -17,31 +17,6 @@ export const components = {
         },
       },
     },
-    SocialLoginSuccess: {
-      type: "object",
-      properties: {
-        message: {
-          type: "string",
-          example: "소셜 로그인 성공!",
-        },
-        user: {
-          type: "object",
-          properties: {
-            id: { type: "string", example: "123" },
-            email: { type: "string", example: "user@example.com" },
-            name: { type: "string", example: "홍길동" },
-            sessionId: { type: "string", example: "106fbf2c-3357-40f7-..." },
-          },
-        },
-        tokens: {
-          type: "object",
-          properties: {
-            accessToken: { type: "string", example: "eyJhbGciOiJIUzI1NiIs..." },
-            refreshToken: { type: "string", example: "eyJhbGciOiJIUzI1NiIs..." },
-          },
-        },
-      },
-    },
     FailureResponse: {
       type: "object",
       properties: {
@@ -71,26 +46,21 @@ export const components = {
   },
   // 공통 응답
   responses: {
-    SocialLoginSuccess: {
-      description: "소셜 로그인 성공",
-      content: {
-        "application/json": {
+    SocialLoginRedirect: {
+      description: "소셜 로그인 성공 (프론트엔드 리다이렉트 및 쿠키 발급)",
+      headers: {
+        Location: {
           schema: {
-            $ref: "#/components/schemas/SuccessResponse",
+            type: "string",
+            description: "accessToken과 sessionId가 포함된 프론트엔드 URL",
+            example: "https://ttorang.com/auth/callback?accessToken=...&sessionId=...",
           },
-          example: {
-            resultType: "SUCCESS",
-            error: null,
-            success: {
-              message: "소셜 로그인 성공!",
-              user: {
-                id: "123",
-                email: "user@example.com",
-                name: "홍길동",
-                sessionId: "106fbf2c-3357-40f7-...",
-              },
-              tokens: { accessToken: "eyJhbGci...", refreshToken: "eyJhbGci..." },
-            },
+        },
+        "Set-Cookie": {
+          schema: {
+            type: "string",
+            description: "refreshToken이 포함된 HttpOnly 쿠키 (자동 저장)",
+            example: "refreshToken=...; HttpOnly; Secure; SameSite=Lax; Max-Age=604800",
           },
         },
       },
