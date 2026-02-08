@@ -47,14 +47,20 @@ export const components = {
   // 공통 응답
   responses: {
     SocialLoginRedirect: {
-      description: "소셜 로그인 성공 (프론트엔드 성공 페이지로 리다이렉트)",
+      description: "소셜 로그인 성공 (프론트엔드 리다이렉트 및 쿠키 발급)",
       headers: {
         Location: {
           schema: {
             type: "string",
-            description: "토큰과 세션 ID가 포함된 프론트엔드 URL",
-            example:
-              "https://ttorang.com/auth/callback?accessToken=...&refreshToken=...&sessionId=...",
+            description: "accessToken과 sessionId가 포함된 프론트엔드 URL",
+            example: "https://ttorang.com/auth/callback?accessToken=...&sessionId=...",
+          },
+        },
+        "Set-Cookie": {
+          schema: {
+            type: "string",
+            description: "refreshToken이 포함된 HttpOnly 쿠키 (자동 저장)",
+            example: "refreshToken=...; HttpOnly; Secure; SameSite=Lax; Max-Age=604800",
           },
         },
       },

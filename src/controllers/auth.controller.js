@@ -13,8 +13,9 @@ import {
  *     summary: 구글 소셜 로그인 콜백
  *     description: |
  *       구글 인증 완료 후 호출되는 엔드포인트입니다.
- *       성공 시 프론트엔드의 `/auth/callback` 페이지로 리다이렉트하며,
- *       토큰 정보를 URL 파라미터로 전달합니다.
+ *       성공 시 보안 강화를 위해 인증 정보를 다음과 같이 분할 전달합니다.
+ *         - **accessToken, sessionId**: URL 파라미터로 전달 (프론트엔드에서 수동 저장 필요)
+ *         - **refreshToken**: HttpOnly 쿠키로 설정 (브라우저가 자동 저장/관리)
  *     tags: [Auth]
  *     responses:
  *       302:
@@ -29,7 +30,9 @@ import {
  *     summary: 카카오 소셜 로그인 콜백
  *     description: |
  *       카카오 인증 완료 후 호출되는 엔드포인트입니다.
- *       성공 시 프론트엔드 주소로 리다이렉트됩니다.
+ *       성공 시 보안 강화를 위해 인증 정보를 다음과 같이 분할 전달합니다.
+ *         - **accessToken, sessionId**: URL 파라미터로 전달 (프론트엔드에서 수동 저장 필요)
+ *         - **refreshToken**: HttpOnly 쿠키로 설정 (브라우저가 자동 저장/관리)
  *     tags: [Auth]
  *     responses:
  *       302:
@@ -44,7 +47,9 @@ import {
  *     summary: 네이버 소셜 로그인 콜백
  *     description: |
  *       네이버 인증 완료 후 호출되는 엔드포인트입니다.
- *       성공 시 프론트엔드 주소로 리다이렉트됩니다.
+ *       성공 시 보안 강화를 위해 인증 정보를 다음과 같이 분할 전달합니다.
+ *         - **accessToken, sessionId**: URL 파라미터로 전달 (프론트엔드에서 수동 저장 필요)
+ *         - **refreshToken**: HttpOnly 쿠키로 설정 (브라우저가 자동 저장/관리)
  *     tags: [Auth]
  *     responses:
  *       302:
@@ -56,13 +61,22 @@ export const handleSocialLoginCallback = async (req, res, next) => {
   try {
     const { profile, provider } = req.user;
 
-    // 서비스 호출 (여기서 유저 확인 + 세션 저장 + 토큰 발급이 한 번에 일어남)
+    // 서비스 호출 ( 세션 저장 + 토큰 발급이 한 번에 일어남)
     const { user, tokens, sessionId } = await handleSocialLoginSuccess(profile, provider);
+
+    // refreshToken을 HttpOnly 쿠키에 설정
+    res.cookie("refreshToken", tokens.refreshToken, {
+      httpOnly: true, // 자바스크립트 접근 방지 (XSS 방어)
+      secure: process.env.NODE_ENV === "production", // HTTPS에서만 전송
+      sameSite: "Lax", // CSRF 방어와 리다이렉트 호환성 사이의 균형
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7일 (밀리초 단위)
+    });
 
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
     const redirectUrl = new URL("/auth/callback", frontendUrl);
+
+    // accessToken과 sessionId만 URL에 포함
     redirectUrl.searchParams.set("accessToken", tokens.accessToken);
-    redirectUrl.searchParams.set("refreshToken", tokens.refreshToken);
     redirectUrl.searchParams.set("sessionId", sessionId);
 
     return res.redirect(redirectUrl.toString());
