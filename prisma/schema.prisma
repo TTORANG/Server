@@ -185,7 +185,6 @@ model Reaction {
   project     Project?    @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([userId, targetType, targetId, emojiType], name: "uq_slide_reaction")
-  @@unique([userId, sessionId, targetType, targetId, timestampMs, emojiType], name: "uq_video_reaction")
   @@map("reaction")
 }
 

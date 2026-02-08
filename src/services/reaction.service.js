@@ -21,13 +21,12 @@ import {
   countProjectSlideReactionsBySlideIds,
   countSlideReactions,
   createReaction,
-  createVideoReaction,
   findProjectWithSlides,
   findReaction,
   findSlideById,
   findVideoReaction,
   updateReaction,
-  updateReactionIsDeleted,
+  upsertVideoReaction,
 } from "../repositories/reaction.repository.js";
 import { findVideoByIdWithProject } from "../repositories/video.repository.js";
 
@@ -83,7 +82,7 @@ export async function getSlideReactionSummary({ slideId }) {
 }
 
 // 영상 타임스탬프 리액션 생성
-export async function toggleVideoReaction({ videoId, emojiType, timestampMs, userId }) {
+export async function toggleVideoReaction({ videoId, emojiType, timestampMs, userId, active }) {
   let vid;
   try {
     vid = BigInt(videoId);
@@ -114,59 +113,49 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
   const existing = await findVideoReaction({
     userId,
     videoId: vid,
-    timestampMs: ts,
     emojiType,
   });
 
-  if (existing) {
-    const isDeleted = !existing.isDeleted;
+  // active를 주면 명시 상태 적용, 미전달 시 기존 토글 동작을 유지한다.
+  if (active !== undefined && typeof active !== "boolean") {
+    throw new InvalidParameterError({ active }, "active는 boolean 이어야 합니다.");
+  }
 
-    const updated = await updateReactionIsDeleted(existing.id, isDeleted);
+  const nextIsDeleted =
+    typeof active === "boolean" ? !active : existing ? !existing.isDeleted : false;
 
-    if (isDeleted) {
-      await eventBus.publish(EventTypes.REACTION_REMOVED, {
-        reactionId: updated.id,
-        projectId: video.projectId,
-        videoId: vid,
-      });
-    } else {
-      await eventBus.publish(EventTypes.REACTION_ADDED, {
-        reactionId: updated.id,
-        projectId: video.projectId,
-        videoId: vid,
-        userId,
-        emoji: emojiType,
-        timestampMs: ts,
-      });
-    }
+  const upserted = await upsertVideoReaction({
+    userId,
+    videoId: vid,
+    timestampMs: ts,
+    emojiType,
+    isDeleted: nextIsDeleted,
+  });
 
-    return videoReactionToggleResponseDTO({
-      reactionId: updated.id,
+  const prevActive = existing ? !existing.isDeleted : false;
+  const nextActive = !nextIsDeleted;
+
+  if (!prevActive && nextActive) {
+    await eventBus.publish(EventTypes.REACTION_ADDED, {
+      reactionId: upserted.id,
+      projectId: video.projectId,
       videoId: vid,
-      active: !isDeleted,
+      userId,
+      emoji: emojiType,
+      timestampMs: ts,
+    });
+  } else if (prevActive && !nextActive) {
+    await eventBus.publish(EventTypes.REACTION_REMOVED, {
+      reactionId: upserted.id,
+      projectId: video.projectId,
+      videoId: vid,
     });
   }
 
-  const created = await createVideoReaction({
-    userId,
-    videoId: vid,
-    timestampMs: ts,
-    emojiType,
-  });
-
-  await eventBus.publish(EventTypes.REACTION_ADDED, {
-    reactionId: created.id,
-    projectId: video.projectId,
-    videoId: vid,
-    userId,
-    emoji: emojiType,
-    timestampMs: ts,
-  });
-
   return videoReactionToggleResponseDTO({
-    reactionId: created.id,
+    reactionId: upserted.id,
     videoId: vid,
-    active: true,
+    active: nextActive,
   });
 }
 
