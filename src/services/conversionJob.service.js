@@ -4,14 +4,13 @@ import {
   updateJobToCompleted,
   updateJobToFailed,
   getJobById,
-} from "../repositories/conversion-job.repository.js";
-import { enqueueConversionTask } from "../queues/conversion-job.queue.js";
+} from "../repositories/conversionJob.repository.js";
+import { enqueueConversionTask } from "../queues/conversionJob.queue.js";
 import { pptxToImages } from "./conversion/pptxToImages.service.js";
 import { pdfToImages } from "./conversion/pdfToImages.service.js";
 import { generateThumbnail } from "./conversion/thumbnail.service.js";
 import { extractMetadata } from "./conversion/metadata.service.js";
 import { videoTranscode } from "./conversion/videoTranscode.service.js";
-import { prisma } from "../db.config.js";
 
 /**
  * 작업 생성 및 큐에 추가

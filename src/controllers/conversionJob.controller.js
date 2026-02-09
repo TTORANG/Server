@@ -1,4 +1,4 @@
-import { processJob } from "../services/conversion-job.service.js";
+import { processJob } from "../services/conversionJob.service.js";
 
 /**
  * Cloud Tasks에서 호출되는 작업 처리 엔드포인트
