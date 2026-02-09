@@ -7,6 +7,7 @@ import {
   createProject,
   deleteProject,
   getProjectList,
+  getProjectTitle,
   updateProjectTitle,
 } from "../repositories/project.repository.js";
 import { startConversionPipeline } from "./conversionJob.service.js";
@@ -34,6 +35,17 @@ export const processUpdateProjectName = async (projectId, userId, title) => {
     if (error.code === "P2025") throw new ProjectNotFoundError();
     throw error;
   }
+};
+
+// 프로젝트 이름 조회
+export const processGetProjectName = async (projectId) => {
+  const project = await getProjectTitle(projectId);
+
+  if (!project) {
+    throw new ProjectNotFoundError();
+  }
+
+  return project;
 };
 
 // 프로젝트 삭제

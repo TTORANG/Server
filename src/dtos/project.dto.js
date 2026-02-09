@@ -17,6 +17,14 @@ export const projectResponseDTO = (project) => {
   };
 };
 
+export const projectNameResponseDTO = (project) => {
+  return {
+    projectId: project.id.toString(),
+    title: project.title,
+    createdAt: project.createdAt,
+  };
+};
+
 export const projectListResponseDTO = (projects, total, page, limit) => {
   const totalPages = Math.ceil(total / limit);
 
