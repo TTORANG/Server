@@ -30,6 +30,23 @@ import {
 } from "../repositories/reaction.repository.js";
 import { findVideoByIdWithProject } from "../repositories/video.repository.js";
 
+async function publishSlideReactionEvent({
+  isActive,
+  reactionId,
+  projectId,
+  slideId,
+  userId,
+  emojiType,
+}) {
+  await eventBus.publish(isActive ? EventTypes.REACTION_ADDED : EventTypes.REACTION_REMOVED, {
+    reactionId,
+    projectId,
+    slideId: BigInt(slideId),
+    userId,
+    emoji: emojiType,
+  });
+}
+
 // 리액션 추가 및 취소
 export async function toggleSlideReaction({ slideId, emojiType, userId }) {
   if (!ALLOWED_EMOJIS.includes(emojiType)) {
@@ -58,23 +75,14 @@ export async function toggleSlideReaction({ slideId, emojiType, userId }) {
       await updateReaction(existing.id, newIsDeleted);
       const nextActive = !newIsDeleted;
 
-      if (nextActive) {
-        await eventBus.publish(EventTypes.REACTION_ADDED, {
-          reactionId: existing.id,
-          projectId: slide.projectId,
-          slideId: BigInt(slideId),
-          userId,
-          emoji: emojiType,
-        });
-      } else {
-        await eventBus.publish(EventTypes.REACTION_REMOVED, {
-          reactionId: existing.id,
-          projectId: slide.projectId,
-          slideId: BigInt(slideId),
-          userId,
-          emoji: emojiType,
-        });
-      }
+      await publishSlideReactionEvent({
+        isActive: nextActive,
+        reactionId: existing.id,
+        projectId: slide.projectId,
+        slideId,
+        userId,
+        emojiType,
+      });
 
       return { active: nextActive };
     }
@@ -84,12 +92,13 @@ export async function toggleSlideReaction({ slideId, emojiType, userId }) {
       projectId: slide.projectId,
     });
 
-    await eventBus.publish(EventTypes.REACTION_ADDED, {
+    await publishSlideReactionEvent({
+      isActive: true,
       reactionId: createdReaction.id,
       projectId: slide.projectId,
-      slideId: BigInt(slideId),
+      slideId,
       userId,
-      emoji: emojiType,
+      emojiType,
     });
 
     return { active: true };
