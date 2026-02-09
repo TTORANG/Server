@@ -38,13 +38,19 @@ async function publishSlideReactionEvent({
   userId,
   emojiType,
 }) {
-  await eventBus.publish(isActive ? EventTypes.REACTION_ADDED : EventTypes.REACTION_REMOVED, {
+  const eventType = isActive ? EventTypes.REACTION_ADDED : EventTypes.REACTION_REMOVED;
+  const payload = {
     reactionId,
     projectId,
-    slideId: BigInt(slideId),
-    userId,
-    emoji: emojiType,
-  });
+  };
+
+  if (isActive) {
+    payload.slideId = BigInt(slideId);
+    payload.userId = userId;
+    payload.emoji = emojiType;
+  }
+
+  await eventBus.publish(eventType, payload);
 }
 
 // 리액션 추가 및 취소
@@ -190,7 +196,6 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
     await eventBus.publish(EventTypes.REACTION_REMOVED, {
       reactionId: upserted.id,
       projectId: video.projectId,
-      videoId: vid,
     });
   }
 

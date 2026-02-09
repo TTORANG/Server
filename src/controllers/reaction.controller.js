@@ -30,7 +30,7 @@ export async function toggleSlideReactionController(req, res, next) {
    *       - 활성화 시 Socket Event: `new-reaction`
    *       - 비활성화 시 Socket Event: `reaction-removed`
    *       - Payload(활성화): `{ reactionId, projectId, slideId, userId, emoji }`
-   *       - Payload(비활성화): `{ reactionId, projectId, slideId, userId, emoji }`
+   *       - Payload(비활성화): `{ reactionId, projectId }`
    *     tags:
    *       - Reaction
    *     security:
@@ -278,7 +278,7 @@ export async function handleToggleVideoReaction(req, res, next) {
    *       - 활성화 시 Socket Event: `new-reaction`
    *       - 비활성화 시 Socket Event: `reaction-removed`
    *       - Payload(활성화): `{ reactionId, projectId, videoId, userId, emoji, timestampMs }`
-   *       - Payload(비활성화): `{ reactionId, projectId, videoId }`
+   *       - Payload(비활성화): `{ reactionId, projectId }`
    *     tags: [Reaction]
    *     security:
    *       - bearerAuth: []
