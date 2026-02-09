@@ -1,6 +1,11 @@
-import { reactionMarkersResponseDTO, ToggleReactionDto } from "../dtos/reaction.dto.js";
+import {
+  reactionBucketsResponseDTO,
+  reactionMarkersResponseDTO,
+  ToggleReactionDto,
+} from "../dtos/reaction.dto.js";
 import {
   getProjectSlidesReactionSummary,
+  getReactionBuckets,
   getReactionMarkers,
   getSlideReactionSummary,
   getVideoReactionsByTime,
@@ -480,6 +485,82 @@ export const getVideoReactionMarkers = async (req, res, next) => {
   }
 };
 
+// 영상 리액션 버킷별 상세 집계
+export const getVideoReactionBuckets = async (req, res, next) => {
+  /**
+   * @swagger
+   * /videos/{videoId}/reactions/timeline/buckets:
+   *   get:
+   *     summary: 타임라인 버킷별 전체 리액션 조회
+   *     description: |
+   *       영상 전체 리액션을 intervalMs 단위 버킷으로 묶어,
+   *       각 구간의 전체 이모지별 개수와 totalCount를 반환합니다.
+   *
+   *       - 기본 intervalMs=5000 (5초)
+   *       - timestampMs가 없는 리액션은 집계에서 제외됩니다.
+   *       - 버킷의 reactions는 허용 이모지 키를 모두 포함하며, 없는 값은 0입니다.
+   *       - 인증된 사용자라면 리소스 소유자와 무관하게 조회할 수 있습니다.
+   *     tags: [Reaction]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: videoId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: 영상 ID (양의 정수)
+   *       - in: query
+   *         name: intervalMs
+   *         required: false
+   *         schema:
+   *           type: integer
+   *           default: 5000
+   *         description: 버킷 간격(ms). 기본 5000
+   *     responses:
+   *       200:
+   *         description: 버킷 집계 조회 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ReactionBucketsResponse"
+   *       400:
+   *         description: 잘못된 요청(videoId/intervalMs)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       404:
+   *         description: 영상을 찾을 수 없음(미존재 또는 삭제됨)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   */
+  try {
+    const intervalMs = req.query.intervalMs ?? 5000;
+
+    const result = await getReactionBuckets({
+      videoId: req.params.videoId,
+      intervalMs,
+    });
+
+    res.status(200).json({
+      resultType: "SUCCESS",
+      error: null,
+      success: reactionBucketsResponseDTO(result),
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
 // 시간대별 리액션 조회
 export const getVideoReactionsByTimeController = async (req, res, next) => {
   /**
@@ -784,6 +865,49 @@ export async function getProjectSlidesReactionSummaryController(req, res, next) 
  *           example: null
  *         success:
  *           $ref: "#/components/schemas/ReactionMarkersSuccess"
+ *
+ *     ReactionBucket:
+ *       type: object
+ *       properties:
+ *         timestampMs:
+ *           type: integer
+ *           example: 5000
+ *         totalCount:
+ *           type: integer
+ *           example: 11
+ *         reactions:
+ *           type: object
+ *           additionalProperties:
+ *             type: integer
+ *           example:
+ *             fire: 7
+ *             good: 2
+ *             bad: 0
+ *             sleepy: 1
+ *             confused: 1
+ *
+ *     ReactionBucketsSuccess:
+ *       type: object
+ *       properties:
+ *         intervalMs:
+ *           type: integer
+ *           example: 5000
+ *         buckets:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/ReactionBucket"
+ *
+ *     ReactionBucketsResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *           example: null
+ *         success:
+ *           $ref: "#/components/schemas/ReactionBucketsSuccess"
  *
  *     VideoReactionGroupItem:
  *       type: object

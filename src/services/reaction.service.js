@@ -254,6 +254,65 @@ export const getReactionMarkers = async ({ videoId, intervalMs }) => {
   return { intervalMs: safeInterval, markers };
 };
 
+// 영상 버킷별 전체 리액션 집계
+export const getReactionBuckets = async ({ videoId, intervalMs }) => {
+  let vid;
+  try {
+    vid = BigInt(videoId);
+  } catch {
+    throw new InvalidParameterError({ videoId: String(videoId) });
+  }
+  if (vid <= 0n) {
+    throw new InvalidParameterError({ videoId: String(videoId) });
+  }
+
+  const safeInterval =
+    intervalMs === undefined || intervalMs === null ? 5000 : Number(intervalMs);
+  if (!Number.isInteger(safeInterval) || safeInterval <= 0) {
+    throw new InvalidParameterError({ intervalMs });
+  }
+
+  const video = await findVideoByIdWithProject(vid);
+  if (!video) {
+    throw new VideoNotFoundError({ videoId: String(videoId) });
+  }
+
+  const rows = await aggregateVideoReactionsByBucket({
+    videoId: vid,
+    intervalMs: safeInterval,
+  });
+
+  const createEmptyReactionMap = () => {
+    const map = {};
+    ALLOWED_EMOJIS.forEach((emojiType) => {
+      map[emojiType] = 0;
+    });
+    return map;
+  };
+
+  const byBucket = new Map();
+  for (const row of rows) {
+    const bucketMs = Number(row.bucketMs);
+    const count = Number(row.count);
+
+    if (!byBucket.has(bucketMs)) {
+      byBucket.set(bucketMs, {
+        timestampMs: bucketMs,
+        totalCount: 0,
+        reactions: createEmptyReactionMap(),
+      });
+    }
+
+    const bucket = byBucket.get(bucketMs);
+    bucket.reactions[row.emojiType] = count;
+    bucket.totalCount += count;
+  }
+
+  const buckets = [...byBucket.values()].sort((a, b) => a.timestampMs - b.timestampMs);
+
+  return { intervalMs: safeInterval, buckets };
+};
+
 // 시간대별 리액션 조회
 export const getVideoReactionsByTime = async ({
   videoId,
