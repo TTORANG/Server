@@ -43,7 +43,7 @@ import {
  *               videoId:
  *                 type: string
  *                 example: "456"
- *                 description: scope가 slides_script_video일 경우 필수인 영상 ID
+ *                 description: scope가 slides_script_video일 경우 필수, slides_script일 경우 선택 사항입니다.
  *               expiredAt:
  *                 type: string
  *                 format: date-time
@@ -159,6 +159,12 @@ export const handleCreateShareLink = async (req, res, next) => {
  *                       slideNum: 1
  *                       imageUrl: "https://..."
  *                       scriptText: "안녕하세요 발표자입니다."
+ *                       timestampMs: 0
+ *                     - slideId: "2"
+ *                       slideNum: 2
+ *                       imageUrl: "https://..."
+ *                       scriptText: "두 번째 슬라이드입니다."
+ *                       timestampMs: 45000
  *                   video:
  *                     videoId: "456"
  *                     videoUrl: "https://..."
