@@ -206,8 +206,7 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
   });
 }
 
-// 영상 리액션 집계
-export const getReactionMarkers = async ({ videoId, intervalMs }) => {
+function validateVideoTimelineParams({ videoId, intervalMs }) {
   let vid;
   try {
     vid = BigInt(videoId);
@@ -217,12 +216,20 @@ export const getReactionMarkers = async ({ videoId, intervalMs }) => {
   if (vid <= 0n) {
     throw new InvalidParameterError({ videoId: String(videoId) });
   }
-  // interval 검증
+
   const safeInterval =
     intervalMs === undefined || intervalMs === null ? 5000 : Number(intervalMs);
   if (!Number.isInteger(safeInterval) || safeInterval <= 0) {
     throw new InvalidParameterError({ intervalMs });
   }
+
+  return { vid, safeInterval };
+}
+
+// 영상 리액션 집계
+export const getReactionMarkers = async ({ videoId, intervalMs }) => {
+  const { vid, safeInterval } = validateVideoTimelineParams({ videoId, intervalMs });
+
   // video 존재 검증
   const video = await findVideoByIdWithProject(vid);
   if (!video) {
@@ -252,6 +259,47 @@ export const getReactionMarkers = async ({ videoId, intervalMs }) => {
   const markers = [...byBucket.values()].sort((a, b) => a.timestampMs - b.timestampMs);
 
   return { intervalMs: safeInterval, markers };
+};
+
+// 영상 버킷별 전체 리액션 집계
+export const getReactionBuckets = async ({ videoId, intervalMs }) => {
+  const { vid, safeInterval } = validateVideoTimelineParams({ videoId, intervalMs });
+
+  const video = await findVideoByIdWithProject(vid);
+  if (!video) {
+    throw new VideoNotFoundError({ videoId: String(videoId) });
+  }
+
+  const rows = await aggregateVideoReactionsByBucket({
+    videoId: vid,
+    intervalMs: safeInterval,
+  });
+
+  const createEmptyReactionMap = () => {
+    return Object.fromEntries(ALLOWED_EMOJIS.map((emojiType) => [emojiType, 0]));
+  };
+
+  const byBucket = new Map();
+  for (const row of rows) {
+    const bucketMs = Number(row.bucketMs);
+    const count = Number(row.count);
+
+    if (!byBucket.has(bucketMs)) {
+      byBucket.set(bucketMs, {
+        timestampMs: bucketMs,
+        totalCount: 0,
+        reactions: createEmptyReactionMap(),
+      });
+    }
+
+    const bucket = byBucket.get(bucketMs);
+    bucket.reactions[row.emojiType] = count;
+    bucket.totalCount += count;
+  }
+
+  const buckets = [...byBucket.values()].sort((a, b) => a.timestampMs - b.timestampMs);
+
+  return { intervalMs: safeInterval, buckets };
 };
 
 // 시간대별 리액션 조회

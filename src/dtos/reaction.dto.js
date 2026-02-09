@@ -15,6 +15,15 @@ export const reactionMarkersResponseDTO = ({ intervalMs, markers }) => ({
   })),
 });
 
+export const reactionBucketsResponseDTO = ({ intervalMs, buckets }) => ({
+  intervalMs,
+  buckets: buckets.map((bucket) => ({
+    timestampMs: bucket.timestampMs,
+    totalCount: bucket.totalCount,
+    reactions: bucket.reactions,
+  })),
+});
+
 export const slideReactionSummaryResponseDTO = ({ slideId, rows }) => {
   const summary = {};
   ALLOWED_EMOJIS.forEach((e) => (summary[e] = 0));
