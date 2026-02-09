@@ -21,7 +21,7 @@ export const createShareLink = async (data) => {
 export const findVideoInProject = async (projectId, videoId) => {
   return await prisma.video.findFirst({
     where: {
-      id: videoId ? BigInt(videoId) : undefined,
+      id: BigInt(videoId),
       projectId: BigInt(projectId),
       status: "ready",
     },
