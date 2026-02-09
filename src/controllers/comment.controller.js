@@ -25,6 +25,10 @@ export const postSlideComment = async (req, res, next) => {
    *     summary: 슬라이드 댓글 작성
    *     description: |
    *       특정 슬라이드에 댓글을 작성합니다.
+   *
+   *       성공 시 실시간 이벤트가 발행됩니다.
+   *       - Socket Event: `new-comment`
+   *       - Payload: `{ commentId, slideId, userId, content, parentCommentId, timestampMs, createdAt }`
    *     tags: [Comment]
    *     security:
    *       - bearerAuth: []
@@ -154,6 +158,10 @@ export const patchComment = async (req, res, next) => {
    *
    *       - 본인 댓글/답글만 수정할 수 있습니다.
    *       - 공백/빈 문자열은 허용하지 않습니다.
+   *
+   *       성공 시 실시간 이벤트가 발행됩니다.
+   *       - Socket Event: `comment-updated`
+   *       - Payload: `{ commentId, content, updatedAt, parentCommentId }`
    *     tags: [Comment]
    *     security:
    *       - bearerAuth: []
@@ -306,6 +314,10 @@ export const deleteCommentController = async (req, res, next) => {
    *
    *       - 본인 댓글/답글만 삭제할 수 있습니다.
    *       - 삭제 시 실제 row 삭제가 아니라 `isDeleted=true`로 처리됩니다.
+   *
+   *       성공 시 실시간 이벤트가 발행됩니다.
+   *       - Socket Event: `comment-deleted`
+   *       - Payload: `{ commentId, parentCommentId }`
    *     tags: [Comment]
    *     security:
    *       - bearerAuth: []
@@ -545,6 +557,10 @@ export async function handleCreateVideoComment(req, res, next) {
    *       - 본 API는 인증(JWT)이 필요합니다.
    *       - `content`는 공백만 있는 문자열은 허용하지 않습니다.
    *       - `timestampMs`는 0 이상의 정수(ms)만 허용합니다.
+   *
+   *       성공 시 실시간 이벤트가 발행됩니다.
+   *       - Socket Event: `new-comment`
+   *       - Payload: `{ commentId, videoId, userId, content, parentCommentId, timestampMs, createdAt }`
    *     tags: [Comment]
    *     security:
    *       - bearerAuth: []

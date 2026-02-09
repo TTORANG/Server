@@ -60,7 +60,10 @@ export function findSlideById(slideId) {
         },
       },
     },
-    select: { id: true },
+    select: {
+      id: true,
+      projectId: true,
+    },
   });
 }
 

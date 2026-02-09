@@ -22,9 +22,12 @@ export const broadcastNewComment = (data) => {
     SocketEvents.NEW_COMMENT,
     encode({
       commentId: data.commentId,
+      slideId: data.slideId,
       videoId: data.videoId,
       userId: data.userId,
       content: data.content,
+      parentCommentId: data.parentCommentId ?? null,
+      timestampMs: data.timestampMs ?? null,
       createdAt: data.createdAt,
     })
   );
@@ -40,6 +43,24 @@ export const broadcastCommentDeleted = (data) => {
     SocketEvents.COMMENT_DELETED,
     encode({
       commentId,
+      parentCommentId: data.parentCommentId ?? null,
+    })
+  );
+};
+
+export const broadcastCommentUpdated = (data) => {
+  const { projectId, commentId } = data;
+
+  if (!projectId || !commentId) return;
+
+  emitToRoom(
+    `project:${projectId}`,
+    SocketEvents.COMMENT_UPDATED,
+    encode({
+      commentId,
+      content: data.content,
+      updatedAt: data.updatedAt,
+      parentCommentId: data.parentCommentId ?? null,
     })
   );
 };
@@ -57,10 +78,11 @@ export const broadcastNewReaction = (data) => {
     SocketEvents.NEW_REACTION,
     encode({
       reactionId: data.reactionId,
+      slideId: data.slideId,
       videoId: data.videoId,
       userId: data.userId,
       emoji: data.emoji,
-      timestamp: data.timestamp,
+      timestampMs: data.timestampMs,
     })
   );
 };

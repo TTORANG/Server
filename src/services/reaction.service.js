@@ -56,10 +56,42 @@ export async function toggleSlideReaction({ slideId, emojiType, userId }) {
     if (existing) {
       const newIsDeleted = !existing.isDeleted;
       await updateReaction(existing.id, newIsDeleted);
-      return { active: !newIsDeleted };
+      const nextActive = !newIsDeleted;
+
+      if (nextActive) {
+        await eventBus.publish(EventTypes.REACTION_ADDED, {
+          reactionId: existing.id,
+          projectId: slide.projectId,
+          slideId: BigInt(slideId),
+          userId,
+          emoji: emojiType,
+        });
+      } else {
+        await eventBus.publish(EventTypes.REACTION_REMOVED, {
+          reactionId: existing.id,
+          projectId: slide.projectId,
+          slideId: BigInt(slideId),
+          userId,
+          emoji: emojiType,
+        });
+      }
+
+      return { active: nextActive };
     }
 
-    await createReaction(where);
+    const createdReaction = await createReaction({
+      ...where,
+      projectId: slide.projectId,
+    });
+
+    await eventBus.publish(EventTypes.REACTION_ADDED, {
+      reactionId: createdReaction.id,
+      projectId: slide.projectId,
+      slideId: BigInt(slideId),
+      userId,
+      emoji: emojiType,
+    });
+
     return { active: true };
   } catch (e) {
     if (e instanceof BaseError) throw e;
