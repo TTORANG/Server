@@ -22,18 +22,18 @@ router.post("/", isLogin, handleCreateProject);
 // 프로젝트 목록 조회/검색
 router.get("/", isLogin, handleGetProjectList);
 
-// 프로젝트 이름 업데이트
-router.patch("/:projectId", isLogin, handleUpdateProjectName);
-
-// 프로젝트 이름 조회
-router.get("/:projectId", isLogin, handleGetProjectName);
-
-// 프로젝트 삭제
-router.delete("/:projectId", isLogin, handleDeleteProject);
-
 router.get("/:projectId/analytics/summary", isLogin, handleGetSummary);
 router.get("/:projectId/analytics/slides", isLogin, handleGetSlideAnalytics);
 router.get("/:projectId/analytics/slide-retention", isLogin, handleGetSlideRetention);
 router.get("/:projectId/analytics/recent-comments", isLogin, handleGetRecentComments);
+
+// 프로젝트 이름 업데이트
+router.patch("/:projectId", isLogin, handleUpdateProjectName);
+
+// 프로젝트 삭제
+router.delete("/:projectId", isLogin, handleDeleteProject);
+
+// 프로젝트 이름 조회
+router.get("/:projectId", isLogin, handleGetProjectName);
 
 export default router;
