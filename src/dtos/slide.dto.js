@@ -1,3 +1,5 @@
+import { toPublicStorageUrl } from "../utils/storageUrl.util.js";
+
 const slideAssetMapper = (slide) => {
   let mainAsset = null;
   for (const asset of slide.assets) {
@@ -22,7 +24,7 @@ export const slideListResponseDTO = (slides) => {
       projectId: slide.projectId.toString(),
       title: slide.title || `슬라이드 ${index + 1}`,
       slideNum: slide.slideNum ? Number(slide.slideNum) : null,
-      imageUrl: mainAsset ? mainAsset.url : null,
+      imageUrl: toPublicStorageUrl(mainAsset ? mainAsset.url : null),
       createdAt: slide.createdAt,
       updatedAt: slide.updatedAt,
     };
@@ -36,7 +38,7 @@ export const slideResponseDTO = (slide) => {
     slideId: slide.id.toString(),
     title: slide.title,
     slideNum: slide.slideNum ? Number(slide.slideNum) : null,
-    imageUrl: mainAsset ? mainAsset.url : null,
+    imageUrl: toPublicStorageUrl(mainAsset ? mainAsset.url : null),
     updatedAt: slide.updatedAt,
   };
 };
@@ -49,7 +51,7 @@ export const slideDetailResponseDTO = (slide, prevId, nextId) => {
     projectId: slide.projectId.toString(),
     title: slide.title || `슬라이드 ${slide.slideNum}`,
     slideNum: slide.slideNum ? Number(slide.slideNum) : null,
-    imageUrl: mainAsset ? mainAsset.url : null,
+    imageUrl: toPublicStorageUrl(mainAsset ? mainAsset.url : null),
     prevSlideId: prevId,
     nextSlideId: nextId,
     updatedAt: slide.updatedAt,
