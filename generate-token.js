@@ -11,9 +11,9 @@ if (!secret) {
 }
 
 const payload = {
-  id: "4",
-  email: "test@example.com",
-  sessionId: "df1b8637-b2ca-45ce-a8fc-72b7c2b4b029",
+  id: "1",
+  email: "test1@example.com",
+  sessionId: "a0000000-0000-0000-0000-000000000001",
 };
 
 // 200시간 = 200 * 3600초 (문자열 "200h" 파싱 이슈 방지를 위해 초 단위 숫자 사용)

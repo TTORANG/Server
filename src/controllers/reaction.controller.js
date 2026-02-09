@@ -253,18 +253,19 @@ export async function handleToggleVideoReaction(req, res, next) {
    * @swagger
    * /videos/{videoId}/reactions:
    *   post:
-   *     summary: 영상 타임스탬프 리액션 생성/토글
+   *     summary: 영상 타임스탬프 리액션 생성/상태 설정
    *     description: |
-   *       특정 영상의 특정 시점(timestampMs)에 대해 이모지 리액션을 **생성 또는 토글(활성/비활성)** 합니다.
+   *       특정 영상의 특정 시점(timestampMs)에 대해 이모지 리액션을 생성/갱신합니다.
    *
-   *       - 동일 사용자(userId) + 동일 영상(videoId) + 동일 timestampMs + 동일 emojiType 조합이 이미 존재하면,
-   *         `isDeleted`를 토글하여 활성/비활성 상태를 변경합니다.
-   *       - 존재하지 않으면 새 리액션을 생성합니다.
+   *       - 동일 사용자(userId) + 동일 영상(videoId) + 동일 emojiType row를 기준으로 동작합니다.
+   *       - `active`가 전달되면 마지막 요청의 `active`/`timestampMs`로 UPSERT 덮어씁니다.
+   *       - `active`가 없으면 하위 호환을 위해 기존 토글 방식으로 동작합니다.
    *
    *       **주의사항**
    *       - 본 API는 인증(JWT)이 필요합니다.
    *       - 인증된 사용자라면 리소스 소유자와 무관하게 호출할 수 있습니다.
    *       - `timestampMs`는 필수이며 0 이상의 정수(ms)만 허용합니다.
+   *       - `active`는 선택값이며 boolean입니다.
    *       - `emojiType`은 문자열이며, 서버/클라이언트에서 합의된 타입을 사용해야 합니다.
    *     tags: [Reaction]
    *     security:
@@ -370,12 +371,13 @@ export async function handleToggleVideoReaction(req, res, next) {
    */
 
   try {
-    const { emojiType, timestampMs } = req.body;
+    const { emojiType, timestampMs, active } = req.body;
 
     const result = await toggleVideoReaction({
       videoId: req.params.videoId,
       emojiType,
       timestampMs,
+      active,
       userId: req.user.id,
     });
 
@@ -714,6 +716,14 @@ export async function getProjectSlidesReactionSummaryController(req, res, next) 
  *           type: integer
  *           description: 현재 재생 위치(ms)
  *           example: 12500
+ *         active:
+ *           type: boolean
+ *           description: |
+ *             리액션 상태를 명시적으로 설정합니다.
+ *             - true: 활성
+ *             - false: 비활성
+ *             미전달 시 레거시 토글 동작
+ *           example: true
  *
  *     VideoReactionToggleResponse:
  *       type: object

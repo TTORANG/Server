@@ -98,33 +98,38 @@ export const aggregateVideoReactionsByTimeWindow = async ({ videoId, startMs, en
   });
 };
 
-export function findVideoReaction({ userId, videoId, timestampMs, emojiType }) {
+export function findVideoReaction({ userId, videoId, emojiType }) {
   return prisma.reaction.findFirst({
     where: {
       userId,
       targetType: "video",
       targetId: BigInt(videoId),
-      timestampMs,
       emojiType,
     },
   });
 }
 
-export function updateReactionIsDeleted(reactionId, isDeleted) {
-  return prisma.reaction.update({
-    where: { id: reactionId },
-    data: { isDeleted },
-  });
-}
-
-export function createVideoReaction({ userId, videoId, timestampMs, emojiType }) {
-  return prisma.reaction.create({
-    data: {
+export function upsertVideoReaction({ userId, videoId, timestampMs, emojiType, isDeleted }) {
+  return prisma.reaction.upsert({
+    where: {
+      uq_slide_reaction: {
+        userId,
+        targetType: "video",
+        targetId: BigInt(videoId),
+        emojiType,
+      },
+    },
+    create: {
       userId,
       targetType: "video",
       targetId: BigInt(videoId),
       timestampMs,
       emojiType,
+      isDeleted,
+    },
+    update: {
+      timestampMs,
+      isDeleted,
     },
   });
 }
