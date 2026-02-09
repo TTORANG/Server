@@ -7,7 +7,7 @@ import { googleStrategy, jwtStrategy, kakaoStrategy, naverStrategy } from "./aut
 import swaggerUi from "swagger-ui-express";
 import { specs } from "./swagger.config.js";
 
-import { handleProcessJob } from "./controllers/conversion-job.controller.js";
+import { handleProcessJob } from "./controllers/conversionJob.controller.js";
 
 import { createServer } from "http";
 

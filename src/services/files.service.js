@@ -1,7 +1,7 @@
 import { ALLOWED_CONTENT_TYPES, MAX_SIZE_BYTES } from "../constants/files.js";
 import { prisma } from "../db.config.js";
 import { InvalidUploadError } from "../errors/files.error.js";
-import { extFromContentType } from "../utils/file-ext.util.js";
+import { extFromContentType } from "../utils/fileExt.util.js";
 import crypto from "crypto";
 import { uploadBufferToGCS } from "./gcs.service.js";
 import { startConversionPipeline } from "./conversionJob.service.js";
