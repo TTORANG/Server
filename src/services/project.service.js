@@ -9,7 +9,7 @@ import {
   getProjectList,
   updateProjectTitle,
 } from "../repositories/project.repository.js";
-import { startConversionPipeline } from "./conversion-job.service.js";
+import { startConversionPipeline } from "./conversionJob.service.js";
 // 프로젝트 생성
 export const processCreateProject = async (userId, projectData) => {
   const { title, uploadedFileId } = projectData;

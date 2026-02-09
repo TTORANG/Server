@@ -1,5 +1,5 @@
 import { InvalidUploadError } from "../errors/files.error.js";
-import { startVideoEncodingPipeline } from "./conversion-job.service.js";
+import { startVideoEncodingPipeline } from "./conversionJob.service.js";
 import {
   InvalidParameterError,
   InvalidVideoChunkError,

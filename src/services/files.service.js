@@ -4,7 +4,7 @@ import { InvalidUploadError } from "../errors/files.error.js";
 import { extFromContentType } from "../utils/file-ext.util.js";
 import crypto from "crypto";
 import { uploadBufferToGCS } from "./gcs.service.js";
-import { startConversionPipeline } from "./conversion-job.service.js";
+import { startConversionPipeline } from "./conversionJob.service.js";
 
 export async function uploadPresentationAndCreateProject({ userId, title, file }) {
   if (!file) {
