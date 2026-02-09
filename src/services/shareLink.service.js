@@ -9,6 +9,7 @@ import {
 import { createPageView } from "../repositories/analytics.repository.js";
 import {
   createShareLink,
+  findExistingLink,
   findProjectById,
   findShareLinkWithContent,
   findVideoInProject,
@@ -42,6 +43,17 @@ export const processCreateShareLink = async (projectId, shareData) => {
     }
   }
 
+  const existingLink = await findExistingLink(projectId, scope, videoId);
+
+  const baseUrl = process.env.SERVER_URL || process.env.LOCAL_URL;
+
+  if (existingLink) {
+    return {
+      ...existingLink,
+      shareUrl: `${baseUrl}/share/${existingLink.shareToken}`,
+    };
+  }
+
   const shareToken = uuidv4(); // 공유 링크에 사용할 토큰
 
   // 기본 만료일 : 7일
@@ -50,13 +62,12 @@ export const processCreateShareLink = async (projectId, shareData) => {
 
   const newLink = await createShareLink({
     projectId,
-    videoId: scope === SCOPE_VIDEO ? videoId : null,
+    videoId: videoId ? videoId : null,
     scope,
     shareToken,
     expiredAt: shareData.expiredAt || defaultExpiredAt,
   });
 
-  const baseUrl = process.env.SERVER_URL || process.env.LOCAL_URL;
   const shareUrl = `${baseUrl}/share/${shareToken}`;
 
   return {
@@ -110,15 +121,23 @@ export const processGetShareContent = async (shareToken, sessionId = null) => {
     sessionId: currentSessionId,
   });
 
-  const { scope, project, video } = shareLink;
-  const content = {
-    title: project.title,
-    slides: project.slides.map((slide) => ({
+  const { scope, project, video, videoId } = shareLink;
+
+  const slides = project.slides.map((slide) => {
+    const durationInfo = slide.slideDurations?.find((sd) => String(sd.videoId) === String(videoId));
+
+    return {
       slideId: slide.id.toString(),
-      slideNum: slide.slideNum,
+      slideNum: Number(slide.slideNum),
       imageUrl: slide.assets[0]?.url || null,
       scriptText: slide.script?.scriptText || "",
-    })),
+      timestampMs: durationInfo ? durationInfo.totalDurationMs : null,
+    };
+  });
+
+  const content = {
+    title: project.title,
+    slides: slides,
   };
 
   if (scope === SCOPE_VIDEO && video) {
