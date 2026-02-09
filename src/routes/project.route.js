@@ -4,6 +4,7 @@ import {
   handleCreateProject,
   handleDeleteProject,
   handleGetProjectList,
+  handleGetProjectName,
   handleUpdateProjectName,
 } from "../controllers/project.controller.js";
 import {
@@ -23,6 +24,9 @@ router.get("/", isLogin, handleGetProjectList);
 
 // 프로젝트 이름 업데이트
 router.patch("/:projectId", isLogin, handleUpdateProjectName);
+
+// 프로젝트 이름 조회
+router.get("/:projectId", isLogin, handleGetProjectName);
 
 // 프로젝트 삭제
 router.delete("/:projectId", isLogin, handleDeleteProject);

@@ -1,12 +1,14 @@
 import {
   createProjectResponseDTO,
   projectListResponseDTO,
+  projectNameResponseDTO,
   projectResponseDTO,
 } from "../dtos/project.dto.js";
 import {
   processCreateProject,
   processDeleteProject,
   processGetProjectList,
+  processGetProjectName,
   processUpdateProjectName,
 } from "../services/project.service.js";
 
@@ -305,6 +307,63 @@ export const handleGetProjectList = async (req, res, next) => {
       resultType: "SUCCESS",
       error: null,
       success: projectListResponseDTO(result.projects, result.total, result.page, result.limit),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @swagger
+ * /presentations/{projectId}:
+ *   get:
+ *     summary: 프로젝트 제목 조회
+ *     description: 특정 프로젝트의 제목과 생성일 정보를 조회합니다.
+ *     tags: [Presentation]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "123"
+ *         description: 조회할 프로젝트 ID
+ *     responses:
+ *       200:
+ *         description: 프로젝트 제목 조회 성공
+ *         content:
+ *           application/json:
+ *             example:
+ *               resultType: "SUCCESS"
+ *               error: null
+ *               success:
+ *                 projectId: "123"
+ *                 title: "기말고사 발표 자료"
+ *                 createdAt: "2026-01-15T10:00:00.000Z"
+ *       404:
+ *         description: 프로젝트를 찾을 수 없음 (P001)
+ *         content:
+ *           application/json:
+ *             example:
+ *               resultType: "FAILURE"
+ *               error:
+ *                 errorCode: "P001"
+ *                 reason: "해당 프로젝트를 찾을 수 없습니다."
+ *                 data: null
+ *               success: null
+ */
+export const handleGetProjectName = async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+
+    const result = await processGetProjectName(projectId);
+
+    res.status(200).json({
+      resultType: "SUCCESS",
+      error: null,
+      success: projectNameResponseDTO(result),
     });
   } catch (error) {
     next(error);

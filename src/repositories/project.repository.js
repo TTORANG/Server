@@ -106,3 +106,18 @@ export const getProjectList = async (userId, { page, limit, search, maxDuration,
 
   return { total, projects };
 };
+
+// 프로젝트 이름 조회
+export const getProjectTitle = async (projectId) => {
+  return await prisma.project.findUnique({
+    where: {
+      id: BigInt(projectId),
+      isDeleted: false,
+    },
+    select: {
+      id: true,
+      title: true,
+      createdAt: true,
+    },
+  });
+};
