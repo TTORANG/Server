@@ -60,7 +60,10 @@ export function findSlideById(slideId) {
         },
       },
     },
-    select: { id: true },
+    select: {
+      id: true,
+      projectId: true,
+    },
   });
 }
 
@@ -109,7 +112,14 @@ export function findVideoReaction({ userId, videoId, emojiType }) {
   });
 }
 
-export function upsertVideoReaction({ userId, videoId, timestampMs, emojiType, isDeleted }) {
+export function upsertVideoReaction({
+  userId,
+  videoId,
+  projectId,
+  timestampMs,
+  emojiType,
+  isDeleted,
+}) {
   return prisma.reaction.upsert({
     where: {
       uq_slide_reaction: {
@@ -120,6 +130,7 @@ export function upsertVideoReaction({ userId, videoId, timestampMs, emojiType, i
       },
     },
     create: {
+      projectId,
       userId,
       targetType: "video",
       targetId: BigInt(videoId),

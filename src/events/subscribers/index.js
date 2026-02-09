@@ -10,6 +10,7 @@ import { EventTypes } from "../eventTypes.js";
 import { onCommentCreated, onReactionAdded, onCommentDeleted } from "./notification.handler.js";
 import {
   broadcastNewComment,
+  broadcastCommentUpdated,
   broadcastCommentDeleted,
   broadcastNewReaction,
   broadcastReactionRemoved,
@@ -29,6 +30,7 @@ export const registerSubscribers = async () => {
 
   // ========== WebSocket 브로드캐스트 구독 ==========
   await eventBus.subscribe(EventTypes.COMMENT_CREATED, broadcastNewComment);
+  await eventBus.subscribe(EventTypes.COMMENT_UPDATED, broadcastCommentUpdated);
   await eventBus.subscribe(EventTypes.COMMENT_DELETED, broadcastCommentDeleted);
   await eventBus.subscribe(EventTypes.REACTION_ADDED, broadcastNewReaction);
   await eventBus.subscribe(EventTypes.REACTION_REMOVED, broadcastReactionRemoved);

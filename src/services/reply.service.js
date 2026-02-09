@@ -1,5 +1,7 @@
 import { CommentNotFoundError } from "../errors/comment.error.js";
 import { InvalidParameterError } from "../errors/video.error.js";
+import eventBus from "../events/eventBus.js";
+import { EventTypes } from "../events/eventTypes.js";
 import { createComment, findCommentById } from "../repositories/comment.repository.js";
 import { findReplies } from "../repositories/reply.repository.js";
 
@@ -22,13 +24,33 @@ export const createCommentReply = async ({ parentCommentId, content, userId }) =
     );
   }
 
-  return createComment({
+  const reply = await createComment({
+    projectId: parent.projectId ?? null,
     userId,
     targetType: parent.targetType,
     targetId: parent.targetId,
     parentId: parentCommentId,
     content,
   });
+
+  const targetPayload =
+    parent.targetType === "slide"
+      ? { slideId: parent.targetId }
+      : parent.targetType === "video"
+        ? { videoId: parent.targetId }
+        : {};
+
+  await eventBus.publish(EventTypes.COMMENT_CREATED, {
+    commentId: reply.id,
+    projectId: parent.projectId,
+    userId,
+    content: reply.content,
+    createdAt: reply.createdAt,
+    parentCommentId: parentCommentId,
+    ...targetPayload,
+  });
+
+  return reply;
 };
 
 // 답글 목록 조회

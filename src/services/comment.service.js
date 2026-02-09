@@ -38,13 +38,24 @@ export const createSlideComment = async ({ slideId, content, userId }) => {
     throw new SlideNotFoundError(slideId?.toString());
   }
 
-  return createComment({
+  const comment = await createComment({
     projectId: slide.project.id,
     userId,
     targetType: "slide",
     targetId: slideId,
     content,
   });
+
+  await eventBus.publish(EventTypes.COMMENT_CREATED, {
+    commentId: comment.id,
+    projectId: slide.project.id,
+    slideId,
+    userId,
+    content: comment.content,
+    createdAt: comment.createdAt,
+  });
+
+  return comment;
 };
 
 // 댓글 수정
@@ -67,7 +78,18 @@ export const updateComment = async ({ commentId, content }) => {
     throw new CommentNotFoundError(commentId);
   }
 
-  return updateCommentContent(commentId, content);
+  const updatedComment = await updateCommentContent(commentId, content);
+
+  await eventBus.publish(EventTypes.COMMENT_UPDATED, {
+    commentId: updatedComment.id,
+    projectId: comment.projectId,
+    userId: updatedComment.userId,
+    content: updatedComment.content,
+    updatedAt: updatedComment.updatedAt,
+    parentCommentId: updatedComment.parentId ?? null,
+  });
+
+  return updatedComment;
 };
 
 // 댓글 삭제
@@ -87,6 +109,13 @@ export const deleteComment = async ({ commentId }) => {
   }
 
   await softDeleteComment(commentId);
+
+  await eventBus.publish(EventTypes.COMMENT_DELETED, {
+    commentId: comment.id,
+    projectId: comment.projectId,
+    userId: comment.userId,
+    parentCommentId: comment.parentId ?? null,
+  });
 
   return {
     commentId: comment.id,

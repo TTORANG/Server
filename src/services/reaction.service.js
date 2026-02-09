@@ -30,6 +30,29 @@ import {
 } from "../repositories/reaction.repository.js";
 import { findVideoByIdWithProject } from "../repositories/video.repository.js";
 
+async function publishSlideReactionEvent({
+  isActive,
+  reactionId,
+  projectId,
+  slideId,
+  userId,
+  emojiType,
+}) {
+  const eventType = isActive ? EventTypes.REACTION_ADDED : EventTypes.REACTION_REMOVED;
+  const payload = {
+    reactionId,
+    projectId,
+  };
+
+  if (isActive) {
+    payload.slideId = BigInt(slideId);
+    payload.userId = userId;
+    payload.emoji = emojiType;
+  }
+
+  await eventBus.publish(eventType, payload);
+}
+
 // 리액션 추가 및 취소
 export async function toggleSlideReaction({ slideId, emojiType, userId }) {
   if (!ALLOWED_EMOJIS.includes(emojiType)) {
@@ -56,10 +79,34 @@ export async function toggleSlideReaction({ slideId, emojiType, userId }) {
     if (existing) {
       const newIsDeleted = !existing.isDeleted;
       await updateReaction(existing.id, newIsDeleted);
-      return { active: !newIsDeleted };
+      const nextActive = !newIsDeleted;
+
+      await publishSlideReactionEvent({
+        isActive: nextActive,
+        reactionId: existing.id,
+        projectId: slide.projectId,
+        slideId,
+        userId,
+        emojiType,
+      });
+
+      return { active: nextActive };
     }
 
-    await createReaction(where);
+    const createdReaction = await createReaction({
+      ...where,
+      projectId: slide.projectId,
+    });
+
+    await publishSlideReactionEvent({
+      isActive: true,
+      reactionId: createdReaction.id,
+      projectId: slide.projectId,
+      slideId,
+      userId,
+      emojiType,
+    });
+
     return { active: true };
   } catch (e) {
     if (e instanceof BaseError) throw e;
@@ -127,6 +174,7 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
   const upserted = await upsertVideoReaction({
     userId,
     videoId: vid,
+    projectId: video.projectId,
     timestampMs: ts,
     emojiType,
     isDeleted: nextIsDeleted,
@@ -148,7 +196,6 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
     await eventBus.publish(EventTypes.REACTION_REMOVED, {
       reactionId: upserted.id,
       projectId: video.projectId,
-      videoId: vid,
     });
   }
 

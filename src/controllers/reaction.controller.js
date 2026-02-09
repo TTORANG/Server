@@ -25,6 +25,12 @@ export async function toggleSlideReactionController(req, res, next) {
    *
    *       슬라이드 리액션은 timestampMs=null 기준으로 처리된다.
    *       인증된 사용자라면 리소스 소유자와 무관하게 호출할 수 있다.
+   *
+   *       성공 시 실시간 이벤트가 발행됩니다.
+   *       - 활성화 시 Socket Event: `new-reaction`
+   *       - 비활성화 시 Socket Event: `reaction-removed`
+   *       - Payload(활성화): `{ reactionId, projectId, slideId, userId, emoji }`
+   *       - Payload(비활성화): `{ reactionId, projectId }`
    *     tags:
    *       - Reaction
    *     security:
@@ -267,6 +273,12 @@ export async function handleToggleVideoReaction(req, res, next) {
    *       - `timestampMs`는 필수이며 0 이상의 정수(ms)만 허용합니다.
    *       - `active`는 선택값이며 boolean입니다.
    *       - `emojiType`은 문자열이며, 서버/클라이언트에서 합의된 타입을 사용해야 합니다.
+   *
+   *       성공 시 실시간 이벤트가 발행됩니다.
+   *       - 활성화 시 Socket Event: `new-reaction`
+   *       - 비활성화 시 Socket Event: `reaction-removed`
+   *       - Payload(활성화): `{ reactionId, projectId, videoId, userId, emoji, timestampMs }`
+   *       - Payload(비활성화): `{ reactionId, projectId }`
    *     tags: [Reaction]
    *     security:
    *       - bearerAuth: []
