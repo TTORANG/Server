@@ -28,6 +28,22 @@ export const findVideoInProject = async (projectId, videoId) => {
   });
 };
 
+// 기존에 동일한 설정으로 생성된 링크가 있는지 확인
+export const findExistingLink = async (projectId, scope, videoId) => {
+  return await prisma.shareLink.findFirst({
+    where: {
+      projectId: BigInt(projectId),
+      scope: scope,
+      videoId: videoId ? BigInt(videoId) : null,
+      isActive: true,
+    },
+    include: {
+      project: { select: { title: true } },
+      video: { select: { title: true, createdAt: true, thumbnailUrl: true } },
+    },
+  });
+};
+
 export const findShareLinkWithContent = async (token) => {
   return await prisma.shareLink.findFirst({
     where: { shareToken: token },
@@ -51,6 +67,7 @@ export const findShareLinkWithContent = async (token) => {
                   createdAt: "asc",
                 },
               },
+              slideDurations: true,
             },
           },
         },
