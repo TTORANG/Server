@@ -168,6 +168,7 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
   const upserted = await upsertVideoReaction({
     userId,
     videoId: vid,
+    projectId: video.projectId,
     timestampMs: ts,
     emojiType,
     isDeleted: nextIsDeleted,
