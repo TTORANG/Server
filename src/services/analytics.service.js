@@ -8,6 +8,7 @@ import {
 import * as analyticsRepository from "../repositories/analytics.repository.js";
 import { findRecentVideoCommentsByProjectId } from "../repositories/comment.repository.js";
 import { findSlideByTimestamp } from "../repositories/video.repository.js";
+import { toPublicStorageUrl } from "../utils/storageUrl.util.js";
 
 // ==================== 수집 API ====================
 
@@ -457,7 +458,7 @@ export const getRecentComments = async ({ projectId, limit = 10 }) => {
               slideId: slideInfo.slideId.toString(),
               slideNum: slideInfo.slideNum ? Number(slideInfo.slideNum) : null,
               title: slideInfo.title,
-              imageUrl: slideInfo.imageUrl,
+              imageUrl: toPublicStorageUrl(slideInfo.imageUrl),
             }
           : null,
       };

@@ -1,3 +1,5 @@
+import { toPublicStorageUrl } from "../utils/storageUrl.util.js";
+
 export const createProjectResponseDTO = (project) => {
   return {
     message: "프로젝트가 생성되었습니다. 변환이 시작됩니다.",
@@ -33,7 +35,9 @@ export const projectListResponseDTO = (projects, total, page, limit) => {
     return {
       projectId: project.id.toString(),
       title: project.title,
-      thumbnailUrl: project.thumbnailUrl || (primaryFile ? primaryFile.storageUrl : null),
+      thumbnailUrl: toPublicStorageUrl(
+        project.thumbnailUrl || (primaryFile ? primaryFile.storageUrl : null)
+      ),
       slideCount: project._count.materials,
 
       reactionCount: project._count.reactions || 0, // 집계된 리액션 수

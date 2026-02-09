@@ -1,3 +1,5 @@
+import { toPublicStorageUrl } from "../utils/storageUrl.util.js";
+
 export const videoListItemDTO = (video) => ({
   videoId: video.id.toString(),
   title: video.title,
@@ -8,7 +10,7 @@ export const videoListItemDTO = (video) => ({
   feedbackCount: video.feedbackCount ?? 0,
   reactionCount: video.reactionCount ?? 0,
   viewCount: video.viewCount ?? 0,
-  thumbnailUrl: video.thumbnailUrl,
+  thumbnailUrl: toPublicStorageUrl(video.thumbnailUrl),
   createdAt: video.createdAt,
 });
 
@@ -32,8 +34,8 @@ export const videoDetailDTO = (video) => ({
   width: video.width,
   height: video.height,
   fps: video.fps,
-  hlsMasterUrl: video.hlsMasterUrl,
-  thumbnailUrl: video.thumbnailUrl,
+  hlsMasterUrl: toPublicStorageUrl(video.hlsMasterUrl),
+  thumbnailUrl: toPublicStorageUrl(video.thumbnailUrl),
   createdAt: video.createdAt,
 });
 

@@ -20,6 +20,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { issueAnonymousSession } from "./session.service.js";
 import { prisma } from "../db.config.js";
+import { toPublicStorageUrl } from "../utils/storageUrl.util.js";
 
 const SCOPE_VIDEO = "slides_script_video";
 
@@ -129,7 +130,7 @@ export const processGetShareContent = async (shareToken, sessionId = null) => {
     return {
       slideId: slide.id.toString(),
       slideNum: Number(slide.slideNum),
-      imageUrl: slide.assets[0]?.url || null,
+      imageUrl: toPublicStorageUrl(slide.assets[0]?.url || null),
       scriptText: slide.script?.scriptText || "",
       timestampMs: durationInfo ? durationInfo.totalDurationMs : null,
     };
@@ -143,8 +144,8 @@ export const processGetShareContent = async (shareToken, sessionId = null) => {
   if (scope === SCOPE_VIDEO && video) {
     content.video = {
       videoId: video.id.toString(),
-      videoUrl: video.sourceUrl,
-      thumbnailUrl: video.thumbnailUrl,
+      videoUrl: toPublicStorageUrl(video.sourceUrl),
+      thumbnailUrl: toPublicStorageUrl(video.thumbnailUrl),
     };
   }
 

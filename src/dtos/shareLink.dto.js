@@ -1,3 +1,5 @@
+import { toPublicStorageUrl } from "../utils/storageUrl.util.js";
+
 export const shareLinkResponseDTO = (link) => {
   const DEFAULT_PROJECT_TITLE = "발표 자료";
   return {
@@ -11,7 +13,7 @@ export const shareLinkResponseDTO = (link) => {
       projectTitle: link.project?.title || DEFAULT_PROJECT_TITLE,
       videoTitle: link.video?.title || null,
       videoCreatedAt: link.video?.createdAt || null,
-      thumbnailUrl: link.video?.thumbnailUrl || null,
+      thumbnailUrl: toPublicStorageUrl(link.video?.thumbnailUrl || null),
     },
     createdAt: link.createdAt,
   };
@@ -55,5 +57,6 @@ export const getVideoListResponseDTO = (videos) => {
   return videos.map((video) => ({
     ...video,
     id: video.id.toString(),
+    thumbnailUrl: toPublicStorageUrl(video.thumbnailUrl),
   }));
 };
