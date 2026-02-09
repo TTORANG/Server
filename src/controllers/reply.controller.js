@@ -16,6 +16,11 @@ export const postCommentReply = async (req, res, next) => {
    *       특정 댓글(comment)에 대한 답글을 작성합니다.
    *       - 답글은 parentId가 설정된 comment로 저장됩니다.
    *       - 작성자는 JWT 인증이 필요합니다.
+   *
+   *       성공 시 실시간 이벤트가 발행됩니다.
+   *       - Socket Event: `new-comment`
+   *       - Payload: `{ commentId, projectId, userId, content, createdAt, parentCommentId, slideId?, videoId? }`
+   *       - `slideId` 또는 `videoId`는 부모 댓글의 targetType/targetId를 기준으로 포함됩니다.
    *     tags: [Comment]
    *     security:
    *       - bearerAuth: []

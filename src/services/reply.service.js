@@ -33,6 +33,13 @@ export const createCommentReply = async ({ parentCommentId, content, userId }) =
     content,
   });
 
+  const targetPayload =
+    parent.targetType === "slide"
+      ? { slideId: parent.targetId }
+      : parent.targetType === "video"
+        ? { videoId: parent.targetId }
+        : {};
+
   await eventBus.publish(EventTypes.COMMENT_CREATED, {
     commentId: reply.id,
     projectId: parent.projectId,
@@ -40,6 +47,7 @@ export const createCommentReply = async ({ parentCommentId, content, userId }) =
     content: reply.content,
     createdAt: reply.createdAt,
     parentCommentId: parentCommentId,
+    ...targetPayload,
   });
 
   return reply;
