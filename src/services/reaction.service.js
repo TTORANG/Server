@@ -206,8 +206,7 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
   });
 }
 
-// 영상 리액션 집계
-export const getReactionMarkers = async ({ videoId, intervalMs }) => {
+function validateVideoTimelineParams({ videoId, intervalMs }) {
   let vid;
   try {
     vid = BigInt(videoId);
@@ -217,12 +216,20 @@ export const getReactionMarkers = async ({ videoId, intervalMs }) => {
   if (vid <= 0n) {
     throw new InvalidParameterError({ videoId: String(videoId) });
   }
-  // interval 검증
+
   const safeInterval =
     intervalMs === undefined || intervalMs === null ? 5000 : Number(intervalMs);
   if (!Number.isInteger(safeInterval) || safeInterval <= 0) {
     throw new InvalidParameterError({ intervalMs });
   }
+
+  return { vid, safeInterval };
+}
+
+// 영상 리액션 집계
+export const getReactionMarkers = async ({ videoId, intervalMs }) => {
+  const { vid, safeInterval } = validateVideoTimelineParams({ videoId, intervalMs });
+
   // video 존재 검증
   const video = await findVideoByIdWithProject(vid);
   if (!video) {
@@ -256,21 +263,7 @@ export const getReactionMarkers = async ({ videoId, intervalMs }) => {
 
 // 영상 버킷별 전체 리액션 집계
 export const getReactionBuckets = async ({ videoId, intervalMs }) => {
-  let vid;
-  try {
-    vid = BigInt(videoId);
-  } catch {
-    throw new InvalidParameterError({ videoId: String(videoId) });
-  }
-  if (vid <= 0n) {
-    throw new InvalidParameterError({ videoId: String(videoId) });
-  }
-
-  const safeInterval =
-    intervalMs === undefined || intervalMs === null ? 5000 : Number(intervalMs);
-  if (!Number.isInteger(safeInterval) || safeInterval <= 0) {
-    throw new InvalidParameterError({ intervalMs });
-  }
+  const { vid, safeInterval } = validateVideoTimelineParams({ videoId, intervalMs });
 
   const video = await findVideoByIdWithProject(vid);
   if (!video) {
@@ -283,11 +276,7 @@ export const getReactionBuckets = async ({ videoId, intervalMs }) => {
   });
 
   const createEmptyReactionMap = () => {
-    const map = {};
-    ALLOWED_EMOJIS.forEach((emojiType) => {
-      map[emojiType] = 0;
-    });
-    return map;
+    return Object.fromEntries(ALLOWED_EMOJIS.map((emojiType) => [emojiType, 0]));
   };
 
   const byBucket = new Map();

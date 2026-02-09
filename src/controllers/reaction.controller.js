@@ -467,8 +467,7 @@ export const getVideoReactionMarkers = async (req, res, next) => {
    */
 
   try {
-    // 기본 5000ms, 프론트가 바꾸고 싶으면 쿼리로 받기
-    const intervalMs = req.query.intervalMs ?? 5000;
+    const intervalMs = req.query.intervalMs;
 
     const result = await getReactionMarkers({
       videoId: req.params.videoId,
@@ -544,7 +543,7 @@ export const getVideoReactionBuckets = async (req, res, next) => {
    *               $ref: "#/components/schemas/ErrorResponse"
    */
   try {
-    const intervalMs = req.query.intervalMs ?? 5000;
+    const intervalMs = req.query.intervalMs;
 
     const result = await getReactionBuckets({
       videoId: req.params.videoId,
