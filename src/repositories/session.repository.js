@@ -36,6 +36,18 @@ export const findSessionById = async (sessionId) => {
   });
 };
 
+// 유저의 로그인 세션 조회 (비익명)
+export const findUserSession = async (userId) => {
+  return await prisma.session.findUnique({
+    where: {
+      uq_session_user_anonymous: {
+        userId: userId,
+        isAnonymous: false,
+      },
+    },
+  });
+};
+
 // 데이터 병합 트랜잭션
 export const mergeDataByUserId = async (anonymousSessionId, targetUserId) => {
   return await prisma.$transaction(async (tx) => {

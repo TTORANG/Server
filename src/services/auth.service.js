@@ -17,7 +17,7 @@ import {
   findUserById,
   updateSessionToken,
 } from "../repositories/auth.repository.js";
-import { upsertUserSession } from "../repositories/session.repository.js";
+import { findUserSession, upsertUserSession } from "../repositories/session.repository.js";
 import { v4 as uuidv4 } from "uuid";
 
 const secret = process.env.JWT_SECRET;
@@ -70,7 +70,8 @@ export const socialLoginVerification = async (profile, provider) => {
 export const handleSocialLoginSuccess = async (profile, provider) => {
   const user = await socialLoginVerification(profile, provider);
 
-  const sessionId = uuidv4();
+  const existingSession = await findUserSession(user.id);
+  const sessionId = existingSession?.id || uuidv4();
 
   const tokens = generateTokens({
     id: user.id,
