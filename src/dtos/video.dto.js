@@ -78,7 +78,8 @@ export const videoSlideTimelineResponseDTO = (events) => ({
 export const recordingFinishSuccessDTO = ({ videoId, status, slideDurations }) => ({
   videoId: videoId.toString(),
   status,
-  slideCount: slideDurations.length,
+  // slideDurations는 전환 구간 기준 집계라 첫 슬라이드가 포함되지 않아 +1 보정
+  slideCount: slideDurations.length + 1,
   slideDurations: slideDurations.map((s) => ({
     slideId: s.slideId.toString(),
     totalDurationMs: s.totalDurationMs,
