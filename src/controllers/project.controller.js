@@ -276,6 +276,12 @@ export const handleDeleteProject = async (req, res, next) => {
  *                     createdAt: "2026-01-15T10:00:00.000Z"
  *                     updatedAt: "2026-01-15T11:00:00.000Z"
  *                     process_progress: 45
+ *                   - projectId: "125"
+ *                     title: "실패한 발표"
+ *                     status: "failed"
+ *                     createdAt: "2026-01-15T10:00:00.000Z"
+ *                     updatedAt: "2026-01-15T11:00:00.000Z"
+ *                     errorMessage: "변환 중 오류가 발생했습니다."
  *                 total: 2
  *                 page: 1
  *                 limit: 20

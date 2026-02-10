@@ -34,25 +34,33 @@ export const projectListResponseDTO = (projects, total, page, limit) => {
         ? project.conversionJobs[0]
         : null;
 
-    // 작업이 'completed'가 아니면 'processing'으로 간주
-    const isProcessing = latestJob && latestJob.status !== "completed";
-
+    const getJobStatus = (job) => {
+      if (!job || job.status === "completed") return "done";
+      if (job.status === "failed") return "failed";
+      return "processing"; // queued, processing 포함
+    };
+    const status = getJobStatus(latestJob);
     // 공통 필드
     const baseResponse = {
       projectId: project.id.toString(),
       title: project.title,
-      status: isProcessing ? "processing" : "done",
+      status,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
     };
 
-    if (isProcessing) {
+    if (status === "processing") {
       return {
         ...baseResponse,
         process_progress: latestJob.progress || 0,
       };
     }
-
+    if (status === "failed") {
+      return {
+        ...baseResponse,
+        errorMessage: latestJob.errorMessage || "변환 중 오류가 발생했습니다.",
+      };
+    }
     const primaryFile =
       project.uploadedFiles && project.uploadedFiles.length > 0 ? project.uploadedFiles[0] : null;
 
