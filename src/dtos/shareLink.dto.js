@@ -41,7 +41,7 @@ export const getShareLinkResponseDTO = (data) => {
       comments: content.comments.map((c) => ({
         commentId: c.id.toString(),
         content: c.content,
-        writer: c.user?.name || "익명",
+        writer: c.user?.nickName || "익명",
         targetType: c.targetType,
         targetId: c.targetId.toString(),
         timestampMs: c.timestampMs,

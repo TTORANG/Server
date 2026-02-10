@@ -73,6 +73,17 @@ export const findShareLinkWithContent = async (token) => {
           comments: {
             where: {
               isDeleted: false,
+              OR: [
+                { targetType: "video" },
+                {
+                  AND: [
+                    { targetType: "slide" },
+                    {
+                      slide: { isDeleted: false },
+                    },
+                  ],
+                },
+              ],
             },
             orderBy: {
               createdAt: "asc",
@@ -80,7 +91,7 @@ export const findShareLinkWithContent = async (token) => {
             include: {
               user: {
                 select: {
-                  name: true,
+                  nickName: true,
                 },
               },
             },
