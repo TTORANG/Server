@@ -4,35 +4,46 @@ import {
   ToggleReactionDto,
 } from "../dtos/reaction.dto.js";
 import {
+  createSlideReactionEvent,
   createVideoReactionEvent,
   getProjectSlidesReactionSummary,
   getReactionBuckets,
   getReactionMarkers,
   getSlideReactionSummary,
   getVideoReactionsByTime,
-  toggleSlideReaction,
 } from "../services/reaction.service.js";
 
-// 리액션 생성 및 취소
+async function createSlideReaction(req, res, next) {
+  try {
+    const dto = ToggleReactionDto(req.body);
+
+    const result = await createSlideReactionEvent({
+      slideId: req.params.slideId,
+      emojiType: dto.emojiType,
+      userId: req.user.id,
+    });
+
+    res.json({
+      resultType: "SUCCESS",
+      error: null,
+      success: result,
+    });
+  } catch (e) {
+    next(e);
+  }
+}
+
+// 리액션 생성 (구 경로 - deprecated)
 export async function toggleSlideReactionController(req, res, next) {
   /**
    * @swagger
    * /slides/{slideId}/reactions/toggle:
    *   post:
-   *     summary: 슬라이드 이모지 리액션 생성
+   *     deprecated: true
+   *     summary: (Deprecated) 슬라이드 이모지 리액션 생성
    *     description: |
-   *       슬라이드에 대해 이모지 리액션 이벤트를 생성합니다.
-   *       같은 사용자/같은 슬라이드/같은 이모지도 요청할 때마다 신규 row로 기록됩니다.
-   *       즉, 토글(on/off) 개념이 아니라 "요청 1회 = 카운트 1 증가" 모델입니다.
-   *       사용자 기준 슬라이드별 100ms당 1회 요청만 허용됩니다. (초과 시 에러 응답)
-   *
-   *       슬라이드 리액션은 timestampMs=null 기준으로 저장됩니다.
-   *       인증된 사용자라면 리소스 소유자와 무관하게 호출할 수 있다.
-   *       - `emojiType`은 필수 문자열이며 허용값은 `fire`, `good`, `bad`, `sleepy`, `confused` 입니다.
-   *
-   *       성공 시 실시간 이벤트가 발행됩니다.
-   *       - Socket Event: `new-reaction`
-   *       - Payload: `{ reactionId, projectId, slideId, userId, emoji }`
+   *       이 경로는 하위 호환용입니다. 신규 연동은 `POST /slides/{slideId}/reactions`를 사용하세요.
+   *       동작/요청/응답은 신규 경로와 동일합니다.
    *     tags:
    *       - Reaction
    *     security:
@@ -128,23 +139,98 @@ export async function toggleSlideReactionController(req, res, next) {
    *               $ref: "#/components/schemas/ErrorResponse"
    *
    */
-  try {
-    const dto = ToggleReactionDto(req.body);
+  return createSlideReaction(req, res, next);
+}
 
-    const result = await toggleSlideReaction({
-      slideId: req.params.slideId,
-      emojiType: dto.emojiType,
-      userId: req.user.id,
-    });
-
-    res.json({
-      resultType: "SUCCESS",
-      error: null,
-      success: result,
-    });
-  } catch (e) {
-    next(e);
-  }
+// 리액션 생성 (신규 경로)
+export async function handleCreateSlideReaction(req, res, next) {
+  /**
+   * @swagger
+   * /slides/{slideId}/reactions:
+   *   post:
+   *     summary: 슬라이드 이모지 리액션 생성
+   *     description: |
+   *       슬라이드에 대해 이모지 리액션 이벤트를 생성합니다.
+   *       같은 사용자/같은 슬라이드/같은 이모지도 요청할 때마다 신규 row로 기록됩니다.
+   *       즉, 토글(on/off) 개념이 아니라 "요청 1회 = 카운트 1 증가" 모델입니다.
+   *       사용자 기준 슬라이드별 100ms당 1회 요청만 허용됩니다. (초과 시 에러 응답)
+   *
+   *       슬라이드 리액션은 `timestampMs=null` 기준으로 저장됩니다.
+   *       인증된 사용자라면 리소스 소유자와 무관하게 호출할 수 있습니다.
+   *       - `emojiType`은 필수 문자열이며 허용값은 `fire`, `good`, `bad`, `sleepy`, `confused` 입니다.
+   *
+   *       성공 시 실시간 이벤트가 발행됩니다.
+   *       - Socket Event: `new-reaction`
+   *       - Payload: `{ reactionId, projectId, slideId, userId, emoji }`
+   *     tags: [Reaction]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: slideId
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: 슬라이드 ID
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: "#/components/schemas/SlideReactionCreateRequest"
+   *     responses:
+   *       200:
+   *         description: 리액션 생성 성공 (카운트 +1 반영)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/SlideReactionCreateResponse"
+   *       400:
+   *         description: 잘못된 요청 (유효하지 않은 이모지 타입, 요청 제한 초과 등)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               invalidEmoji:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: R002
+   *                     reason: 유효하지 않은 이모지 타입입니다.
+   *                     data:
+   *                       emojiType: angry
+   *                   success: null
+   *               rateLimited:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: P001
+   *                     reason: 리액션 요청은 100ms당 1회만 가능합니다.
+   *                     data:
+   *                       limit: 1
+   *                       windowMs: 100
+   *                   success: null
+   *       401:
+   *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       404:
+   *         description: 슬라이드 없음
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   */
+  return createSlideReaction(req, res, next);
 }
 
 // 리액션 집계 조회
@@ -413,7 +499,6 @@ export async function handleCreateVideoReaction(req, res, next) {
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
    */
-
   try {
     const { emojiType, timestampMs } = req.body;
 
