@@ -162,6 +162,7 @@ export async function getSlideReactionSummaryController(req, res, next) {
    *
    *       - 취소된 리액션(isDeleted=true)은 집계에서 제외된다.
    *       - 리액션이 없는 이모지는 0으로 반환된다.
+   *       - `active`는 해당 이모지의 집계값(`reactions`)이 1 이상이면 true이다.
    *       - 인증된 사용자라면 리소스 소유자와 무관하게 조회할 수 있다.
    *     tags:
    *       - Reaction
@@ -192,6 +193,30 @@ export async function getSlideReactionSummaryController(req, res, next) {
    *                 success:
    *                   type: object
    *                   description: 슬라이드 리액션 집계 결과
+   *                   properties:
+   *                     slideId:
+   *                       type: string
+   *                       example: "10"
+   *                     reactions:
+   *                       type: object
+   *                       additionalProperties:
+   *                         type: integer
+   *                       example:
+   *                         fire: 5
+   *                         good: 3
+   *                         bad: 0
+   *                         sleepy: 1
+   *                         confused: 2
+   *                     active:
+   *                       type: object
+   *                       additionalProperties:
+   *                         type: boolean
+   *                       example:
+   *                         fire: true
+   *                         good: true
+   *                         bad: false
+   *                         sleepy: true
+   *                         confused: true
    *                   example:
    *                     slideId: "10"
    *                     reactions:
@@ -200,6 +225,12 @@ export async function getSlideReactionSummaryController(req, res, next) {
    *                       bad: 0
    *                       sleepy: 1
    *                       confused: 2
+   *                     active:
+   *                       fire: true
+   *                       good: true
+   *                       bad: false
+   *                       sleepy: true
+   *                       confused: true
    *
    *       401:
    *         description: 인증 실패
