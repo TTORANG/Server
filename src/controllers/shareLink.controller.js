@@ -169,6 +169,14 @@ export const handleCreateShareLink = async (req, res, next) => {
  *                     videoId: "456"
  *                     videoUrl: "https://..."
  *                     thumbnailUrl: "https://..."
+ *                   comments:
+ *                     - commentId: "1"
+ *                       content: "이 부분 설명이 아주 좋네요!"
+ *                       writer: "가넷"
+ *                       targetType: "video"
+ *                       targetId: "456"
+ *                       timestampMs: 12000
+ *                       createdAt: "2026-02-10T15:00:00.000Z"
  *       403:
  *         description: 유효하지 않거나 만료되거나 프로젝트가 삭제된 링크 (L003, L004, L005)
  *         content:
