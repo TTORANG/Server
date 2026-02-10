@@ -29,20 +29,46 @@ export const projectListResponseDTO = (projects, total, page, limit) => {
   const totalPages = Math.ceil(total / limit);
 
   const presentations = projects.map((project) => {
+    const latestJob =
+      project.conversionJobs && project.conversionJobs.length > 0
+        ? project.conversionJobs[0]
+        : null;
+
+    const getJobStatus = (job) => {
+      if (!job || job.status === "completed") return "done";
+      if (job.status === "failed") return "failed";
+      return "processing"; // queued, processing 포함
+    };
+    const status = getJobStatus(latestJob);
+    // 공통 필드
+    const baseResponse = {
+      projectId: project.id.toString(),
+      title: project.title,
+      status,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+    };
+
+    if (status === "processing") {
+      return {
+        ...baseResponse,
+        process_progress: latestJob.progress || 0,
+      };
+    }
+    if (status === "failed") {
+      return {
+        ...baseResponse,
+        errorMessage: latestJob.errorMessage || "변환 중 오류가 발생했습니다.",
+      };
+    }
     const primaryFile =
       project.uploadedFiles && project.uploadedFiles.length > 0 ? project.uploadedFiles[0] : null;
 
-    let totalViews = 0;
-
-    if (project.shareLinks && project.shareLinks.length > 0) {
-      for (const link of project.shareLinks) {
-        totalViews += link.viewCount || 0;
-      }
-    }
+    const totalViews =
+      project.shareLinks?.reduce((acc, link) => acc + (link.viewCount || 0), 0) || 0;
 
     return {
-      projectId: project.id.toString(),
-      title: project.title,
+      ...baseResponse,
       thumbnailUrl: toPublicStorageUrl(
         project.thumbnailUrl || (primaryFile ? primaryFile.storageUrl : null)
       ),
@@ -53,8 +79,6 @@ export const projectListResponseDTO = (projects, total, page, limit) => {
       feedbackCount: project._count.comments || 0, // 피드백(댓글) 수
 
       durationSeconds: project.durationSeconds || 0,
-      createdAt: project.createdAt,
-      updatedAt: project.updatedAt,
     };
   });
 

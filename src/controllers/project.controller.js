@@ -261,15 +261,28 @@ export const handleDeleteProject = async (req, res, next) => {
  *                 presentations:
  *                   - projectId: "123"
  *                     title: "기말고사 발표 자료"
+ *                     status: "done"
+ *                     createdAt: "2026-01-15T10:00:00.000Z"
+ *                     updatedAt: "2026-01-15T11:00:00.000Z"
  *                     thumbnailUrl: "https://storage.googleapis.com/..."
  *                     slideCount: 10
  *                     reactionCount: 25
  *                     viewCount: 150
  *                     feedbackCount: 5
  *                     durationSeconds: 180
+ *                   - projectId: "124"
+ *                     title: "처리 중인 발표"
+ *                     status: "processing"
  *                     createdAt: "2026-01-15T10:00:00.000Z"
  *                     updatedAt: "2026-01-15T11:00:00.000Z"
- *                 total: 1
+ *                     process_progress: 45
+ *                   - projectId: "125"
+ *                     title: "실패한 발표"
+ *                     status: "failed"
+ *                     createdAt: "2026-01-15T10:00:00.000Z"
+ *                     updatedAt: "2026-01-15T11:00:00.000Z"
+ *                     errorMessage: "변환 중 오류가 발생했습니다."
+ *                 total: 2
  *                 page: 1
  *                 limit: 20
  *                 totalPages: 1
