@@ -56,3 +56,31 @@ export const withdrawUser = async (userId) => {
     return updatedUser;
   });
 };
+
+// 리프레시 토큰으로 세션 조회
+export const findSessionByToken = async (token) => {
+  return await prisma.session.findFirst({
+    where: {
+      refreshToken: token,
+      isAnonymous: false,
+    },
+  });
+};
+
+// 세션의 리프레시 토큰 갱신 (RTR)
+export const updateSessionToken = async (sessionId, newToken) => {
+  return await prisma.session.update({
+    where: { id: sessionId },
+    data: {
+      refreshToken: newToken,
+      lastSeenAt: new Date(),
+    },
+  });
+};
+
+// 세션 삭제/무효화
+export const deleteSession = async (sessionId) => {
+  return await prisma.session.deleteMany({
+    where: { id: sessionId },
+  });
+};

@@ -35,3 +35,21 @@ export class AuthSessionRequiredError extends BaseError {
     super("인증 세션 정보가 없거나 유효하지 않습니다.", 401, "A004", data);
   }
 }
+
+export class RefreshTokenExpiredError extends BaseError {
+  constructor(data = null) {
+    super("리프레시 토큰이 만료되었습니다.", 401, "A005", data);
+  }
+}
+
+export class RefreshTokenInvalidError extends BaseError {
+  constructor(data = null) {
+    super("리프레시 토큰이 유효하지 않습니다.", 401, "A006", data);
+  }
+}
+
+export class RefreshTokenInvalidatedError extends BaseError {
+  constructor(data = null) {
+    super("리프레시 토큰이 무효화되었습니다.", 403, "A007", data);
+  }
+}
