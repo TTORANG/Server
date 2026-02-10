@@ -177,7 +177,7 @@ PPTX/PDF 업로드
 - Video ↔ VideoChunk: 1:N
 - Project ↔ Comment: 1:N
 - Comment ↔ Comment (replies): 자기 참조 1:N
-- User ↔ Reaction: 1:N (유저+타겟+이모지 유니크)
+- User ↔ Reaction: 1:N (슬라이드/영상 리액션 모두 이벤트 누적 저장)
 - Project ↔ ShareLink: 1:N
 
 ## 📚 API 엔드포인트
@@ -240,9 +240,9 @@ PPTX/PDF 업로드
 
 ### 리액션
 
-- `POST /slides/:slideId/reactions/toggle` - 슬라이드 리액션 토글
+- `POST /slides/:slideId/reactions/toggle` - 슬라이드 리액션 생성(요청마다 누적, 서버 100ms당 1회 제한)
 - `GET /slides/:slideId/reactions/summary` - 슬라이드 리액션 요약
-- `POST /videos/:videoId/reactions` - 영상 리액션 토글
+- `POST /videos/:videoId/reactions` - 영상 타임스탬프 리액션 생성(요청마다 누적, 서버 100ms당 1회 제한)
 - `GET /videos/:videoId/reactions/timeline` - 영상 리액션 타임라인
 
 ### 공유
