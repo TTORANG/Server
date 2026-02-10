@@ -180,6 +180,7 @@ export const handleCreateShareLink = async (req, res, next) => {
  *                       writer: "가넷"
  *                       targetType: "video"
  *                       targetId: "456"
+ *                       parentId: "2"
  *                       timestampMs: 12000
  *                       createdAt: "2026-02-10T15:00:00.000Z"
  *       403:
