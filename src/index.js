@@ -45,6 +45,7 @@ app.set("json replacer", (key, value) => {
 
 const httpServer = createServer(app); // HTTP 서버 생성 (Socket.io용)
 const port = process.env.PORT || 8080;
+const realtimeHealthCheckMs = Number(process.env.REALTIME_HEALTH_CHECK_MS || 30000);
 
 app.use(
   cors({
@@ -120,6 +121,17 @@ app.use((err, req, res, next) => {
   });
 });
 
+const startRealtimeHealthMonitor = () => {
+  setInterval(() => {
+    const status = eventBus.getHealthStatus();
+    if (!status.isConnected) {
+      console.warn(
+        `[Realtime][HealthWarning] EventBus disconnected. publisherStatus=${status.publisherStatus}, subscriberStatus=${status.subscriberStatus}`
+      );
+    }
+  }, realtimeHealthCheckMs);
+};
+
 // 서버 시작
 const startServer = async () => {
   try {
@@ -135,12 +147,14 @@ const startServer = async () => {
     // HTTP 서버 시작 (Express + Socket.io)
     httpServer.listen(port, () => {
       console.log(`Server listening on port ${port}`);
+      startRealtimeHealthMonitor();
     });
   } catch (error) {
     console.error("Server startup error:", error);
     // Redis 연결 실패해도 서버는 시작 (graceful degradation)
     httpServer.listen(port, () => {
       console.log(`Server listening on port ${port} (without Redis)`);
+      startRealtimeHealthMonitor();
     });
   }
 };

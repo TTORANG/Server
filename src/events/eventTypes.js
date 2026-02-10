@@ -12,4 +12,5 @@ export const EventTypes = {
   // ========== 리액션 관련 ==========
   REACTION_ADDED: "reaction:added", // 리액션 추가
   REACTION_REMOVED: "reaction:removed", // 리액션 제거
+  REACTION_COUNT_UPDATED: "reaction:count-updated", // 리액션 카운트 갱신
 };

@@ -18,6 +18,7 @@ import { EventTypes } from "../events/eventTypes.js";
 import {
   aggregateVideoReactionsByBucket,
   aggregateVideoReactionsByTimeWindow,
+  countVideoReactionsByEmoji,
   countProjectSlideReactionsBySlideIds,
   countSlideReactions,
   createReaction,
@@ -42,15 +43,35 @@ async function publishSlideReactionEvent({
   const payload = {
     reactionId,
     projectId,
+    targetType: "slide",
+    targetId: BigInt(slideId),
+    slideId: BigInt(slideId),
+    videoId: null,
+    timestampMs: null,
+    emojiType,
+    userId: userId ?? null,
+    active: isActive,
   };
 
-  if (isActive) {
-    payload.slideId = BigInt(slideId);
-    payload.userId = userId;
-    payload.emoji = emojiType;
+  await eventBus.publish(eventType, payload);
+}
+
+async function publishVideoReactionCountUpdated({ projectId, videoId }) {
+  const rows = await countVideoReactionsByEmoji(videoId);
+  const counts = Object.fromEntries(ALLOWED_EMOJIS.map((emoji) => [emoji, 0]));
+
+  for (const row of rows) {
+    counts[row.emojiType] = Number(row._count._all);
   }
 
-  await eventBus.publish(eventType, payload);
+  const totalCount = Object.values(counts).reduce((sum, current) => sum + current, 0);
+
+  await eventBus.publish(EventTypes.REACTION_COUNT_UPDATED, {
+    projectId,
+    videoId: BigInt(videoId),
+    counts,
+    totalCount,
+  });
 }
 
 // 리액션 추가 및 취소
@@ -187,15 +208,35 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
     await eventBus.publish(EventTypes.REACTION_ADDED, {
       reactionId: upserted.id,
       projectId: video.projectId,
+      targetType: "video",
+      targetId: vid,
+      slideId: null,
       videoId: vid,
-      userId,
-      emoji: emojiType,
+      userId: userId ?? null,
+      emojiType,
       timestampMs: ts,
+      active: true,
+    });
+    await publishVideoReactionCountUpdated({
+      projectId: video.projectId,
+      videoId: vid,
     });
   } else if (prevActive && !nextActive) {
     await eventBus.publish(EventTypes.REACTION_REMOVED, {
       reactionId: upserted.id,
       projectId: video.projectId,
+      targetType: "video",
+      targetId: vid,
+      slideId: null,
+      videoId: vid,
+      userId: userId ?? null,
+      emojiType,
+      timestampMs: ts,
+      active: false,
+    });
+    await publishVideoReactionCountUpdated({
+      projectId: video.projectId,
+      videoId: vid,
     });
   }
 

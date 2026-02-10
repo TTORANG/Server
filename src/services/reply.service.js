@@ -5,6 +5,36 @@ import { EventTypes } from "../events/eventTypes.js";
 import { createComment, findCommentById } from "../repositories/comment.repository.js";
 import { findReplies } from "../repositories/reply.repository.js";
 
+function buildCommentTargetPayload(comment) {
+  if (comment.targetType === "slide") {
+    return {
+      targetType: "slide",
+      targetId: comment.targetId,
+      slideId: comment.targetId,
+      videoId: null,
+      timestampMs: null,
+    };
+  }
+
+  if (comment.targetType === "video") {
+    return {
+      targetType: "video",
+      targetId: comment.targetId,
+      slideId: null,
+      videoId: comment.targetId,
+      timestampMs: comment.timestampMs ?? null,
+    };
+  }
+
+  return {
+    targetType: null,
+    targetId: null,
+    slideId: null,
+    videoId: null,
+    timestampMs: null,
+  };
+}
+
 // 답글 작성
 export const createCommentReply = async ({ parentCommentId, content, userId }) => {
   if (!content) {
@@ -33,13 +63,6 @@ export const createCommentReply = async ({ parentCommentId, content, userId }) =
     content,
   });
 
-  const targetPayload =
-    parent.targetType === "slide"
-      ? { slideId: parent.targetId }
-      : parent.targetType === "video"
-        ? { videoId: parent.targetId }
-        : {};
-
   await eventBus.publish(EventTypes.COMMENT_CREATED, {
     commentId: reply.id,
     projectId: parent.projectId,
@@ -47,7 +70,7 @@ export const createCommentReply = async ({ parentCommentId, content, userId }) =
     content: reply.content,
     createdAt: reply.createdAt,
     parentCommentId: parentCommentId,
-    ...targetPayload,
+    ...buildCommentTargetPayload(parent),
   });
 
   return reply;
