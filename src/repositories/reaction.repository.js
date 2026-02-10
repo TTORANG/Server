@@ -113,46 +113,21 @@ export function countVideoReactionsByEmoji(videoId) {
   });
 }
 
-export function findVideoReaction({ userId, videoId, emojiType }) {
-  return prisma.reaction.findFirst({
-    where: {
-      userId,
-      targetType: "video",
-      targetId: BigInt(videoId),
-      emojiType,
-    },
-  });
-}
-
-export function upsertVideoReaction({
+export function createVideoReaction({
   userId,
   videoId,
   projectId,
   timestampMs,
   emojiType,
-  isDeleted,
 }) {
-  return prisma.reaction.upsert({
-    where: {
-      uq_slide_reaction: {
-        userId,
-        targetType: "video",
-        targetId: BigInt(videoId),
-        emojiType,
-      },
-    },
-    create: {
+  return prisma.reaction.create({
+    data: {
       projectId,
       userId,
       targetType: "video",
       targetId: BigInt(videoId),
       timestampMs,
       emojiType,
-      isDeleted,
-    },
-    update: {
-      timestampMs,
-      isDeleted,
     },
   });
 }
