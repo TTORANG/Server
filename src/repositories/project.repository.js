@@ -93,6 +93,14 @@ export const getProjectList = async (userId, { page, limit, search, maxDuration,
         shareLinks: {
           select: { viewCount: true },
         },
+        conversionJobs: {
+          select: {
+            status: true,
+            progress: true,
+          },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
         _count: {
           select: {
             materials: true,
