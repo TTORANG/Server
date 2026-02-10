@@ -22,6 +22,7 @@ export const processCreateProject = async (userId, projectData) => {
   await startConversionPipeline({
     uploadedFileId: BigInt(uploadedFileId),
     fileExt: file.fileExt,
+    projectId: project.id,
   });
 
   return project;
