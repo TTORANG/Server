@@ -34,11 +34,11 @@ import {
  *           schema:
  *             type: object
  *             required:
- *               - projectId
+ *               - shareToken
  *             properties:
- *               projectId:
- *                 type: integer
- *                 description: 프로젝트 ID
+ *               shareToken:
+ *                 type: string
+ *                 description: 공유 링크 토큰
  *     responses:
  *       200:
  *         description: 기록 성공
@@ -68,7 +68,7 @@ import {
 export const handleRecordPageView = async (req, res, next) => {
   try {
     const result = await recordPageView({
-      projectId: req.body.projectId,
+      shareToken: req.body.shareToken,
       sessionId: req.user?.sessionId,
     });
     res.json(result);
@@ -219,11 +219,11 @@ export const handleRecordVideoEvent = async (req, res, next) => {
  *           schema:
  *             type: object
  *             required:
- *               - projectId
+ *               - shareToken
  *             properties:
- *               projectId:
- *                 type: integer
- *                 description: 프로젝트 ID
+ *               shareToken:
+ *                 type: string
+ *                 description: 공유 링크 토큰
  *               lastSlideId:
  *                 type: integer
  *                 description: 마지막으로 본 슬라이드 ID
@@ -262,7 +262,7 @@ export const handleRecordVideoEvent = async (req, res, next) => {
 export const handleRecordExit = async (req, res, next) => {
   try {
     const result = await recordExit({
-      projectId: req.body.projectId,
+      shareToken: req.body.shareToken,
       sessionId: req.user?.sessionId,
       lastSlideId: req.body.lastSlideId,
       lastVideoId: req.body.lastVideoId,

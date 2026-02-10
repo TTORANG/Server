@@ -6,6 +6,7 @@ import {
   AnalyticsSessionRequiredError,
 } from "../errors/analytics.error.js";
 import * as analyticsRepository from "../repositories/analytics.repository.js";
+import * as shareLinkRepository from "../repositories/shareLink.repository.js";
 import { findRecentVideoCommentsByProjectId } from "../repositories/comment.repository.js";
 import { findSlideByTimestamp } from "../repositories/video.repository.js";
 import { toPublicStorageUrl } from "../utils/storageUrl.util.js";
@@ -16,17 +17,12 @@ import { toPublicStorageUrl } from "../utils/storageUrl.util.js";
  * 페이지 조회 기록
  * POST /analytics/pageview
  */
-export const recordPageView = async ({ projectId, sessionId }) => {
+export const recordPageView = async ({ shareToken, sessionId }) => {
   if (!sessionId) {
     throw new AnalyticsSessionRequiredError();
   }
 
-  const pid = requireProjectId(projectId);
-
-  const project = await analyticsRepository.findProjectById(pid);
-  if (!project) {
-    throw new AnalyticsProjectNotFoundError({ projectId: pid });
-  }
+  const pid = await resolveProjectIdByShareToken(shareToken);
 
   await analyticsRepository.createPageView({ projectId: pid, sessionId });
 
@@ -113,7 +109,7 @@ export const recordVideoEvent = async ({ videoId, eventType, timestampMs, sessio
  * POST /analytics/exit
  */
 export const recordExit = async ({
-  projectId,
+  shareToken,
   sessionId,
   lastSlideId,
   lastVideoId,
@@ -123,12 +119,7 @@ export const recordExit = async ({
     throw new AnalyticsSessionRequiredError();
   }
 
-  const pid = requireProjectId(projectId);
-
-  const project = await analyticsRepository.findProjectById(pid);
-  if (!project) {
-    throw new AnalyticsProjectNotFoundError({ projectId: pid });
-  }
+  const pid = await resolveProjectIdByShareToken(shareToken);
 
   const data = {
     projectId: pid,
@@ -136,10 +127,20 @@ export const recordExit = async ({
   };
 
   if (lastSlideId) {
-    data.lastSlideId = toInt(lastSlideId);
+    const sid = toInt(lastSlideId);
+    const slide = await analyticsRepository.findSlideById(sid);
+    if (!slide) {
+      throw new AnalyticsSlideNotFoundError({ slideId: sid });
+    }
+    data.lastSlideId = sid;
   }
   if (lastVideoId) {
-    data.lastVideoId = toInt(lastVideoId);
+    const vid = toInt(lastVideoId);
+    const video = await analyticsRepository.findVideoById(vid);
+    if (!video) {
+      throw new AnalyticsVideoNotFoundError({ videoId: vid });
+    }
+    data.lastVideoId = vid;
   }
   if (lastVideoTimeMs !== undefined && lastVideoTimeMs !== null) {
     data.lastVideoTimeMs = toInt(lastVideoTimeMs);
@@ -473,6 +474,25 @@ export const getRecentComments = async ({ projectId, limit = 10 }) => {
 };
 
 // ==================== Helper Functions ====================
+
+const resolveProjectIdByShareToken = async (shareToken) => {
+  if (!shareToken) {
+    throw new AnalyticsInvalidParameterError({ shareToken }, "shareToken이 필요합니다.");
+  }
+
+  const shareLink = await shareLinkRepository.findProjectIdByShareToken(shareToken);
+  if (!shareLink) {
+    throw new AnalyticsProjectNotFoundError({ shareToken });
+  }
+  if (!shareLink.isActive) {
+    throw new AnalyticsInvalidParameterError({ shareToken }, "비활성화된 공유 링크입니다.");
+  }
+  if (shareLink.expiredAt && shareLink.expiredAt < new Date()) {
+    throw new AnalyticsInvalidParameterError({ shareToken }, "만료된 공유 링크입니다.");
+  }
+
+  return Number(shareLink.projectId);
+};
 
 const toInt = (value) => {
   const n = typeof value === "string" ? Number(value) : value;
