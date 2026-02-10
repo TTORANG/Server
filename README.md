@@ -240,9 +240,9 @@ PPTX/PDF 업로드
 
 ### 리액션
 
-- `POST /slides/:slideId/reactions/toggle` - 슬라이드 리액션 생성(요청마다 누적, 서버 100ms당 1회 제한)
+- `POST /slides/:slideId/reactions` - 슬라이드 리액션 생성
 - `GET /slides/:slideId/reactions/summary` - 슬라이드 리액션 요약
-- `POST /videos/:videoId/reactions` - 영상 타임스탬프 리액션 생성(요청마다 누적, 서버 100ms당 1회 제한)
+- `POST /videos/:videoId/reactions` - 영상 타임스탬프 리액션 생성
 - `GET /videos/:videoId/reactions/timeline` - 영상 리액션 타임라인
 
 ### 공유
@@ -279,6 +279,36 @@ npm install
 
 ```bash
 npm run dev
+```
+
+### 4) 테스트 실행 (Jest)
+
+- 전체 테스트 실행
+
+```bash
+npm run test
+```
+
+- 특정 기능 테스트만 실행
+
+```bash
+# 파일 업로드 + 변환
+npm run test -- tests/files/files.test.js tests/conversion/conversionJob.test.js
+
+# 영상
+npm run test -- tests/video
+
+# 댓글
+npm run test -- tests/comment
+
+# 리액션
+npm run test -- tests/reaction
+```
+
+- 실시간 E2E 시나리오 실행
+
+```bash
+npm run e2e:realtime
 ```
 
 </br>
