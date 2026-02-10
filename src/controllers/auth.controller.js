@@ -1,9 +1,10 @@
-import { logoutResponseDTO, signinResponseDTO, withdrawalResponseDTO } from "../dtos/auth.dto.js";
-import { UserNotSameError, WithdrawFailedError } from "../errors/auth.error.js";
+import { logoutResponseDTO, reissueTokenDTO, withdrawalResponseDTO } from "../dtos/auth.dto.js";
+import { AuthSessionRequiredError, UserNotSameError } from "../errors/auth.error.js";
 import {
   handleSocialLoginSuccess,
   logoutUser,
   processWithdrawal,
+  reissueToken,
 } from "../services/auth.service.js";
 
 /**
@@ -211,6 +212,115 @@ export const handleWithdrawal = async (req, res, next) => {
       resultType: "SUCCESS",
       error: null,
       success: withdrawalResponseDTO(result.userId),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @swagger
+ * /auth/reissue:
+ *   post:
+ *     summary: 리프레시 토큰 재발급
+ *     description: |
+ *       HttpOnly 쿠키로 전달된 Refresh Token을 검증하고 Access Token을 재발급합니다.
+ *       RTR 적용: 기존 Refresh Token 무효화 후 새 토큰을 저장합니다.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *           example: {}
+ *     responses:
+ *       200:
+ *         description: 재발급 성공
+ *         headers:
+ *           Set-Cookie:
+ *             schema:
+ *               type: string
+ *             description: HttpOnly Refresh Token 쿠키
+ *         content:
+ *           application/json:
+ *             example:
+ *               resultType: "SUCCESS"
+ *               error: null
+ *               success:
+ *                 message: "리프레시 토큰이 재발급되었습니다."
+ *                 user:
+ *                   id: "123"
+ *                   email: "user@example.com"
+ *                   name: "사용자"
+ *                   sessionId: "2f1d7a64-2b47-4b3f-b2a9-2a4b2b5c3e4f"
+ *                 tokens:
+ *                   accessToken: "new-access-token"
+ *       401:
+ *         description: 리프레시 토큰 만료/위변조/누락
+ *         content:
+ *           application/json:
+ *             examples:
+ *               TokenExpired:
+ *                 summary: 만료된 리프레시 토큰 (A005)
+ *                 value:
+ *                   resultType: "FAILURE"
+ *                   error:
+ *                     errorCode: "A005"
+ *                     reason: "리프레시 토큰이 만료되었습니다."
+ *                     data: null
+ *                   success: null
+ *               TokenInvalid:
+ *                 summary: 유효하지 않은 리프레시 토큰 (A006)
+ *                 value:
+ *                   resultType: "FAILURE"
+ *                   error:
+ *                     errorCode: "A006"
+ *                     reason: "리프레시 토큰이 유효하지 않습니다."
+ *                     data: null
+ *                   success: null
+ *               SessionRequired:
+ *                 summary: 토큰 누락 (A004)
+ *                 value:
+ *                   resultType: "FAILURE"
+ *                   error:
+ *                     errorCode: "A004"
+ *                     reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+ *                     data: null
+ *                   success: null
+ *       403:
+ *         description: 세션 무효화 또는 DB 토큰 불일치
+ *         content:
+ *           application/json:
+ *             example:
+ *               resultType: "FAILURE"
+ *               error:
+ *                 errorCode: "A007"
+ *                 reason: "리프레시 토큰이 무효화되었습니다."
+ *                 data: null
+ *               success: null
+ */
+export const handleReissueToken = async (req, res, next) => {
+  try {
+    const refreshToken = req.cookies?.refreshToken;
+
+    if (!refreshToken) return next(new AuthSessionRequiredError());
+
+    // 서비스 호출하여 검증 및 새 토큰 생성
+    const { user, tokens, sessionId } = await reissueToken(refreshToken);
+
+    // 새 리프레시 토큰을 다시 HttpOnly 쿠키에 저장 (보안 유지)
+    res.cookie("refreshToken", tokens.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.status(200).json({
+      resultType: "SUCCESS",
+      error: null,
+      success: reissueTokenDTO(user, tokens, sessionId),
     });
   } catch (error) {
     next(error);

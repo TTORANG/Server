@@ -4,13 +4,13 @@ import {
   ToggleReactionDto,
 } from "../dtos/reaction.dto.js";
 import {
+  createVideoReactionEvent,
   getProjectSlidesReactionSummary,
   getReactionBuckets,
   getReactionMarkers,
   getSlideReactionSummary,
   getVideoReactionsByTime,
   toggleSlideReaction,
-  toggleVideoReaction,
 } from "../services/reaction.service.js";
 
 // 리액션 생성 및 취소
@@ -19,23 +19,20 @@ export async function toggleSlideReactionController(req, res, next) {
    * @swagger
    * /slides/{slideId}/reactions/toggle:
    *   post:
-   *     summary: 슬라이드 이모지 리액션 추가/취소
+   *     summary: 슬라이드 이모지 리액션 생성
    *     description: |
-   *       슬라이드에 대해 이모지 리액션을 토글 방식으로 처리한다.
-   *       - 기존 리액션이 없으면 추가
-   *       - 이미 존재하면 취소(isDeleted=true)
-   *       - 취소된 리액션이 있으면 재활성화
+   *       슬라이드에 대해 이모지 리액션 이벤트를 생성합니다.
+   *       같은 사용자/같은 슬라이드/같은 이모지도 요청할 때마다 신규 row로 기록됩니다.
+   *       즉, 토글(on/off) 개념이 아니라 "요청 1회 = 카운트 1 증가" 모델입니다.
+   *       사용자 기준 슬라이드별 100ms당 1회 요청만 허용됩니다. (초과 시 에러 응답)
    *
-   *       가능한 이모지 타입: fire, good, bad, sleepy, confused
-   *
-   *       슬라이드 리액션은 timestampMs=null 기준으로 처리된다.
+   *       슬라이드 리액션은 timestampMs=null 기준으로 저장됩니다.
    *       인증된 사용자라면 리소스 소유자와 무관하게 호출할 수 있다.
+   *       - `emojiType`은 필수 문자열이며 허용값은 `fire`, `good`, `bad`, `sleepy`, `confused` 입니다.
    *
    *       성공 시 실시간 이벤트가 발행됩니다.
-   *       - 활성화 시 Socket Event: `new-reaction`
-   *       - 비활성화 시 Socket Event: `reaction-removed`
-   *       - Payload(활성화): `{ reactionId, projectId, slideId, userId, emoji }`
-   *       - Payload(비활성화): `{ reactionId, projectId }`
+   *       - Socket Event: `new-reaction`
+   *       - Payload: `{ reactionId, projectId, slideId, userId, emoji }`
    *     tags:
    *       - Reaction
    *     security:
@@ -52,14 +49,14 @@ export async function toggleSlideReactionController(req, res, next) {
    *       content:
    *         application/json:
    *           schema:
-   *             $ref: "#/components/schemas/ToggleSlideReactionRequest"
+   *             $ref: "#/components/schemas/SlideReactionCreateRequest"
    *     responses:
    *       200:
-   *         description: 리액션 처리 성공
+   *         description: 리액션 생성 성공 (카운트 +1 반영)
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/ToggleSlideReactionResponse"
+   *               $ref: "#/components/schemas/SlideReactionCreateResponse"
    *       400:
    *         description: 잘못된 요청 (유효하지 않은 이모지 타입 등)
    *         content:
@@ -290,31 +287,27 @@ export async function getSlideReactionSummaryController(req, res, next) {
 }
 
 // 영상 타임스탬프 리액션 생성
-export async function handleToggleVideoReaction(req, res, next) {
+export async function handleCreateVideoReaction(req, res, next) {
   /**
    * @swagger
    * /videos/{videoId}/reactions:
    *   post:
-   *     summary: 영상 타임스탬프 리액션 생성/상태 설정
+   *     summary: 영상 타임스탬프 리액션 생성
    *     description: |
-   *       특정 영상의 특정 시점(timestampMs)에 대해 이모지 리액션을 생성/갱신합니다.
-   *
-   *       - 동일 사용자(userId) + 동일 영상(videoId) + 동일 emojiType row를 기준으로 동작합니다.
-   *       - `active`가 전달되면 마지막 요청의 `active`/`timestampMs`로 UPSERT 덮어씁니다.
-   *       - `active`가 없으면 하위 호환을 위해 기존 토글 방식으로 동작합니다.
+   *       특정 영상의 특정 시점(timestampMs)에 대해 이모지 리액션 이벤트를 생성합니다.
+   *       같은 사용자/같은 영상/같은 시점/같은 이모지도 요청할 때마다 신규 row로 기록됩니다.
+   *       즉, 토글(on/off) 개념이 아니라 "요청 1회 = 카운트 1 증가" 모델입니다.
    *
    *       **주의사항**
    *       - 본 API는 인증(JWT)이 필요합니다.
    *       - 인증된 사용자라면 리소스 소유자와 무관하게 호출할 수 있습니다.
    *       - `timestampMs`는 필수이며 0 이상의 정수(ms)만 허용합니다.
-   *       - `active`는 선택값이며 boolean입니다.
-   *       - `emojiType`은 문자열이며, 서버/클라이언트에서 합의된 타입을 사용해야 합니다.
+   *       - `emojiType`은 필수 문자열이며 허용값은 `fire`, `good`, `bad`, `sleepy`, `confused` 입니다.
+   *       - 사용자 기준 영상별 100ms당 1회 요청만 허용됩니다. (초과 시 에러 응답)
    *
    *       성공 시 실시간 이벤트가 발행됩니다.
-   *       - 활성화 시 Socket Event: `new-reaction`
-   *       - 비활성화 시 Socket Event: `reaction-removed`
-   *       - Payload(활성화): `{ reactionId, projectId, videoId, userId, emoji, timestampMs }`
-   *       - Payload(비활성화): `{ reactionId, projectId }`
+   *       - Socket Event: `new-reaction`
+   *       - Payload: `{ reactionId, projectId, videoId, userId, emoji, timestampMs }`
    *     tags: [Reaction]
    *     security:
    *       - bearerAuth: []
@@ -339,32 +332,25 @@ export async function handleToggleVideoReaction(req, res, next) {
    *                 timestampMs: 2000
    *     responses:
    *       200:
-   *         description: 토글 성공(활성/비활성 결과 반환)
+   *         description: 생성 성공 (카운트 +1 반영)
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/VideoReactionToggleResponse"
+   *               $ref: "#/components/schemas/VideoReactionCreateResponse"
    *             examples:
-   *               activated:
-   *                 summary: 새로 생성되거나 활성화됨
+   *               created:
+   *                 summary: 리액션 row 생성됨
    *                 value:
    *                   resultType: "SUCCESS"
    *                   error: null
    *                   success:
    *                     reactionId: "123"
    *                     videoId: "21"
-   *                     active: true
-   *               deactivated:
-   *                 summary: 기존 리액션 비활성화됨
-   *                 value:
-   *                   resultType: "SUCCESS"
-   *                   error: null
-   *                   success:
-   *                     reactionId: "123"
-   *                     videoId: "21"
-   *                     active: false
+   *                     emojiType: "fire"
+   *                     timestampMs: 2000
+   *                     createdAt: "2026-02-10T05:10:00.000Z"
    *       400:
-   *         description: 잘못된 입력(videoId/emojiType/timestampMs 형식 오류 등)
+   *         description: 잘못된 입력 또는 요청 제한(rate-limit) 초과
    *         content:
    *           application/json:
    *             schema:
@@ -378,6 +364,16 @@ export async function handleToggleVideoReaction(req, res, next) {
    *                     reason: "타임스탬프는 0 이상의 정수여야 합니다."
    *                     data:
    *                       timestampMs: -1
+   *                   success: null
+   *               rateLimited:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "P001"
+   *                     reason: "리액션 요청은 100ms당 1회만 가능합니다."
+   *                     data:
+   *                       limit: 1
+   *                       windowMs: 100
    *                   success: null
    *       401:
    *         description: 인증 실패
@@ -419,13 +415,12 @@ export async function handleToggleVideoReaction(req, res, next) {
    */
 
   try {
-    const { emojiType, timestampMs, active } = req.body;
+    const { emojiType, timestampMs } = req.body;
 
-    const result = await toggleVideoReaction({
+    const result = await createVideoReactionEvent({
       videoId: req.params.videoId,
       emojiType,
       timestampMs,
-      active,
       userId: req.user.id,
     });
 
@@ -797,7 +792,7 @@ export async function getProjectSlidesReactionSummaryController(req, res, next) 
  *         - bad
  *         - sleepy
  *         - confused
- *     ToggleSlideReactionRequest:
+ *     SlideReactionCreateRequest:
  *       type: object
  *       required:
  *         - emojiType
@@ -805,8 +800,13 @@ export async function getProjectSlidesReactionSummaryController(req, res, next) 
  *         emojiType:
  *           $ref: "#/components/schemas/EmojiTypeEnum"
  *           example: "fire"
+ *       description: |
+ *         프론트 가이드:
+ *         - 버튼 클릭(또는 탭) 시마다 호출합니다.
+ *         - 같은 슬라이드/같은 이모지도 중복 호출 가능하며 호출 횟수만큼 누적됩니다.
+ *         - 100ms 이내 중복 요청은 실패할 수 있으며, UI는 필요 시 무시 처리 가능합니다.
  *
- *     ToggleSlideReactionResponse:
+ *     SlideReactionCreateResponse:
  *       type: object
  *       properties:
  *         resultType:
@@ -819,12 +819,19 @@ export async function getProjectSlidesReactionSummaryController(req, res, next) 
  *         success:
  *           type: object
  *           properties:
- *             active:
- *               type: boolean
- *               description: |
- *                 현재 리액션 상태
- *                 - true: 활성(추가됨)
- *                 - false: 비활성(취소됨)
+ *             reactionId:
+ *               type: string
+ *               example: "123"
+ *             slideId:
+ *               type: string
+ *               example: "10"
+ *             emojiType:
+ *               type: string
+ *               example: "fire"
+ *             createdAt:
+ *               type: string
+ *               format: date-time
+ *               example: "2026-02-10T05:10:00.000Z"
  *
  *     VideoReactionCreateRequest:
  *       type: object
@@ -839,16 +846,13 @@ export async function getProjectSlidesReactionSummaryController(req, res, next) 
  *           type: integer
  *           description: 현재 재생 위치(ms)
  *           example: 12500
- *         active:
- *           type: boolean
- *           description: |
- *             리액션 상태를 명시적으로 설정합니다.
- *             - true: 활성
- *             - false: 비활성
- *             미전달 시 레거시 토글 동작
- *           example: true
+ *       description: |
+ *         프론트 가이드:
+ *         - 버튼 클릭(또는 탭) 시마다 호출합니다.
+ *         - 같은 timestampMs라도 중복 호출 가능하며 호출 횟수만큼 누적됩니다.
+ *         - 100ms 이내 중복 요청은 실패할 수 있으며, UI는 필요 시 무시 처리 가능합니다.
  *
- *     VideoReactionToggleResponse:
+ *     VideoReactionCreateResponse:
  *       type: object
  *       properties:
  *         resultType:
@@ -858,7 +862,7 @@ export async function getProjectSlidesReactionSummaryController(req, res, next) 
  *           nullable: true
  *           example: null
  *         success:
- *           $ref: "#/components/schemas/VideoReactionToggleSuccess"
+ *           $ref: "#/components/schemas/VideoReactionCreateSuccess"
  *
  *     ReactionMarker:
  *       type: object
@@ -976,12 +980,12 @@ export async function getProjectSlidesReactionSummaryController(req, res, next) 
  *           type: object
  *           additionalProperties:
  *             type: integer
-   *           example:
-   *             fire: 10
-   *             good: 4
-   *             bad: 2
-   *             sleepy: 1
-   *             confused: 7
+ *           example:
+ *             fire: 10
+ *             good: 4
+ *             bad: 2
+ *             sleepy: 1
+ *             confused: 7
  *         totalCount:
  *           type: integer
  *           example: 23
@@ -998,7 +1002,7 @@ export async function getProjectSlidesReactionSummaryController(req, res, next) 
  *         success:
  *           $ref: "#/components/schemas/ProjectSlidesReactionSummarySuccess"
  *
- *     VideoReactionToggleSuccess:
+ *     VideoReactionCreateSuccess:
  *       type: object
  *       properties:
  *         reactionId:
@@ -1009,11 +1013,17 @@ export async function getProjectSlidesReactionSummaryController(req, res, next) 
  *           type: string
  *           description: 영상 ID (BigInt → string)
  *           example: "21"
- *         active:
- *           type: boolean
- *           description: |
- *             현재 리액션 상태
- *             - true: 활성
- *             - false: 비활성
- *           example: true
+ *         emojiType:
+ *           type: string
+ *           description: 이모지 타입
+ *           example: "fire"
+ *         timestampMs:
+ *           type: integer
+ *           description: 리액션 생성 시점(ms)
+ *           example: 2000
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: 서버에 리액션 row가 생성된 시각(UTC ISO 8601)
+ *           example: "2026-02-10T05:10:00.000Z"
  */

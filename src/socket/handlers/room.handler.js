@@ -1,13 +1,27 @@
-export const registerRoomHandlers = (io, socket) => {
-  
-  socket.on("join-project", (data) => {
-    const { projectId } = data;
+import { findProjectIdByShareToken } from "../../repositories/shareLink.repository.js";
 
-    if (!projectId) {
-      socket.emit("error", { message: "projectId is required" });
+export const registerRoomHandlers = (io, socket) => {
+
+  socket.on("join-project", async (data) => {
+    const { shareToken } = data;
+
+    if (!shareToken) {
+      socket.emit("error", { message: "shareToken is required" });
       return;
     }
 
+    // shareToken → projectId 변환
+    const shareLink = await findProjectIdByShareToken(shareToken);
+    if (!shareLink || !shareLink.isActive) {
+      socket.emit("error", { message: "유효하지 않은 공유 링크입니다." });
+      return;
+    }
+    if (shareLink.expiredAt && shareLink.expiredAt < new Date()) {
+      socket.emit("error", { message: "만료된 공유 링크입니다." });
+      return;
+    }
+
+    const projectId = Number(shareLink.projectId);
     const roomName = `project:${projectId}`;
 
     // Room 입장
@@ -28,14 +42,21 @@ export const registerRoomHandlers = (io, socket) => {
 
   });
 
-  socket.on("leave-project", (data) => {
-    const { projectId } = data;
+  socket.on("leave-project", async (data) => {
+    const { shareToken } = data;
 
-    if (!projectId) {
-      socket.emit("error", { message: "projectId is required" });
+    if (!shareToken) {
+      socket.emit("error", { message: "shareToken is required" });
       return;
     }
 
+    const shareLink = await findProjectIdByShareToken(shareToken);
+    if (!shareLink) {
+      socket.emit("error", { message: "유효하지 않은 공유 링크입니다." });
+      return;
+    }
+
+    const projectId = Number(shareLink.projectId);
     const roomName = `project:${projectId}`;
 
     // Room 퇴장

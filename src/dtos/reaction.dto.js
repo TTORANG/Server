@@ -6,6 +6,13 @@ export function ToggleReactionDto(body) {
   };
 }
 
+export const slideReactionCreateResponseDTO = ({ reactionId, slideId, emojiType, createdAt }) => ({
+  reactionId: reactionId.toString(),
+  slideId: slideId.toString(),
+  emojiType,
+  createdAt,
+});
+
 export const reactionMarkersResponseDTO = ({ intervalMs, markers }) => ({
   intervalMs,
   markers: markers.map((m) => ({
@@ -44,10 +51,18 @@ export const slideReactionSummaryResponseDTO = ({ slideId, rows }) => {
   };
 };
 
-export const videoReactionToggleResponseDTO = ({ reactionId, videoId, active }) => ({
+export const videoReactionCreateResponseDTO = ({
+  reactionId,
+  videoId,
+  emojiType,
+  timestampMs,
+  createdAt,
+}) => ({
   reactionId: reactionId.toString(),
   videoId: videoId.toString(),
-  active,
+  emojiType,
+  timestampMs,
+  createdAt,
 });
 
 const makeEmptyReactionMap = () => {

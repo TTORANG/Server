@@ -5,7 +5,7 @@ import {
   getSlideReactionSummaryController,
   getVideoReactionMarkers,
   getVideoReactionsByTimeController,
-  handleToggleVideoReaction,
+  handleCreateVideoReaction,
   toggleSlideReactionController,
 } from "../controllers/reaction.controller.js";
 import { isLogin } from "../middlewares/auth.middleware.js";
@@ -17,7 +17,7 @@ router.post("/slides/:slideId/reactions/toggle", isLogin, toggleSlideReactionCon
 // 리액션 집계 조회
 router.get("/slides/:slideId/reactions/summary", isLogin, getSlideReactionSummaryController);
 // 영상 타임스탬프 리액션 생성
-router.post("/videos/:videoId/reactions", isLogin, handleToggleVideoReaction);
+router.post("/videos/:videoId/reactions", isLogin, handleCreateVideoReaction);
 // 영상 리액션 집계
 router.get("/videos/:videoId/reactions/timeline", isLogin, getVideoReactionMarkers);
 // 영상 리액션 버킷별 상세 집계

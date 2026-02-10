@@ -3,6 +3,7 @@ import passport from "passport";
 import { isLogin } from "../middlewares/auth.middleware.js";
 import {
   handleLogout,
+  handleReissueToken,
   handleSocialLoginCallback,
   handleWithdrawal,
 } from "../controllers/auth.controller.js";
@@ -37,5 +38,8 @@ router.post("/auth/logout", isLogin, handleLogout);
 
 // 계정 삭제
 router.delete("/users/:userId", isLogin, handleWithdrawal);
+
+// 토큰 유효성 검증, 새로운 토큰 쌍 발급
+router.post("/auth/reissue", handleReissueToken);
 
 export default router;

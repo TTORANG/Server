@@ -6,7 +6,7 @@ import passport from "passport";
 import { googleStrategy, jwtStrategy, kakaoStrategy, naverStrategy } from "./auth.config.js";
 import swaggerUi from "swagger-ui-express";
 import { specs } from "./swagger.config.js";
-
+import cookieParser from "cookie-parser";
 import { handleProcessJob } from "./controllers/conversionJob.controller.js";
 
 import { createServer } from "http";
@@ -35,6 +35,7 @@ dotenv.config();
 export const prisma = new PrismaClient();
 
 const app = express();
+app.use(cookieParser());
 
 app.set("json replacer", (key, value) => {
   if (typeof value === "bigint") {

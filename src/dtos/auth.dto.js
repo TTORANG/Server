@@ -27,3 +27,18 @@ export const withdrawalResponseDTO = (userId) => {
     withdrawnAt: new Date().toISOString(),
   };
 };
+
+export const reissueTokenDTO = (user, tokens, sessionId) => {
+  return {
+    message: "리프레시 토큰이 재발급되었습니다.",
+    user: {
+      id: user.id != null ? user.id.toString() : null,
+      email: user.email,
+      name: user.name,
+      sessionId,
+    },
+    tokens: {
+      accessToken: tokens.accessToken,
+    },
+  };
+};

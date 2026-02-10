@@ -1,8 +1,9 @@
 import { ALLOWED_EMOJIS } from "../constants/reaction.js";
 import {
   projectSlideReactionSummaryResponseDTO,
+  slideReactionCreateResponseDTO,
   slideReactionSummaryResponseDTO,
-  videoReactionToggleResponseDTO,
+  videoReactionCreateResponseDTO,
 } from "../dtos/reaction.dto.js";
 import { BaseError } from "../errors/base.error.js";
 import { ProjectNotFoundError } from "../errors/project.error.js";
@@ -21,25 +22,27 @@ import {
   countVideoReactionsByEmoji,
   countProjectSlideReactionsBySlideIds,
   countSlideReactions,
+  createVideoReaction,
   createReaction,
   findProjectWithSlides,
-  findReaction,
   findSlideById,
-  findVideoReaction,
-  updateReaction,
-  upsertVideoReaction,
 } from "../repositories/reaction.repository.js";
 import { findVideoByIdWithProject } from "../repositories/video.repository.js";
+import Redis from "ioredis";
 
-async function publishSlideReactionEvent({
-  isActive,
-  reactionId,
-  projectId,
-  slideId,
-  userId,
-  emojiType,
-}) {
-  const eventType = isActive ? EventTypes.REACTION_ADDED : EventTypes.REACTION_REMOVED;
+const VIDEO_REACTION_WINDOW_MS = 100;
+const VIDEO_REACTION_MAX_REQUESTS = 1;
+const reactionRateLimitStore = new Map();
+const REACTION_RATE_LIMIT_FALLBACK_CLEANUP_INTERVAL_MS = 30000;
+const reactionRateLimitRedis = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
+  maxRetriesPerRequest: 1,
+  enableOfflineQueue: false,
+  lazyConnect: true,
+});
+let isReactionRateLimitRedisUnavailable = false;
+let lastReactionRateLimitFallbackCleanupAt = 0;
+
+async function publishSlideReactionEvent({ reactionId, projectId, slideId, userId, emojiType }) {
   const payload = {
     reactionId,
     projectId,
@@ -50,10 +53,10 @@ async function publishSlideReactionEvent({
     timestampMs: null,
     emojiType,
     userId: userId ?? null,
-    active: isActive,
+    active: true,
   };
 
-  await eventBus.publish(eventType, payload);
+  await eventBus.publish(EventTypes.REACTION_ADDED, payload);
 }
 
 async function publishVideoReactionCountUpdated({ projectId, videoId }) {
@@ -85,42 +88,23 @@ export async function toggleSlideReaction({ slideId, emojiType, userId }) {
     throw new SlideNotFoundError({ slideId });
   }
 
-  const where = {
+  await enforceReactionRateLimit({
     userId,
-    sessionId: null,
-    targetType: "slide",
-    targetId: BigInt(slideId),
-    timestampMs: null,
-    emojiType,
-  };
+    targetKey: `slide:${slideId}`,
+  });
 
   try {
-    const existing = await findReaction(where);
-
-    if (existing) {
-      const newIsDeleted = !existing.isDeleted;
-      await updateReaction(existing.id, newIsDeleted);
-      const nextActive = !newIsDeleted;
-
-      await publishSlideReactionEvent({
-        isActive: nextActive,
-        reactionId: existing.id,
-        projectId: slide.projectId,
-        slideId,
-        userId,
-        emojiType,
-      });
-
-      return { active: nextActive };
-    }
-
     const createdReaction = await createReaction({
-      ...where,
+      userId,
+      sessionId: null,
+      targetType: "slide",
+      targetId: BigInt(slideId),
+      timestampMs: null,
+      emojiType,
       projectId: slide.projectId,
     });
 
     await publishSlideReactionEvent({
-      isActive: true,
       reactionId: createdReaction.id,
       projectId: slide.projectId,
       slideId,
@@ -128,7 +112,12 @@ export async function toggleSlideReaction({ slideId, emojiType, userId }) {
       emojiType,
     });
 
-    return { active: true };
+    return slideReactionCreateResponseDTO({
+      reactionId: createdReaction.id,
+      slideId,
+      emojiType,
+      createdAt: createdReaction.createdAt,
+    });
   } catch (e) {
     if (e instanceof BaseError) throw e;
     console.error("[toggleSlideReaction error]", e);
@@ -150,7 +139,7 @@ export async function getSlideReactionSummary({ slideId }) {
 }
 
 // 영상 타임스탬프 리액션 생성
-export async function toggleVideoReaction({ videoId, emojiType, timestampMs, userId, active }) {
+export async function createVideoReactionEvent({ videoId, emojiType, timestampMs, userId }) {
   let vid;
   try {
     vid = BigInt(videoId);
@@ -172,79 +161,136 @@ export async function toggleVideoReaction({ videoId, emojiType, timestampMs, use
     throw new InvalidParameterError({ timestampMs }, "타임스탬프는 0 이상의 정수여야 합니다.");
   }
 
+  await enforceReactionRateLimit({
+    userId,
+    targetKey: `video:${vid.toString()}`,
+  });
+
   const video = await findVideoByIdWithProject(vid);
 
   if (!video) {
     throw new VideoNotFoundError({ videoId: String(videoId) });
   }
 
-  const existing = await findVideoReaction({
-    userId,
-    videoId: vid,
-    emojiType,
-  });
-
-  // active를 주면 명시 상태 적용, 미전달 시 기존 토글 동작을 유지한다.
-  if (active !== undefined && typeof active !== "boolean") {
-    throw new InvalidParameterError({ active }, "active는 boolean 이어야 합니다.");
-  }
-
-  const nextIsDeleted =
-    typeof active === "boolean" ? !active : existing ? !existing.isDeleted : false;
-
-  const upserted = await upsertVideoReaction({
+  const created = await createVideoReaction({
     userId,
     videoId: vid,
     projectId: video.projectId,
     timestampMs: ts,
     emojiType,
-    isDeleted: nextIsDeleted,
   });
 
-  const prevActive = existing ? !existing.isDeleted : false;
-  const nextActive = !nextIsDeleted;
+  await eventBus.publish(EventTypes.REACTION_ADDED, {
+    reactionId: created.id,
+    projectId: video.projectId,
+    targetType: "video",
+    targetId: vid,
+    slideId: null,
+    videoId: vid,
+    userId: userId ?? null,
+    emojiType,
+    timestampMs: ts,
+    active: true,
+  });
 
-  if (!prevActive && nextActive) {
-    await eventBus.publish(EventTypes.REACTION_ADDED, {
-      reactionId: upserted.id,
-      projectId: video.projectId,
-      targetType: "video",
-      targetId: vid,
-      slideId: null,
-      videoId: vid,
-      userId: userId ?? null,
-      emojiType,
-      timestampMs: ts,
-      active: true,
+  await publishVideoReactionCountUpdated({
+    projectId: video.projectId,
+    videoId: vid,
+  });
+
+  return videoReactionCreateResponseDTO({
+    reactionId: created.id,
+    videoId: vid,
+    emojiType,
+    timestampMs: ts,
+    createdAt: created.createdAt,
+  });
+}
+
+async function enforceReactionRateLimit({ userId, targetKey }) {
+  if (VIDEO_REACTION_MAX_REQUESTS === 1) {
+    const acquired = await tryAcquireRateLimitLock({
+      userId,
+      targetKey,
+      windowMs: VIDEO_REACTION_WINDOW_MS,
     });
-    await publishVideoReactionCountUpdated({
-      projectId: video.projectId,
-      videoId: vid,
-    });
-  } else if (prevActive && !nextActive) {
-    await eventBus.publish(EventTypes.REACTION_REMOVED, {
-      reactionId: upserted.id,
-      projectId: video.projectId,
-      targetType: "video",
-      targetId: vid,
-      slideId: null,
-      videoId: vid,
-      userId: userId ?? null,
-      emojiType,
-      timestampMs: ts,
-      active: false,
-    });
-    await publishVideoReactionCountUpdated({
-      projectId: video.projectId,
-      videoId: vid,
-    });
+    if (!acquired) {
+      throw new InvalidParameterError(
+        {
+          limit: VIDEO_REACTION_MAX_REQUESTS,
+          windowMs: VIDEO_REACTION_WINDOW_MS,
+        },
+        "리액션 요청은 100ms당 1회만 가능합니다."
+      );
+    }
+    return;
   }
 
-  return videoReactionToggleResponseDTO({
-    reactionId: upserted.id,
-    videoId: vid,
-    active: nextActive,
-  });
+  const now = Date.now();
+  maybeCleanupFallbackRateLimitStore({ now, windowMs: VIDEO_REACTION_WINDOW_MS });
+  const key = `${userId}:${targetKey}`;
+  const history = reactionRateLimitStore.get(key) ?? [];
+  const nextHistory = history.filter((t) => now - t < VIDEO_REACTION_WINDOW_MS);
+
+  if (nextHistory.length >= VIDEO_REACTION_MAX_REQUESTS) {
+    throw new InvalidParameterError(
+      {
+        limit: VIDEO_REACTION_MAX_REQUESTS,
+        windowMs: VIDEO_REACTION_WINDOW_MS,
+      },
+      "리액션 요청은 100ms당 1회만 가능합니다."
+    );
+  }
+
+  nextHistory.push(now);
+  reactionRateLimitStore.set(key, nextHistory);
+}
+
+async function tryAcquireRateLimitLock({ userId, targetKey, windowMs }) {
+  const key = `reaction:rate-limit:${userId}:${targetKey}`;
+
+  if (!isReactionRateLimitRedisUnavailable) {
+    try {
+      if (reactionRateLimitRedis.status === "wait") {
+        await reactionRateLimitRedis.connect();
+      }
+      const result = await reactionRateLimitRedis.set(key, "1", "PX", windowMs, "NX");
+      return result === "OK";
+    } catch (error) {
+      isReactionRateLimitRedisUnavailable = true;
+      console.warn("[ReactionRateLimit] Redis unavailable. Falling back to in-memory store.", error);
+    }
+  }
+
+  const now = Date.now();
+  maybeCleanupFallbackRateLimitStore({ now, windowMs });
+  const fallbackHistory = reactionRateLimitStore.get(key) ?? [];
+  const nextHistory = fallbackHistory.filter((t) => now - t < windowMs);
+  if (nextHistory.length >= VIDEO_REACTION_MAX_REQUESTS) {
+    return false;
+  }
+  nextHistory.push(now);
+  reactionRateLimitStore.set(key, nextHistory);
+  return true;
+}
+
+function maybeCleanupFallbackRateLimitStore({ now, windowMs }) {
+  if (now - lastReactionRateLimitFallbackCleanupAt < REACTION_RATE_LIMIT_FALLBACK_CLEANUP_INTERVAL_MS) {
+    return;
+  }
+
+  for (const [key, history] of reactionRateLimitStore.entries()) {
+    const nextHistory = history.filter((t) => now - t < windowMs);
+    if (nextHistory.length === 0) {
+      reactionRateLimitStore.delete(key);
+      continue;
+    }
+    if (nextHistory.length !== history.length) {
+      reactionRateLimitStore.set(key, nextHistory);
+    }
+  }
+
+  lastReactionRateLimitFallbackCleanupAt = now;
 }
 
 function validateVideoTimelineParams({ videoId, intervalMs }) {
@@ -258,8 +304,7 @@ function validateVideoTimelineParams({ videoId, intervalMs }) {
     throw new InvalidParameterError({ videoId: String(videoId) });
   }
 
-  const safeInterval =
-    intervalMs === undefined || intervalMs === null ? 5000 : Number(intervalMs);
+  const safeInterval = intervalMs === undefined || intervalMs === null ? 5000 : Number(intervalMs);
   if (!Number.isInteger(safeInterval) || safeInterval <= 0) {
     throw new InvalidParameterError({ intervalMs });
   }
@@ -344,11 +389,7 @@ export const getReactionBuckets = async ({ videoId, intervalMs }) => {
 };
 
 // 시간대별 리액션 조회
-export const getVideoReactionsByTime = async ({
-  videoId,
-  timestampMs,
-  windowMs,
-}) => {
+export const getVideoReactionsByTime = async ({ videoId, timestampMs, windowMs }) => {
   let vid;
   try {
     vid = BigInt(videoId);
@@ -360,8 +401,7 @@ export const getVideoReactionsByTime = async ({
   }
 
   const ts = Number(timestampMs);
-  const safeWindowMs =
-    windowMs === undefined || windowMs === null ? 2000 : Number(windowMs);
+  const safeWindowMs = windowMs === undefined || windowMs === null ? 2000 : Number(windowMs);
 
   const video = await findVideoByIdWithProject(vid);
   if (!video) {
