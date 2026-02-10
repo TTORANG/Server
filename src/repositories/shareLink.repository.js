@@ -157,6 +157,14 @@ export const getVideoList = async (projectId, page, pageSize) => {
   return { totalCount, videos };
 };
 
+// shareToken으로 projectId 경량 조회
+export const findProjectIdByShareToken = async (token) => {
+  return await prisma.shareLink.findFirst({
+    where: { shareToken: token },
+    select: { projectId: true, isActive: true, expiredAt: true },
+  });
+};
+
 // 삭제된 프로젝트인지 확인
 export const findProjectById = async (projectId) => {
   return await prisma.project.findUnique({
