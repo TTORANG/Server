@@ -26,15 +26,19 @@ export const reactionBucketsResponseDTO = ({ intervalMs, buckets }) => ({
 
 export const slideReactionSummaryResponseDTO = ({ slideId, rows }) => {
   const summary = {};
+  const active = {};
   ALLOWED_EMOJIS.forEach((e) => (summary[e] = 0));
+  ALLOWED_EMOJIS.forEach((e) => (active[e] = false));
 
   rows.forEach((r) => {
     summary[r.emojiType] = r._count._all;
+    active[r.emojiType] = r._count._all > 0;
   });
 
   return {
     slideId: slideId.toString(),
     reactions: summary,
+    active,
   };
 };
 
