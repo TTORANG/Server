@@ -44,6 +44,7 @@ export const getShareLinkResponseDTO = (data) => {
         writer: c.user?.nickName || "익명",
         targetType: c.targetType,
         targetId: c.targetId.toString(),
+        parentId: c.parentId ? c.parentId.toString() : null,
         timestampMs: c.timestampMs,
         createdAt: c.createdAt,
       })),

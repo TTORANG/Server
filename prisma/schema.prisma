@@ -166,6 +166,7 @@ model Comment {
   parent   Comment? @relation("CommentParent", fields: [parentId], references: [id])
   children Comment[] @relation("CommentParent")
 
+  @@index([targetType, targetId], name: "idx_comment_target")
   @@map("comment")
 }
 
