@@ -15,8 +15,8 @@ import { videoTranscode } from "./conversion/videoTranscode.service.js";
 /**
  * 작업 생성 및 큐에 추가
  */
-const createAndEnqueueJob = async ({ uploadedFileId, videoId, jobType }) => {
-  const job = await createConversionJob({ uploadedFileId, videoId, jobType });
+const createAndEnqueueJob = async ({ uploadedFileId, videoId, jobType, projectId }) => {
+  const job = await createConversionJob({ uploadedFileId, videoId, jobType, projectId });
 
   if (!process.env.GCP_PROJECT_ID || !process.env.CLOUD_RUN_SERVICE_URL) {
     // 로컬 테스트용
@@ -68,6 +68,7 @@ const chainThumbnailJob = async (parentJobId) => {
     const thumbnailJob = await createAndEnqueueJob({
       uploadedFileId: parentJob.uploadedFileId,
       jobType: "generate_thumbnail",
+      projectId: parentJob.projectId,
     });
 
     console.log(`Chained thumbnail job ${thumbnailJob.id} from parent ${parentJobId}`);
@@ -91,6 +92,7 @@ const chainMetadataJob = async (parentJobId) => {
     const metadataJob = await createAndEnqueueJob({
       uploadedFileId: parentJob.uploadedFileId,
       jobType: "extract_metadata",
+      projectId: parentJob.projectId,
     });
 
     console.log(`Chained metadata job ${metadataJob.id} from parent ${parentJobId}`);
@@ -146,7 +148,7 @@ export const processJob = async (conversionJobId, jobType) => {
  *    - generate_thumbnail
  *    - extract_metadata
  */
-export const startConversionPipeline = async ({ uploadedFileId, fileExt }) => {
+export const startConversionPipeline = async ({ uploadedFileId, fileExt, projectId }) => {
   const ext = fileExt.toLowerCase();
 
   let imageConversionJobType;
@@ -163,6 +165,7 @@ export const startConversionPipeline = async ({ uploadedFileId, fileExt }) => {
   const imageJob = await createAndEnqueueJob({
     uploadedFileId,
     jobType: imageConversionJobType,
+    projectId,
   });
 
   console.log(`[Pipeline] Started for file ${uploadedFileId}:`, {
@@ -179,11 +182,12 @@ export const startConversionPipeline = async ({ uploadedFileId, fileExt }) => {
  *
  * - video_transcode: 청크 병합 → HLS 변환 → GCS 업로드
  */
-export const startVideoEncodingPipeline = async ({ videoId, uploadedFileId }) => {
+export const startVideoEncodingPipeline = async ({ videoId, uploadedFileId, projectId }) => {
   const job = await createAndEnqueueJob({
     videoId,
     uploadedFileId,
     jobType: "video_transcode",
+    projectId,
   });
 
   console.log(`[Pipeline] Video encoding started for video ${videoId}:`, {
