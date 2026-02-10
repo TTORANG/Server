@@ -86,7 +86,7 @@ export const processGetShareContent = async (shareToken, sessionId = null) => {
   }
 
   // 프로젝트 삭제여부 확인
-  if (shareLink.project.isDeleted) {
+  if (!shareLink.project || shareLink.project.isDeleted) {
     throw new ProjectDeletedError();
   }
 
@@ -124,9 +124,9 @@ export const processGetShareContent = async (shareToken, sessionId = null) => {
 
   const { scope, project, video, videoId } = shareLink;
 
-  const filteredComments = project.comments;
+  const filteredComments = project.comments || [];
 
-  const slides = project.slides.map((slide) => {
+  const slides = (project.slides || []).map((slide) => {
     const durationInfo = slide.slideDurations?.find((sd) => String(sd.videoId) === String(videoId));
 
     return {
