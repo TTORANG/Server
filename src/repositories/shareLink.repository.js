@@ -45,8 +45,17 @@ export const findExistingLink = async (projectId, scope, videoId) => {
 };
 
 export const findShareLinkWithContent = async (token) => {
-  return await prisma.shareLink.findFirst({
+  const shareLink = await prisma.shareLink.findFirst({
     where: { shareToken: token },
+  });
+
+  if (!shareLink) return null;
+
+  const { projectId, videoId, scope } = shareLink;
+  const isVideoScope = scope === "slides_script_video";
+
+  return await prisma.shareLink.findUnique({
+    where: { id: shareLink.id },
     include: {
       project: {
         include: {
@@ -73,17 +82,12 @@ export const findShareLinkWithContent = async (token) => {
           comments: {
             where: {
               isDeleted: false,
-              OR: [
-                { targetType: "video" },
-                {
-                  AND: [
-                    { targetType: "slide" },
-                    {
-                      slide: { isDeleted: false },
-                    },
-                  ],
-                },
-              ],
+              ...(isVideoScope
+                ? { targetType: "video", targetId: BigInt(videoId) }
+                : {
+                    targetType: "slide",
+                    slide: { isDeleted: false },
+                  }),
             },
             orderBy: {
               createdAt: "asc",

@@ -124,16 +124,7 @@ export const processGetShareContent = async (shareToken, sessionId = null) => {
 
   const { scope, project, video, videoId } = shareLink;
 
-  let filteredComments = [];
-  if (scope === SCOPE_VIDEO) {
-    // 영상 모드: 해당 영상(videoId)을 타겟으로 하는 댓글만 추출
-    filteredComments = project.comments.filter(
-      (c) => c.targetType === "video" && String(c.targetId) === String(videoId)
-    );
-  } else {
-    // 슬라이드 모드: 슬라이드를 타겟으로 하는 모든 댓글 추출
-    filteredComments = project.comments.filter((c) => c.targetType === "slide");
-  }
+  const filteredComments = project.comments;
 
   const slides = project.slides.map((slide) => {
     const durationInfo = slide.slideDurations?.find((sd) => String(sd.videoId) === String(videoId));

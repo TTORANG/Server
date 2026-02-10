@@ -123,7 +123,12 @@ export const handleCreateShareLink = async (req, res, next) => {
  * /shares/{shareToken}:
  *   get:
  *     summary: 공유 콘텐츠 조회
- *     description: 토큰을 통해 외부 공유된 프로젝트 콘텐츠(슬라이드, 대본, 영상)를 조회합니다. (인증 불필요)
+ *     description: |
+ *       토큰을 통해 외부 공유된 프로젝트 콘텐츠(슬라이드, 대본, 영상, 댓글)를 조회합니다. (인증 불필요)
+ *         - [필터링 규칙]
+ *         - 공통: 삭제된 댓글(`isDeleted: true`)은 제외됩니다.
+ *         - 슬라이드 모드: 슬라이드에 달린 댓글만 반환하며, **삭제된 슬라이드의 댓글은 보안상 제외**됩니다.
+ *         - 영상 모드: 해당 공유 링크에 연결된 특정 영상(`videoId`)에 달린 댓글만 반환합니다.
  *     tags: [ShareLink]
  *     parameters:
  *       - in: path
