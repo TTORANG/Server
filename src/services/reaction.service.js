@@ -28,18 +28,21 @@ import {
   findSlideById,
 } from "../repositories/reaction.repository.js";
 import { findVideoByIdWithProject } from "../repositories/video.repository.js";
+import Redis from "ioredis";
 
 const VIDEO_REACTION_WINDOW_MS = 100;
 const VIDEO_REACTION_MAX_REQUESTS = 1;
 const reactionRateLimitStore = new Map();
+const REACTION_RATE_LIMIT_FALLBACK_CLEANUP_INTERVAL_MS = 30000;
+const reactionRateLimitRedis = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
+  maxRetriesPerRequest: 1,
+  enableOfflineQueue: false,
+  lazyConnect: true,
+});
+let isReactionRateLimitRedisUnavailable = false;
+let lastReactionRateLimitFallbackCleanupAt = 0;
 
-async function publishSlideReactionEvent({
-  reactionId,
-  projectId,
-  slideId,
-  userId,
-  emojiType,
-}) {
+async function publishSlideReactionEvent({ reactionId, projectId, slideId, userId, emojiType }) {
   const payload = {
     reactionId,
     projectId,
@@ -85,7 +88,7 @@ export async function toggleSlideReaction({ slideId, emojiType, userId }) {
     throw new SlideNotFoundError({ slideId });
   }
 
-  enforceReactionRateLimit({
+  await enforceReactionRateLimit({
     userId,
     targetKey: `slide:${slideId}`,
   });
@@ -158,7 +161,7 @@ export async function createVideoReactionEvent({ videoId, emojiType, timestampMs
     throw new InvalidParameterError({ timestampMs }, "타임스탬프는 0 이상의 정수여야 합니다.");
   }
 
-  enforceReactionRateLimit({
+  await enforceReactionRateLimit({
     userId,
     targetKey: `video:${vid.toString()}`,
   });
@@ -204,8 +207,27 @@ export async function createVideoReactionEvent({ videoId, emojiType, timestampMs
   });
 }
 
-function enforceReactionRateLimit({ userId, targetKey }) {
+async function enforceReactionRateLimit({ userId, targetKey }) {
+  if (VIDEO_REACTION_MAX_REQUESTS === 1) {
+    const acquired = await tryAcquireRateLimitLock({
+      userId,
+      targetKey,
+      windowMs: VIDEO_REACTION_WINDOW_MS,
+    });
+    if (!acquired) {
+      throw new InvalidParameterError(
+        {
+          limit: VIDEO_REACTION_MAX_REQUESTS,
+          windowMs: VIDEO_REACTION_WINDOW_MS,
+        },
+        "리액션 요청은 100ms당 1회만 가능합니다."
+      );
+    }
+    return;
+  }
+
   const now = Date.now();
+  maybeCleanupFallbackRateLimitStore({ now, windowMs: VIDEO_REACTION_WINDOW_MS });
   const key = `${userId}:${targetKey}`;
   const history = reactionRateLimitStore.get(key) ?? [];
   const nextHistory = history.filter((t) => now - t < VIDEO_REACTION_WINDOW_MS);
@@ -224,6 +246,53 @@ function enforceReactionRateLimit({ userId, targetKey }) {
   reactionRateLimitStore.set(key, nextHistory);
 }
 
+async function tryAcquireRateLimitLock({ userId, targetKey, windowMs }) {
+  const key = `reaction:rate-limit:${userId}:${targetKey}`;
+
+  if (!isReactionRateLimitRedisUnavailable) {
+    try {
+      if (reactionRateLimitRedis.status === "wait") {
+        await reactionRateLimitRedis.connect();
+      }
+      const result = await reactionRateLimitRedis.set(key, "1", "PX", windowMs, "NX");
+      return result === "OK";
+    } catch (error) {
+      isReactionRateLimitRedisUnavailable = true;
+      console.warn("[ReactionRateLimit] Redis unavailable. Falling back to in-memory store.", error);
+    }
+  }
+
+  const now = Date.now();
+  maybeCleanupFallbackRateLimitStore({ now, windowMs });
+  const fallbackHistory = reactionRateLimitStore.get(key) ?? [];
+  const nextHistory = fallbackHistory.filter((t) => now - t < windowMs);
+  if (nextHistory.length >= VIDEO_REACTION_MAX_REQUESTS) {
+    return false;
+  }
+  nextHistory.push(now);
+  reactionRateLimitStore.set(key, nextHistory);
+  return true;
+}
+
+function maybeCleanupFallbackRateLimitStore({ now, windowMs }) {
+  if (now - lastReactionRateLimitFallbackCleanupAt < REACTION_RATE_LIMIT_FALLBACK_CLEANUP_INTERVAL_MS) {
+    return;
+  }
+
+  for (const [key, history] of reactionRateLimitStore.entries()) {
+    const nextHistory = history.filter((t) => now - t < windowMs);
+    if (nextHistory.length === 0) {
+      reactionRateLimitStore.delete(key);
+      continue;
+    }
+    if (nextHistory.length !== history.length) {
+      reactionRateLimitStore.set(key, nextHistory);
+    }
+  }
+
+  lastReactionRateLimitFallbackCleanupAt = now;
+}
+
 function validateVideoTimelineParams({ videoId, intervalMs }) {
   let vid;
   try {
@@ -235,8 +304,7 @@ function validateVideoTimelineParams({ videoId, intervalMs }) {
     throw new InvalidParameterError({ videoId: String(videoId) });
   }
 
-  const safeInterval =
-    intervalMs === undefined || intervalMs === null ? 5000 : Number(intervalMs);
+  const safeInterval = intervalMs === undefined || intervalMs === null ? 5000 : Number(intervalMs);
   if (!Number.isInteger(safeInterval) || safeInterval <= 0) {
     throw new InvalidParameterError({ intervalMs });
   }
@@ -321,11 +389,7 @@ export const getReactionBuckets = async ({ videoId, intervalMs }) => {
 };
 
 // 시간대별 리액션 조회
-export const getVideoReactionsByTime = async ({
-  videoId,
-  timestampMs,
-  windowMs,
-}) => {
+export const getVideoReactionsByTime = async ({ videoId, timestampMs, windowMs }) => {
   let vid;
   try {
     vid = BigInt(videoId);
@@ -337,8 +401,7 @@ export const getVideoReactionsByTime = async ({
   }
 
   const ts = Number(timestampMs);
-  const safeWindowMs =
-    windowMs === undefined || windowMs === null ? 2000 : Number(windowMs);
+  const safeWindowMs = windowMs === undefined || windowMs === null ? 2000 : Number(windowMs);
 
   const video = await findVideoByIdWithProject(vid);
   if (!video) {
