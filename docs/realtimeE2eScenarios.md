@@ -14,11 +14,21 @@ comment/reaction 실시간 동기화의 end-to-end 연결을 검증합니다.
 - 해당 프로젝트에서 comment/reaction 동작을 발생시킬 수 있는 클라이언트/사용자가 있어야 합니다.
 
 ## 빠른 실행
-```bash
+Windows (`cmd.exe`):
+```bat
 set E2E_SERVER_URL=http://localhost:8080
 set E2E_PROJECT_ID=<project-id>
 set E2E_JWT_TOKEN=<jwt-token>
 set E2E_TIMEOUT_MS=120000
+npm run e2e:realtime
+```
+
+macOS/Linux (`bash`, `zsh` 등):
+```bash
+export E2E_SERVER_URL=http://localhost:8080
+export E2E_PROJECT_ID=<project-id>
+export E2E_JWT_TOKEN=<jwt-token>
+export E2E_TIMEOUT_MS=120000
 npm run e2e:realtime
 ```
 

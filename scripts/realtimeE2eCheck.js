@@ -95,27 +95,21 @@ const received = new Map();
 const payloadErrors = [];
 
 function matchesType(value, spec) {
-  if (spec === "string") return typeof value === "string";
-  if (spec === "number") return typeof value === "number" && Number.isFinite(value);
-  if (spec === "boolean") return typeof value === "boolean";
-  if (spec === "object")
+  const types = spec
+    .split("|")
+    .map((type) => type.trim())
+    .filter(Boolean);
+  return types.some((type) => matchesPrimitiveType(value, type));
+}
+
+function matchesPrimitiveType(value, type) {
+  if (type === "string") return typeof value === "string";
+  if (type === "number") return typeof value === "number" && Number.isFinite(value);
+  if (type === "boolean") return typeof value === "boolean";
+  if (type === "object")
     return value !== null && typeof value === "object" && !Array.isArray(value);
-  if (spec === "null") return value === null;
-  if (spec === "bigint") return typeof value === "bigint";
-  if (spec === "string|null") return value === null || typeof value === "string";
-  if (spec === "number|null")
-    return value === null || (typeof value === "number" && Number.isFinite(value));
-  if (spec === "bigint|string|number") {
-    return typeof value === "bigint" || typeof value === "string" || typeof value === "number";
-  }
-  if (spec === "bigint|string|number|null") {
-    return (
-      value === null ||
-      typeof value === "bigint" ||
-      typeof value === "string" ||
-      typeof value === "number"
-    );
-  }
+  if (type === "null") return value === null;
+  if (type === "bigint") return typeof value === "bigint";
   return false;
 }
 

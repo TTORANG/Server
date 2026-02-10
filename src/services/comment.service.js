@@ -21,35 +21,7 @@ import {
 } from "../repositories/comment.repository.js";
 import { getSlideWithProject } from "../repositories/slide.repository.js";
 import { findVideoByIdWithProject } from "../repositories/video.repository.js";
-
-function buildCommentTargetPayload(comment) {
-  if (comment.targetType === "slide") {
-    return {
-      targetType: "slide",
-      targetId: comment.targetId,
-      slideId: comment.targetId,
-      videoId: null,
-      timestampMs: null,
-    };
-  }
-  if (comment.targetType === "video") {
-    return {
-      targetType: "video",
-      targetId: comment.targetId,
-      slideId: null,
-      videoId: comment.targetId,
-      timestampMs: comment.timestampMs ?? null,
-    };
-  }
-
-  return {
-    targetType: null,
-    targetId: null,
-    slideId: null,
-    videoId: null,
-    timestampMs: null,
-  };
-}
+import { buildCommentTargetPayload } from "../utils/commentTargetPayload.util.js";
 
 // 댓글 작성
 export const createSlideComment = async ({ slideId, content, userId }) => {
