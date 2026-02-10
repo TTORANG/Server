@@ -38,6 +38,15 @@ export const getShareLinkResponseDTO = (data) => {
       title: content.title,
       slides: content.slides,
       video: content.video || null,
+      comments: content.comments.map((c) => ({
+        commentId: c.id.toString(),
+        content: c.content,
+        writer: c.user?.nickName || "익명",
+        targetType: c.targetType,
+        targetId: c.targetId.toString(),
+        timestampMs: c.timestampMs,
+        createdAt: c.createdAt,
+      })),
     },
   };
 };

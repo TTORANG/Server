@@ -159,6 +159,7 @@ model Comment {
   updatedAt   DateTime? @map("updated_at") @updatedAt
   isDeleted   Boolean  @default(false) @db.TinyInt @map("is_deleted")
 
+  slide       Slide?     @relation(fields: [targetId], references: [id], map: "comment_slide_id_fkey")
   project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user     User    @relation(fields: [userId], references: [id])
   session  Session? @relation(fields: [sessionId], references: [id])
@@ -206,6 +207,7 @@ model Slide {
 
   analyticsSlideViews AnalyticsSlideView[]
   analyticsExits      AnalyticsExit[]
+  comments            Comment[]
 
   @@unique([projectId, slideNum])
   @@map("slide")

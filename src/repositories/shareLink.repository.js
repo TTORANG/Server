@@ -70,6 +70,32 @@ export const findShareLinkWithContent = async (token) => {
               slideDurations: true,
             },
           },
+          comments: {
+            where: {
+              isDeleted: false,
+              OR: [
+                { targetType: "video" },
+                {
+                  AND: [
+                    { targetType: "slide" },
+                    {
+                      slide: { isDeleted: false },
+                    },
+                  ],
+                },
+              ],
+            },
+            orderBy: {
+              createdAt: "asc",
+            },
+            include: {
+              user: {
+                select: {
+                  nickName: true,
+                },
+              },
+            },
+          },
         },
       },
       video: true,
