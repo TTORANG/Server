@@ -27,6 +27,241 @@
 </br>
 </br>
 
+## 🌟 주요 기능
+
+### 📊 프레젠테이션 관리
+
+- **프로젝트**: 발표 프로젝트 생성, 수정, 삭제, 조회
+- **슬라이드**: PPTX/PDF 업로드 후 자동 이미지 변환 및 슬라이드 관리
+- **스크립트**: 슬라이드별 발표 대본 작성 및 버전 관리
+
+### 🎥 영상 녹화 & 스트리밍
+
+- **청크 업로드**: WebM/MP4 영상 청크 단위 업로드
+- **HLS 트랜스코딩**: FFmpeg 기반 720p + 1080p 자동 변환
+- **슬라이드 동기화**: 영상-슬라이드 타임라인 매핑
+
+### 💬 실시간 피드백
+
+- **댓글**: 슬라이드별 / 영상 타임스탬프별 댓글 및 대댓글
+- **리액션**: 이모지 반응 (fire, good, bad, sleepy, confused)
+- **실시간 동기화**: Socket.io + Redis Pub/Sub 기반 실시간 브로드캐스트
+
+### 📈 분석 대시보드
+
+- 페이지 뷰 / 슬라이드별 조회수 추적
+- 영상 재생 이벤트 (play/pause/seek) 기록
+- 슬라이드 및 영상 리텐션 분석
+- 이탈 지점 분석
+
+### 🔗 공유 링크
+
+- 공개 공유 링크 생성 (슬라이드+스크립트 / 슬라이드+스크립트+영상)
+- 만료일 설정 및 조회수 추적
+
+### 🔐 인증 & 보안
+
+- JWT 기반 인증 (Access Token + Refresh Token)
+- Passport.js 소셜 로그인 (Google, Kakao, Naver)
+- 익명 세션 지원 및 로그인 후 데이터 병합
+
+## 🏗️ 아키텍처 및 설계
+
+### 계층형 아키텍처 (Layered Architecture)
+
+```
+┌─────────────────────────────────────┐
+│          Controller Layer           │  ← REST API 엔드포인트
+├─────────────────────────────────────┤
+│           Service Layer             │  ← 비즈니스 로직
+├─────────────────────────────────────┤
+│         Repository Layer            │  ← 데이터 접근 (Prisma)
+├─────────────────────────────────────┤
+│         Database (MySQL)            │  ← 영속성 계층
+└─────────────────────────────────────┘
+```
+
+### 실시간 아키텍처 (Real-time Architecture)
+
+```
+HTTP 요청 (댓글/리액션 생성)
+  └─> EventBus.publish (Redis Pub/Sub)
+        └─> Subscriber Handlers
+              ├── notification.handler  → 알림 처리
+              └── websocket.handler     → Socket.io 브로드캐스트
+                                          └─> Redis Adapter → 모든 클라이언트
+```
+
+### 변환 파이프라인 (Conversion Pipeline)
+
+```
+PPTX/PDF 업로드
+  └─> [Job 1] pptx_to_images / pdf_to_images
+        └─> 완료 시 체이닝:
+              ├── [Job 2] generate_thumbnail
+              └── [Job 3] extract_metadata
+
+영상 청크 업로드 → 녹화 완료
+  └─> [Job] video_transcode
+        ├── GCS에서 청크 다운로드 (동시성: 5)
+        ├── FFmpeg concat 병합
+        ├── 메타데이터 추출 (길이, 해상도, fps, 코덱)
+        ├── 썸네일 추출
+        ├── 슬라이드별 재생 시간 계산
+        ├── FFmpeg HLS 트랜스코딩 (720p + 1080p)
+        └── HLS 세그먼트 GCS 업로드
+```
+
+### 주요 디자인 패턴
+
+- **DTO Pattern**: 계층 간 데이터 전송 및 응답 형식 통일
+- **Repository Pattern**: Prisma 기반 데이터 접근 추상화
+- **Event-Driven**: Redis Pub/Sub 기반 이벤트 버스
+- **Error Handling**: 도메인별 커스텀 에러 클래스 (BaseError 상속)
+- **Chunked Upload**: 대용량 영상 청크 분할 업로드
+
+## 🔐 보안 구현
+
+### JWT 인증 플로우
+
+```
+1. 사용자 소셜 로그인 요청 (/auth/{provider}/login)
+2. OAuth Provider 리다이렉트 및 인증
+3. 콜백에서 사용자 upsert 및 세션 생성
+4. JWT Access Token (1시간) + Refresh Token (14일) 발급
+5. isLogin 미들웨어에서 Bearer 토큰 검증 및 인증 처리
+```
+
+### 익명 세션 시스템
+
+```
+1. POST /session/anonymous → 익명 사용자 + 세션 생성
+2. JWT 발급 (익명 이메일 기반)
+3. 익명 상태에서 댓글/리액션 가능
+4. POST /session/merge → 소셜 로그인 후 익명 데이터 병합
+```
+
+### 보안 기능
+
+- **JWT Token**: Access Token (단기) + Refresh Token (장기) 전략
+- **OAuth 2.0**: Google, Kakao, Naver 소셜 로그인
+- **CORS 설정**: 프론트엔드 도메인만 허용
+- **OIDC 검증**: Cloud Tasks 워커 엔드포인트 인증
+- **소유권 검증**: 영상/프로젝트 접근 시 IDOR 방지
+
+## 💾 데이터베이스 설계
+
+### 주요 엔티티
+
+- **User**: 사용자 정보 (OAuth 제공자, 소프트 삭제)
+- **Session**: 세션 관리 (JWT Refresh Token, 익명 세션)
+- **Project**: 발표 프로젝트
+- **Slide**: 프로젝트별 슬라이드
+- **Script / ScriptVersion**: 발표 대본 및 버전 이력
+- **Video / VideoChunk**: 녹화 영상 및 청크
+- **VideoSlideEvent / VideoSlideDuration**: 영상-슬라이드 동기화
+- **UploadedFile / ProjectMaterial / SlideAsset**: 파일 및 에셋 관리
+- **ConversionJob**: 비동기 변환 작업 상태 추적
+- **Comment**: 대댓글 지원 댓글 (슬라이드/영상 타겟)
+- **Reaction**: 이모지 리액션 (슬라이드/영상 타겟)
+- **ShareLink**: 공유 링크 (스코프별)
+- **Analytics\***: 페이지뷰, 슬라이드뷰, 영상 이벤트, 이탈 추적
+
+### 관계 설정
+
+- User ↔ Project: 1:N
+- Project ↔ Slide: 1:N
+- Slide ↔ Script: 1:1
+- Script ↔ ScriptVersion: 1:N
+- Project ↔ Video: 1:N
+- Video ↔ VideoChunk: 1:N
+- Project ↔ Comment: 1:N
+- Comment ↔ Comment (replies): 자기 참조 1:N
+- User ↔ Reaction: 1:N (유저+타겟+이모지 유니크)
+- Project ↔ ShareLink: 1:N
+
+## 📚 API 엔드포인트
+
+### 인증
+
+- `GET /auth/google/login` - Google 소셜 로그인
+- `GET /auth/kakao/login` - Kakao 소셜 로그인
+- `GET /auth/naver/login` - Naver 소셜 로그인
+- `POST /auth/logout` - 로그아웃
+- `DELETE /users/:userId` - 회원 탈퇴
+
+### 익명 세션
+
+- `POST /session/anonymous` - 익명 세션 생성
+- `POST /session/merge` - 익명 세션 데이터 병합
+
+### 프로젝트
+
+- `POST /presentations/` - 프로젝트 생성
+- `GET /presentations/` - 프로젝트 목록 / 검색
+- `GET /presentations/:projectId` - 프로젝트 조회
+- `PATCH /presentations/:projectId` - 프로젝트 수정
+- `DELETE /presentations/:projectId` - 프로젝트 삭제
+
+### 슬라이드
+
+- `GET /presentations/:projectId/slides` - 슬라이드 목록 조회
+- `GET /presentations/slides/:slideId` - 슬라이드 상세 조회
+- `PATCH /presentations/slides/:slideId` - 슬라이드 제목 수정
+
+### 스크립트
+
+- `PATCH /presentations/slides/:slideId/script` - 스크립트 저장
+- `GET /presentations/slides/:slideId/script` - 스크립트 조회
+- `GET /presentations/slides/:slideId/versions` - 버전 이력 조회
+- `POST /presentations/slides/:slideId/restore` - 버전 복원
+
+### 파일
+
+- `POST /files/upload` - PPTX/PDF 업로드 (변환 자동 시작)
+- `GET /presentations/:projectId/status` - 변환 상태 폴링
+
+### 영상
+
+- `POST /videos/start` - 녹화 시작
+- `POST /videos/:videoId/chunks/:chunkIndex` - 청크 업로드
+- `POST /videos/:videoId/finish` - 녹화 완료 및 인코딩 시작
+- `GET /videos/:videoId` - 영상 상세 조회
+- `DELETE /videos/:videoId` - 영상 삭제
+- `GET /videos/:videoId/slides` - 영상-슬라이드 타임라인
+
+### 댓글
+
+- `POST /slides/:slideId/comments` - 슬라이드 댓글 작성
+- `POST /videos/:videoId/comments` - 영상 타임스탬프 댓글 작성
+- `PATCH /comments/:commentId` - 댓글 수정
+- `DELETE /comments/:commentId` - 댓글 삭제
+- `POST /comments/:commentId/replies` - 대댓글 작성
+
+### 리액션
+
+- `POST /slides/:slideId/reactions/toggle` - 슬라이드 리액션 토글
+- `GET /slides/:slideId/reactions/summary` - 슬라이드 리액션 요약
+- `POST /videos/:videoId/reactions` - 영상 리액션 토글
+- `GET /videos/:videoId/reactions/timeline` - 영상 리액션 타임라인
+
+### 공유
+
+- `POST /presentations/:projectId/shares` - 공유 링크 생성
+- `GET /shares/:shareToken` - 공유 콘텐츠 조회 (공개)
+- `GET /presentations/:projectId/shares` - 공유 링크 목록
+
+### 분석
+
+- `POST /analytics/pageview` - 페이지뷰 기록
+- `POST /analytics/slide-view` - 슬라이드뷰 기록
+- `POST /analytics/video-event` - 영상 이벤트 기록
+- `GET /presentations/:projectId/analytics/summary` - 종합 분석
+- `GET /presentations/:projectId/analytics/slide-retention` - 슬라이드 리텐션
+- `GET /videos/:videoId/analytics/retention` - 영상 리텐션
+
+> 상세한 API 명세는 Swagger 문서를 참고해주세요.
+
 ## 📌 How To Run
 
 ### 1) 의존성 설치
