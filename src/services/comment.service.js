@@ -21,6 +21,7 @@ import {
 } from "../repositories/comment.repository.js";
 import { getSlideWithProject } from "../repositories/slide.repository.js";
 import { findVideoByIdWithProject } from "../repositories/video.repository.js";
+import { buildCommentTargetPayload } from "../utils/commentTargetPayload.util.js";
 
 // 댓글 작성
 export const createSlideComment = async ({ slideId, content, userId }) => {
@@ -49,9 +50,10 @@ export const createSlideComment = async ({ slideId, content, userId }) => {
   await eventBus.publish(EventTypes.COMMENT_CREATED, {
     commentId: comment.id,
     projectId: slide.project.id,
-    slideId,
     userId,
     content: comment.content,
+    parentCommentId: comment.parentId ?? null,
+    ...buildCommentTargetPayload(comment),
     createdAt: comment.createdAt,
   });
 
@@ -87,6 +89,7 @@ export const updateComment = async ({ commentId, content }) => {
     content: updatedComment.content,
     updatedAt: updatedComment.updatedAt,
     parentCommentId: updatedComment.parentId ?? null,
+    ...buildCommentTargetPayload(comment),
   });
 
   return updatedComment;
@@ -115,6 +118,7 @@ export const deleteComment = async ({ commentId }) => {
     projectId: comment.projectId,
     userId: comment.userId,
     parentCommentId: comment.parentId ?? null,
+    ...buildCommentTargetPayload(comment),
   });
 
   return {
@@ -209,10 +213,14 @@ export async function createVideoComment({ videoId, content, timestampMs, userId
   await eventBus.publish(EventTypes.COMMENT_CREATED, {
     commentId: comment.id,
     projectId: video.projectId,
-    videoId: vid,
     userId,
     content: comment.content,
-    timestampMs: comment.timestampMs,
+    parentCommentId: comment.parentId ?? null,
+    ...buildCommentTargetPayload({
+      targetType: "video",
+      targetId: vid,
+      timestampMs: comment.timestampMs,
+    }),
     createdAt: comment.createdAt,
   });
 

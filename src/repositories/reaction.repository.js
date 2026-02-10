@@ -101,6 +101,18 @@ export const aggregateVideoReactionsByTimeWindow = async ({ videoId, startMs, en
   });
 };
 
+export function countVideoReactionsByEmoji(videoId) {
+  return prisma.reaction.groupBy({
+    by: ["emojiType"],
+    where: {
+      targetType: "video",
+      targetId: BigInt(videoId),
+      isDeleted: false,
+    },
+    _count: { _all: true },
+  });
+}
+
 export function findVideoReaction({ userId, videoId, emojiType }) {
   return prisma.reaction.findFirst({
     where: {

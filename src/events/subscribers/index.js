@@ -14,6 +14,7 @@ import {
   broadcastCommentDeleted,
   broadcastNewReaction,
   broadcastReactionRemoved,
+  broadcastReactionCountUpdated,
 } from "./websocket.handler.js";
 
 /**
@@ -34,6 +35,7 @@ export const registerSubscribers = async () => {
   await eventBus.subscribe(EventTypes.COMMENT_DELETED, broadcastCommentDeleted);
   await eventBus.subscribe(EventTypes.REACTION_ADDED, broadcastNewReaction);
   await eventBus.subscribe(EventTypes.REACTION_REMOVED, broadcastReactionRemoved);
+  await eventBus.subscribe(EventTypes.REACTION_COUNT_UPDATED, broadcastReactionCountUpdated);
 
   console.log("[Subscribers] All event handlers registered");
 };

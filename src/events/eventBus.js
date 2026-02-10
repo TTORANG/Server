@@ -15,6 +15,7 @@ class EventBus {
     this.subscriber = null;
     this.handlers = new Map(); // 채널별 핸들러 저장
     this.isConnected = false;
+    this.lastDisconnectedWarnAt = 0;
   }
 
   async connect(redisUrl = process.env.REDIS_URL || "redis://localhost:6379") {
@@ -31,23 +32,8 @@ class EventBus {
         retryDelayOnFailover: 100,
       });
 
-      // 연결 이벤트 핸들링
-      this.publisher.on("connect", () => {
-        console.log("[EventBus] Publisher connected to Redis");
-      });
-
-      this.subscriber.on("connect", () => {
-        console.log("[EventBus] Subscriber connected to Redis");
-        this.isConnected = true;
-      });
-
-      this.publisher.on("error", (err) => {
-        console.error("[EventBus] Publisher error:", err.message);
-      });
-
-      this.subscriber.on("error", (err) => {
-        console.error("[EventBus] Subscriber error:", err.message);
-      });
+      this._attachRedisClientEvents(this.publisher, "Publisher");
+      this._attachRedisClientEvents(this.subscriber, "Subscriber");
 
       // 메시지 수신 핸들러
       this.subscriber.on("message", (channel, message) => {
@@ -64,7 +50,14 @@ class EventBus {
 
   async publish(channel, data) {
     if (!this.publisher || !this.isConnected) {
-      console.warn(`[EventBus] Not connected. Skipping publish to ${channel}`);
+      const now = Date.now();
+      if (now - this.lastDisconnectedWarnAt > 30000) {
+        const status = this.getHealthStatus();
+        console.warn(
+          `[EventBus][HealthWarning] Not connected. Realtime publish is disabled. channel=${channel}, publisherStatus=${status.publisherStatus}, subscriberStatus=${status.subscriberStatus}`
+        );
+        this.lastDisconnectedWarnAt = now;
+      }
       return false;
     }
 
@@ -117,6 +110,52 @@ class EventBus {
     } catch (error) {
       console.error(`[EventBus] Unsubscribe error on ${channel}:`, error.message);
     }
+  }
+
+  _attachRedisClientEvents(client, role) {
+    client.on("connect", () => {
+      this._refreshConnectionState();
+      console.log(`[EventBus] ${role} connected to Redis`);
+    });
+
+    client.on("ready", () => {
+      this._refreshConnectionState();
+      console.log(`[EventBus] ${role} ready`);
+    });
+
+    client.on("reconnecting", () => {
+      this.isConnected = false;
+      console.warn(`[EventBus][HealthWarning] ${role} reconnecting...`);
+    });
+
+    client.on("close", () => {
+      this.isConnected = false;
+      console.warn(`[EventBus][HealthWarning] ${role} connection closed`);
+    });
+
+    client.on("end", () => {
+      this.isConnected = false;
+      console.warn(`[EventBus][HealthWarning] ${role} connection ended`);
+    });
+
+    client.on("error", (err) => {
+      this.isConnected = false;
+      console.error(`[EventBus][HealthWarning] ${role} error:`, err.message);
+    });
+  }
+
+  _refreshConnectionState() {
+    const publisherReady = this.publisher?.status === "ready";
+    const subscriberReady = this.subscriber?.status === "ready";
+    this.isConnected = Boolean(publisherReady && subscriberReady);
+  }
+
+  getHealthStatus() {
+    return {
+      isConnected: this.isConnected,
+      publisherStatus: this.publisher?.status ?? "none",
+      subscriberStatus: this.subscriber?.status ?? "none",
+    };
   }
 
   _handleMessage(channel, message) {
