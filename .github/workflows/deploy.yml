@@ -89,4 +89,5 @@ jobs:
               GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}##
               CLOUD_RUN_SERVICE_URL=https://ttorang-server-407623424780.asia-northeast3.run.app##
               CLOUD_TASKS_SERVICE_ACCOUNT=${{ secrets.CLOUD_TASKS_SERVICE_ACCOUNT }}##
-              REDIS_URL=${{ secrets.REDIS_URL }}"
+              REDIS_URL=${{ secrets.REDIS_URL }}##
+              FRONTEND_URL=https://ttorang.com"
