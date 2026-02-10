@@ -83,7 +83,7 @@ export const findShareLinkWithContent = async (token) => {
             where: {
               isDeleted: false,
               ...(isVideoScope
-                ? { targetType: "video", targetId: BigInt(videoId) }
+                ? { targetType: "video", targetId: videoId ? BigInt(videoId) : -1n }
                 : {
                     targetType: "slide",
                     slide: { isDeleted: false },
