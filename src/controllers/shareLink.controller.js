@@ -150,6 +150,7 @@ export const handleCreateShareLink = async (req, res, next) => {
  *                 message: "공유된 프로젝트에 접속했습니다."
  *                 sessionInfo:
  *                   sessionId: "106fbf2c-3357-40f7-..."
+ *                   name: "또랑한 고양이"
  *                   tokens:
  *                      accessToken: "eyJhbGci..."
  *                      refreshToken: "eyJhbGci..."

@@ -27,6 +27,7 @@ export const getShareLinkResponseDTO = (data) => {
 
     sessionInfo: {
       sessionId: data.sessionId,
+      name: data.sessionName,
       tokens: data.tokens,
     },
     shareInfo: {
