@@ -253,6 +253,7 @@ export const handleWithdrawal = async (req, res, next) => {
  *                   id: "123"
  *                   email: "user@example.com"
  *                   name: "사용자"
+ *                   profileImageUrl: "https://cdn.example.com/profile.jpg"
  *                   sessionId: "2f1d7a64-2b47-4b3f-b2a9-2a4b2b5c3e4f"
  *                 tokens:
  *                   accessToken: "new-access-token"

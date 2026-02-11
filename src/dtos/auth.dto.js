@@ -5,6 +5,7 @@ export const signinResponseDTO = (user, tokens, sessionId) => {
       id: user.id != null ? user.id.toString() : null,
       email: user.email,
       name: user.name,
+      profileImageUrl: user.profileImageUrl ?? null,
       sessionId,
     },
     tokens: tokens,
@@ -35,6 +36,7 @@ export const reissueTokenDTO = (user, tokens, sessionId) => {
       id: user.id != null ? user.id.toString() : null,
       email: user.email,
       name: user.name,
+      profileImageUrl: user.profileImageUrl ?? null,
       sessionId,
     },
     tokens: {
