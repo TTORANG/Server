@@ -202,6 +202,10 @@ export const getCommentReplies = async (req, res, next) => {
  *               type: string
  *               nullable: true
  *               example: "조이"
+ *             profileImageUrl:
+ *               type: string
+ *               nullable: true
+ *               example: "https://example.com/profile.jpg"
  *         createdAt:
  *           type: string
  *           format: date-time

@@ -43,6 +43,7 @@ export const commentListItemDTO = (comment) => ({
   user: {
     userId: comment.user?.id?.toString() ?? null,
     nickName: comment.user?.nickName ?? null,
+    profileImageUrl: comment.user?.profileImageUrl ?? null,
   },
   createdAt: comment.createdAt,
   updatedAt: comment.updatedAt,
@@ -74,6 +75,7 @@ export const videoCommentListItemDTO = (comment) => ({
   user: {
     userId: comment.user?.id?.toString() ?? null,
     nickName: comment.user?.nickName ?? null,
+    profileImageUrl: comment.user?.profileImageUrl ?? null,
   },
   createdAt: comment.createdAt,
 });

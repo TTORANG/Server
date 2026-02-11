@@ -107,10 +107,10 @@ export async function postUploadPresentationFile(req, res, next) {
    *                   resultType: "FAILURE"
    *                   error:
    *                     errorCode: "F001"
-   *                     reason: "파일 크기는 최대 50MB입니다."
+   *                     reason: "파일 크기는 최대 1GB입니다."
    *                     data:
-   *                       size: 73400321
-   *                       max: 52428800
+   *                       size: 1073741825
+   *                       max: 1073741824
    *                   success: null
    *       401:
    *         description: 인증 실패

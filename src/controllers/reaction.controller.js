@@ -50,9 +50,6 @@ export async function handleCreateSlideReaction(req, res, next) {
    *       인증된 사용자라면 리소스 소유자와 무관하게 호출할 수 있습니다.
    *       - `emojiType`은 필수 문자열이며 허용값은 `fire`, `good`, `bad`, `sleepy`, `confused` 입니다.
    *
-   *       성공 시 실시간 이벤트가 발행됩니다.
-   *       - Socket Event: `new-reaction`
-   *       - Payload: `{ reactionId, projectId, slideId, userId, emoji }`
    *     tags: [Reaction]
    *     security:
    *       - bearerAuth: []
@@ -282,9 +279,6 @@ export async function handleCreateVideoReaction(req, res, next) {
    *       - `emojiType`은 필수 문자열이며 허용값은 `fire`, `good`, `bad`, `sleepy`, `confused` 입니다.
    *       - 사용자 기준 영상별 100ms당 1회 요청만 허용됩니다. (초과 시 에러 응답)
    *
-   *       성공 시 실시간 이벤트가 발행됩니다.
-   *       - Socket Event: `new-reaction`
-   *       - Payload: `{ reactionId, projectId, videoId, userId, emoji, timestampMs }`
    *     tags: [Reaction]
    *     security:
    *       - bearerAuth: []
@@ -454,6 +448,12 @@ export const getVideoReactionMarkers = async (req, res, next) => {
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *       401:
+   *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    *       404:
    *         description: 영상을 찾을 수 없음(미존재 또는 삭제됨)
    *         content:
@@ -527,6 +527,12 @@ export const getVideoReactionBuckets = async (req, res, next) => {
    *               $ref: "#/components/schemas/ReactionBucketsResponse"
    *       400:
    *         description: 잘못된 요청(videoId/intervalMs)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *       401:
+   *         description: 인증 실패
    *         content:
    *           application/json:
    *             schema:
@@ -629,6 +635,12 @@ export const getVideoReactionsByTimeController = async (req, res, next) => {
    *                     data:
    *                       windowMs: -1
    *                   success: null
+   *       401:
+   *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    *       404:
    *         description: 영상을 찾을 수 없음(미존재 또는 삭제됨)
    *         content:

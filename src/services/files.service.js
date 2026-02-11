@@ -17,7 +17,7 @@ export async function uploadPresentationAndCreateProject({ userId, title, file }
     throw new InvalidUploadError({ contentType: mimetype }, "지원하지 않는 파일 형식입니다.");
   }
   if (!Number.isInteger(size) || size <= 0 || size > MAX_SIZE_BYTES) {
-    throw new InvalidUploadError({ size, max: MAX_SIZE_BYTES }, "파일 크기는 최대 50MB입니다.");
+    throw new InvalidUploadError({ size, max: MAX_SIZE_BYTES }, "파일 크기는 최대 1GB입니다.");
   }
 
   // 확장자 결정

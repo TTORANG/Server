@@ -42,6 +42,18 @@ export const handleGetPresentationStatus = async (req, res, next) => {
    *                     generated: 12
    *                   thumbnail: "processing"
    *                   metadata: "queued"
+   *       400:
+   *         description: 잘못된 프로젝트 ID 파라미터
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "P005"
+   *                 reason: "프로젝트 ID가 올바르지 않습니다."
+   *                 data:
+   *                   projectId: "abc"
+   *               success: null
    *       401:
    *         description: 인증 실패
    *         content:
