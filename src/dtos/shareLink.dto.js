@@ -1,5 +1,16 @@
 import { toPublicStorageUrl } from "../utils/storageUrl.util.js";
 
+const shareCommentItemDTO = (comment) => ({
+  commentId: comment.id.toString(),
+  content: comment.content,
+  writer: comment.user?.nickName || "익명",
+  targetType: comment.targetType,
+  targetId: comment.targetId ? comment.targetId.toString() : null,
+  parentId: comment.parentId ? comment.parentId.toString() : null,
+  timestampMs: comment.timestampMs,
+  createdAt: comment.createdAt,
+});
+
 export const shareLinkResponseDTO = (link) => {
   const DEFAULT_PROJECT_TITLE = "발표 자료";
   return {
@@ -39,19 +50,14 @@ export const getShareLinkResponseDTO = (data) => {
       title: content.title,
       slides: content.slides,
       video: content.video || null,
-      comments: content.comments.map((c) => ({
-        commentId: c.id.toString(),
-        content: c.content,
-        writer: c.user?.nickName || "익명",
-        targetType: c.targetType,
-        targetId: c.targetId ? c.targetId.toString() : null,
-        parentId: c.parentId ? c.parentId.toString() : null,
-        timestampMs: c.timestampMs,
-        createdAt: c.createdAt,
-      })),
+      comments: content.comments.map(shareCommentItemDTO),
     },
   };
 };
+
+export const getShareCommentsResponseDTO = (comments) => ({
+  comments: comments.map(shareCommentItemDTO),
+});
 
 export const GetShareLinkListResponseDTO = (links) => {
   return links.map((link) => ({

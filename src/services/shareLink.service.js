@@ -11,6 +11,7 @@ import {
   createShareLink,
   findExistingLink,
   findProjectById,
+  findShareLinkWithComments,
   findShareLinkWithContent,
   findVideoInProject,
   getShareLinkList,
@@ -23,6 +24,23 @@ import { prisma } from "../db.config.js";
 import { toPublicStorageUrl } from "../utils/storageUrl.util.js";
 
 const SCOPE_VIDEO = "slides_script_video";
+
+const validateShareLinkAccess = (shareLink) => {
+  // 링크 존재여부 확인
+  if (!shareLink || !shareLink.isActive) {
+    throw new ShareLinkNotActiveError();
+  }
+
+  // 프로젝트 삭제여부 확인
+  if (!shareLink.project || shareLink.project.isDeleted) {
+    throw new ProjectDeletedError();
+  }
+
+  // 링크 만료일 확인
+  if (shareLink.expiredAt && new Date() > shareLink.expiredAt) {
+    throw new ShareLinkExpiredError();
+  }
+};
 
 export const processCreateShareLink = async (projectId, shareData) => {
   const { scope, videoId } = shareData;
@@ -79,21 +97,7 @@ export const processCreateShareLink = async (projectId, shareData) => {
 
 export const processGetShareContent = async (shareToken, sessionId = null) => {
   const shareLink = await findShareLinkWithContent(shareToken);
-
-  // 링크 존재여부 확인
-  if (!shareLink || !shareLink.isActive) {
-    throw new ShareLinkNotActiveError();
-  }
-
-  // 프로젝트 삭제여부 확인
-  if (!shareLink.project || shareLink.project.isDeleted) {
-    throw new ProjectDeletedError();
-  }
-
-  // 링크 만료일 확인
-  if (shareLink.expiredAt && new Date() > shareLink.expiredAt) {
-    throw new ShareLinkExpiredError();
-  }
+  validateShareLinkAccess(shareLink);
 
   await incrementViewCount(shareLink.id);
 
@@ -170,6 +174,13 @@ export const processGetShareContent = async (shareToken, sessionId = null) => {
     tokens: newTokens,
     sessionName,
   };
+};
+
+export const processGetShareComments = async (shareToken) => {
+  const shareLink = await findShareLinkWithComments(shareToken);
+  validateShareLinkAccess(shareLink);
+
+  return shareLink.project.comments || [];
 };
 
 export const processGetShareLinkList = async (projectId) => {

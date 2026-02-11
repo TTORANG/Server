@@ -107,6 +107,62 @@ export const findShareLinkWithContent = async (token) => {
   });
 };
 
+export const findShareLinkWithComments = async (token) => {
+  const shareLink = await prisma.shareLink.findUnique({
+    where: { shareToken: token },
+    select: {
+      id: true,
+      isActive: true,
+      expiredAt: true,
+      projectId: true,
+      videoId: true,
+      scope: true,
+    },
+  });
+
+  if (!shareLink) return null;
+
+  const { id, scope, videoId } = shareLink;
+  const isVideoScope = scope === "slides_script_video";
+
+  const shareLinkProject = await prisma.shareLink.findUnique({
+    where: { id },
+    select: {
+      project: {
+        select: {
+          isDeleted: true,
+          comments: {
+            where: {
+              isDeleted: false,
+              ...(isVideoScope
+                ? { targetType: "video", targetId: videoId ?? -1n }
+                : {
+                    targetType: "slide",
+                    slide: { isDeleted: false },
+                  }),
+            },
+            orderBy: {
+              createdAt: "asc",
+            },
+            include: {
+              user: {
+                select: {
+                  nickName: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return {
+    ...shareLink,
+    project: shareLinkProject?.project || null,
+  };
+};
+
 export const incrementViewCount = async (linkId) => {
   await prisma.shareLink.update({
     where: { id: linkId },
