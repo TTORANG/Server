@@ -163,11 +163,13 @@ export const handleCreateShareLink = async (req, res, next) => {
  *                   slides:
  *                     - slideId: "1"
  *                       slideNum: 1
+ *                       title: "도입"
  *                       imageUrl: "https://..."
  *                       scriptText: "안녕하세요 발표자입니다."
  *                       timestampMs: 0
  *                     - slideId: "2"
  *                       slideNum: 2
+ *                       title: "핵심 내용"
  *                       imageUrl: "https://..."
  *                       scriptText: "두 번째 슬라이드입니다."
  *                       timestampMs: 45000
