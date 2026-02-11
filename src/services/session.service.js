@@ -19,7 +19,7 @@ export const issueAnonymousSession = async () => {
     sessionId: sessionId,
   });
 
-  return { sessionId, tokens };
+  return { sessionId, tokens, session };
 };
 
 // 로그인 후 익명 데이터 병합

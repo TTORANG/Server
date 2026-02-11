@@ -1126,8 +1126,10 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *                         properties:
  *                           userId:
  *                             type: string
+ *                             nullable: true
  *                           name:
  *                             type: string
+ *                             nullable: true
  *
  *     VideoSlideTimelineItem:
  *       type: object

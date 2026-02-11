@@ -1,4 +1,4 @@
-import { ALLOWED_EMOJIS } from "../constants/reaction.js";
+import { ALLOWED_EMOJIS, createEmptyReactionMap } from "../constants/reaction.js";
 import {
   projectSlideReactionSummaryResponseDTO,
   slideReactionCreateResponseDTO,
@@ -22,7 +22,7 @@ import {
   countVideoReactionsByEmoji,
   countProjectSlideReactionsBySlideIds,
   countSlideReactions,
-  createVideoReaction,
+  createVideoReaction as createVideoReactionRow,
   createReaction,
   findProjectWithSlides,
   findSlideById,
@@ -32,14 +32,17 @@ import Redis from "ioredis";
 
 const VIDEO_REACTION_WINDOW_MS = 100;
 const VIDEO_REACTION_MAX_REQUESTS = 1;
+const REACTION_RATE_LIMIT_EXCEEDED_MESSAGE = `리액션 요청은 ${VIDEO_REACTION_WINDOW_MS}ms당 ${VIDEO_REACTION_MAX_REQUESTS}회만 가능합니다.`;
 const reactionRateLimitStore = new Map();
 const REACTION_RATE_LIMIT_FALLBACK_CLEANUP_INTERVAL_MS = 30000;
+const REACTION_RATE_LIMIT_REDIS_RETRY_INTERVAL_MS = 10000;
 const reactionRateLimitRedis = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
   maxRetriesPerRequest: 1,
   enableOfflineQueue: false,
   lazyConnect: true,
 });
 let isReactionRateLimitRedisUnavailable = false;
+let lastReactionRateLimitRedisRetryAt = 0;
 let lastReactionRateLimitFallbackCleanupAt = 0;
 
 async function publishSlideReactionEvent({ reactionId, projectId, slideId, userId, emojiType }) {
@@ -78,7 +81,7 @@ async function publishVideoReactionCountUpdated({ projectId, videoId }) {
 }
 
 // 리액션 추가 및 취소
-export async function toggleSlideReaction({ slideId, emojiType, userId }) {
+export async function createSlideReactionEvent({ slideId, emojiType, userId }) {
   if (!ALLOWED_EMOJIS.includes(emojiType)) {
     throw new InvalidEmojiTypeError({ emojiType });
   }
@@ -120,10 +123,11 @@ export async function toggleSlideReaction({ slideId, emojiType, userId }) {
     });
   } catch (e) {
     if (e instanceof BaseError) throw e;
-    console.error("[toggleSlideReaction error]", e);
+    console.error("[createSlideReactionEvent error]", e);
     throw new ReactionProcessError({ slideId, emojiType });
   }
 }
+
 
 // 리액션 집계 조회
 export async function getSlideReactionSummary({ slideId }) {
@@ -140,17 +144,10 @@ export async function getSlideReactionSummary({ slideId }) {
 
 // 영상 타임스탬프 리액션 생성
 export async function createVideoReactionEvent({ videoId, emojiType, timestampMs, userId }) {
-  let vid;
-  try {
-    vid = BigInt(videoId);
-  } catch {
-    throw new InvalidParameterError({ videoId: String(videoId) });
-  }
+  const video = await findVideoWithValidation(videoId);
+  const vid = video.id;
   const ts = timestampMs !== undefined && timestampMs !== null ? Number(timestampMs) : null;
 
-  if (vid <= 0n) {
-    throw new InvalidParameterError({ videoId: String(videoId) });
-  }
   if (!emojiType || typeof emojiType !== "string") {
     throw new InvalidParameterError({ emojiType }, "잘못된 이모지 타입입니다.");
   }
@@ -166,13 +163,7 @@ export async function createVideoReactionEvent({ videoId, emojiType, timestampMs
     targetKey: `video:${vid.toString()}`,
   });
 
-  const video = await findVideoByIdWithProject(vid);
-
-  if (!video) {
-    throw new VideoNotFoundError({ videoId: String(videoId) });
-  }
-
-  const created = await createVideoReaction({
+  const created = await createVideoReactionRow({
     userId,
     videoId: vid,
     projectId: video.projectId,
@@ -207,6 +198,7 @@ export async function createVideoReactionEvent({ videoId, emojiType, timestampMs
   });
 }
 
+
 async function enforceReactionRateLimit({ userId, targetKey }) {
   if (VIDEO_REACTION_MAX_REQUESTS === 1) {
     const acquired = await tryAcquireRateLimitLock({
@@ -220,7 +212,7 @@ async function enforceReactionRateLimit({ userId, targetKey }) {
           limit: VIDEO_REACTION_MAX_REQUESTS,
           windowMs: VIDEO_REACTION_WINDOW_MS,
         },
-        "리액션 요청은 100ms당 1회만 가능합니다."
+        REACTION_RATE_LIMIT_EXCEEDED_MESSAGE
       );
     }
     return;
@@ -238,7 +230,7 @@ async function enforceReactionRateLimit({ userId, targetKey }) {
         limit: VIDEO_REACTION_MAX_REQUESTS,
         windowMs: VIDEO_REACTION_WINDOW_MS,
       },
-      "리액션 요청은 100ms당 1회만 가능합니다."
+      REACTION_RATE_LIMIT_EXCEEDED_MESSAGE
     );
   }
 
@@ -248,6 +240,15 @@ async function enforceReactionRateLimit({ userId, targetKey }) {
 
 async function tryAcquireRateLimitLock({ userId, targetKey, windowMs }) {
   const key = `reaction:rate-limit:${userId}:${targetKey}`;
+  const now = Date.now();
+
+  if (
+    isReactionRateLimitRedisUnavailable &&
+    now - lastReactionRateLimitRedisRetryAt >= REACTION_RATE_LIMIT_REDIS_RETRY_INTERVAL_MS
+  ) {
+    isReactionRateLimitRedisUnavailable = false;
+    lastReactionRateLimitRedisRetryAt = now;
+  }
 
   if (!isReactionRateLimitRedisUnavailable) {
     try {
@@ -258,11 +259,11 @@ async function tryAcquireRateLimitLock({ userId, targetKey, windowMs }) {
       return result === "OK";
     } catch (error) {
       isReactionRateLimitRedisUnavailable = true;
+      lastReactionRateLimitRedisRetryAt = now;
       console.warn("[ReactionRateLimit] Redis unavailable. Falling back to in-memory store.", error);
     }
   }
 
-  const now = Date.now();
   maybeCleanupFallbackRateLimitStore({ now, windowMs });
   const fallbackHistory = reactionRateLimitStore.get(key) ?? [];
   const nextHistory = fallbackHistory.filter((t) => now - t < windowMs);
@@ -294,15 +295,7 @@ function maybeCleanupFallbackRateLimitStore({ now, windowMs }) {
 }
 
 function validateVideoTimelineParams({ videoId, intervalMs }) {
-  let vid;
-  try {
-    vid = BigInt(videoId);
-  } catch {
-    throw new InvalidParameterError({ videoId: String(videoId) });
-  }
-  if (vid <= 0n) {
-    throw new InvalidParameterError({ videoId: String(videoId) });
-  }
+  const vid = parsePositiveBigIntWithError(videoId, (value) => new InvalidParameterError({ videoId: value }));
 
   const safeInterval = intervalMs === undefined || intervalMs === null ? 5000 : Number(intervalMs);
   if (!Number.isInteger(safeInterval) || safeInterval <= 0) {
@@ -316,11 +309,7 @@ function validateVideoTimelineParams({ videoId, intervalMs }) {
 export const getReactionMarkers = async ({ videoId, intervalMs }) => {
   const { vid, safeInterval } = validateVideoTimelineParams({ videoId, intervalMs });
 
-  // video 존재 검증
-  const video = await findVideoByIdWithProject(vid);
-  if (!video) {
-    throw new VideoNotFoundError({ videoId: String(videoId) });
-  }
+  await ensureVideoExistsOrThrow(vid);
 
   // 집계 로우: (bucketMs, emojiType, count)
   const rows = await aggregateVideoReactionsByBucket({
@@ -351,19 +340,12 @@ export const getReactionMarkers = async ({ videoId, intervalMs }) => {
 export const getReactionBuckets = async ({ videoId, intervalMs }) => {
   const { vid, safeInterval } = validateVideoTimelineParams({ videoId, intervalMs });
 
-  const video = await findVideoByIdWithProject(vid);
-  if (!video) {
-    throw new VideoNotFoundError({ videoId: String(videoId) });
-  }
+  await ensureVideoExistsOrThrow(vid);
 
   const rows = await aggregateVideoReactionsByBucket({
     videoId: vid,
     intervalMs: safeInterval,
   });
-
-  const createEmptyReactionMap = () => {
-    return Object.fromEntries(ALLOWED_EMOJIS.map((emojiType) => [emojiType, 0]));
-  };
 
   const byBucket = new Map();
   for (const row of rows) {
@@ -390,23 +372,12 @@ export const getReactionBuckets = async ({ videoId, intervalMs }) => {
 
 // 시간대별 리액션 조회
 export const getVideoReactionsByTime = async ({ videoId, timestampMs, windowMs }) => {
-  let vid;
-  try {
-    vid = BigInt(videoId);
-  } catch {
-    throw new InvalidParameterError({ videoId: String(videoId) });
-  }
-  if (vid <= 0n) {
-    throw new InvalidParameterError({ videoId: String(videoId) });
-  }
+  const vid = parsePositiveBigIntWithError(videoId, (value) => new InvalidParameterError({ videoId: value }));
 
   const ts = Number(timestampMs);
   const safeWindowMs = windowMs === undefined || windowMs === null ? 2000 : Number(windowMs);
 
-  const video = await findVideoByIdWithProject(vid);
-  if (!video) {
-    throw new VideoNotFoundError({ videoId: String(videoId) });
-  }
+  await ensureVideoExistsOrThrow(vid);
   if (!Number.isInteger(ts) || ts < 0) {
     throw new InvalidParameterError({ timestampMs });
   }
@@ -446,6 +417,36 @@ function parsePositiveBigIntParam(value, fieldName) {
   }
 
   return parsed;
+}
+
+function parsePositiveBigIntWithError(value, createError) {
+  const valueAsString = String(value);
+  let parsed;
+  try {
+    parsed = BigInt(value);
+  } catch {
+    throw createError(valueAsString);
+  }
+  if (parsed <= 0n) {
+    throw createError(valueAsString);
+  }
+  return parsed;
+}
+
+async function ensureVideoExistsOrThrow(videoIdBigInt) {
+  const video = await findVideoByIdWithProject(videoIdBigInt);
+  if (!video) {
+    throw new VideoNotFoundError({ videoId: videoIdBigInt.toString() });
+  }
+  return video;
+}
+
+async function findVideoWithValidation(videoId) {
+  const videoIdBigInt = parsePositiveBigIntWithError(videoId, (value) =>
+    new InvalidParameterError({ videoId: value })
+  );
+  const video = await ensureVideoExistsOrThrow(videoIdBigInt);
+  return video;
 }
 
 // 프로젝트 모든 리액션 집계 조회

@@ -27,6 +27,7 @@ export const getShareLinkResponseDTO = (data) => {
 
     sessionInfo: {
       sessionId: data.sessionId,
+      name: data.sessionName,
       tokens: data.tokens,
     },
     shareInfo: {
@@ -43,7 +44,7 @@ export const getShareLinkResponseDTO = (data) => {
         content: c.content,
         writer: c.user?.nickName || "익명",
         targetType: c.targetType,
-        targetId: c.targetId.toString(),
+        targetId: c.targetId ? c.targetId.toString() : null,
         parentId: c.parentId ? c.parentId.toString() : null,
         timestampMs: c.timestampMs,
         createdAt: c.createdAt,

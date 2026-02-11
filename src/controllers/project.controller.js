@@ -213,7 +213,11 @@ export const handleDeleteProject = async (req, res, next) => {
  * /presentations:
  *   get:
  *     summary: 프로젝트 목록 조회 및 검색
- *     description: 사용자의 프로젝트 목록을 페이징하여 조회합니다. 검색어, 최대 재생 시간, 정렬 조건을 지원합니다.
+ *     description: |
+ *       사용자의 프로젝트 목록을 페이징하여 조회합니다.
+ *       **안정성 정책**: `page` 및 `limit`에 부적절한 값(0, 음수, 문자열 등) 입력 시 에러를 던지는 대신 기본값으로 자동 보정됩니다.
+ *       - page: 최소 1
+ *       - limit: 최소 1, 최대 100 (기본값 20)
  *     tags: [Presentation]
  *     security:
  *       - bearerAuth: []
@@ -222,12 +226,17 @@ export const handleDeleteProject = async (req, res, next) => {
  *         name: page
  *         schema:
  *           type: integer
+ *           minimum: 1
  *           default: 1
+ *         description: 조회할 페이지 번호 (부적절한 입력 시 1로 자동 보정)
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
+ *           minimum: 1
+ *           maximum: 100
  *           default: 20
+ *         description: 페이지당 아이템 개수 (최대 100개 제한)
  *       - in: query
  *         name: search
  *         schema:
@@ -282,24 +291,15 @@ export const handleDeleteProject = async (req, res, next) => {
  *                     createdAt: "2026-01-15T10:00:00.000Z"
  *                     updatedAt: "2026-01-15T11:00:00.000Z"
  *                     errorMessage: "변환 중 오류가 발생했습니다."
- *                 total: 2
+ *                 total: 3
  *                 page: 1
  *                 limit: 20
  *                 totalPages: 1
  *       400:
- *         description: 페이지 번호 오류(P003) 또는 검색어 짧음(P004)
+ *         description: 잘못된 요청 (검색어 짧음 등)
  *         content:
  *           application/json:
  *             examples:
- *               InvalidPage:
- *                 summary: 페이지 번호 오류 (P003)
- *                 value:
- *                   resultType: "FAILURE"
- *                   error:
- *                     errorCode: "P003"
- *                     reason: "페이지 번호는 1보다 커야 합니다."
- *                     data: null
- *                   success: null
  *               SearchQueryTooShort:
  *                 summary: 검색어 짧음 (P004)
  *                 value:

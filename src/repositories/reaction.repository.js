@@ -1,18 +1,5 @@
 import { prisma } from "../db.config.js";
 
-export function findReaction(where) {
-  return prisma.reaction.findFirst({
-    where: {
-      userId: where.userId,
-      sessionId: where.sessionId,
-      targetType: where.targetType,
-      targetId: where.targetId,
-      timestampMs: where.timestampMs,
-      emojiType: where.emojiType,
-    },
-  });
-}
-
 export async function findVideoReactionsGrouped(videoId) {
   return prisma.reaction.groupBy({
     by: ["timestampMs", "emojiType"],
@@ -28,13 +15,6 @@ export async function findVideoReactionsGrouped(videoId) {
 
 export function createReaction(data) {
   return prisma.reaction.create({ data });
-}
-
-export function updateReaction(id, isDeleted) {
-  return prisma.reaction.update({
-    where: { id },
-    data: { isDeleted },
-  });
 }
 
 export function countSlideReactions(slideId) {
@@ -113,13 +93,7 @@ export function countVideoReactionsByEmoji(videoId) {
   });
 }
 
-export function createVideoReaction({
-  userId,
-  videoId,
-  projectId,
-  timestampMs,
-  emojiType,
-}) {
+export function createVideoReaction({ userId, videoId, projectId, timestampMs, emojiType }) {
   return prisma.reaction.create({
     data: {
       projectId,

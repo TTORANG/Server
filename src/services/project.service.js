@@ -22,6 +22,7 @@ export const processCreateProject = async (userId, projectData) => {
   await startConversionPipeline({
     uploadedFileId: BigInt(uploadedFileId),
     fileExt: file.fileExt,
+    projectId: project.id,
   });
 
   return project;
@@ -62,20 +63,27 @@ export const processDeleteProject = async (projectId, userId) => {
 export const processGetProjectList = async (userId, query) => {
   const { page = 1, limit = 20, search = null, maxDuration = null, sort = "latest" } = query;
 
-  if (page < 1) {
-    throw new InvalidPageError();
-  }
+  // 1. page 보정: 숫자가 아니거나 1보다 작으면 1로 고정
+  const safePage = Math.max(1, parseInt(page) || 1);
+
+  // 2. limit 보정: 숫자가 아니면 20, 최소 1에서 최대 100 사이로 제한
+  const safeLimit = Math.max(1, Math.min(parseInt(limit) || 20, 100));
 
   if (search && search.length < 2) {
     throw new SearchQueryTooShortError();
   }
   const { total, projects } = await getProjectList(userId, {
-    page,
-    limit,
+    page: safePage,
+    limit: safeLimit,
     search,
     maxDuration,
     sort,
   });
 
-  return { total, projects, page, limit };
+  return {
+    total: total || 0,
+    projects: projects || [],
+    page: safePage,
+    limit: safeLimit,
+  };
 };

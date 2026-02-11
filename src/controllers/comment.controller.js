@@ -1070,9 +1070,11 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *           properties:
  *             userId:
  *               type: string
+ *               nullable: true
  *               example: "3"
  *             nickName:
  *               type: string
+ *               nullable: true
  *               example: "조이"
  *         createdAt:
  *           type: string
@@ -1143,9 +1145,11 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *           properties:
  *             userId:
  *               type: string
+ *               nullable: true
  *               example: "3"
  *             nickName:
  *               type: string
+ *               nullable: true
  *               example: "조이"
  *         createdAt:
  *           type: string

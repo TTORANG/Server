@@ -39,8 +39,8 @@ export const commentListItemDTO = (comment) => ({
   commentId: comment.id.toString(),
   content: comment.content,
   user: {
-    userId: comment.user.id.toString(),
-    nickName: comment.user.nickName,
+    userId: comment.user?.id?.toString() ?? null,
+    nickName: comment.user?.nickName ?? null,
   },
   createdAt: comment.createdAt,
   updatedAt: comment.updatedAt,
@@ -70,8 +70,8 @@ export const videoCommentListItemDTO = (comment) => ({
   content: comment.content,
   timestampMs: comment.timestampMs,
   user: {
-    userId: comment.user.id.toString(),
-    nickName: comment.user.nickName,
+    userId: comment.user?.id?.toString() ?? null,
+    nickName: comment.user?.nickName ?? null,
   },
   createdAt: comment.createdAt,
 });

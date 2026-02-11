@@ -150,6 +150,7 @@ export const handleCreateShareLink = async (req, res, next) => {
  *                 message: "공유된 프로젝트에 접속했습니다."
  *                 sessionInfo:
  *                   sessionId: "106fbf2c-3357-40f7-..."
+ *                   name: "또랑한 고양이"
  *                   tokens:
  *                      accessToken: "eyJhbGci..."
  *                      refreshToken: "eyJhbGci..."
@@ -162,11 +163,13 @@ export const handleCreateShareLink = async (req, res, next) => {
  *                   slides:
  *                     - slideId: "1"
  *                       slideNum: 1
+ *                       title: "도입"
  *                       imageUrl: "https://..."
  *                       scriptText: "안녕하세요 발표자입니다."
  *                       timestampMs: 0
  *                     - slideId: "2"
  *                       slideNum: 2
+ *                       title: "핵심 내용"
  *                       imageUrl: "https://..."
  *                       scriptText: "두 번째 슬라이드입니다."
  *                       timestampMs: 45000
@@ -267,7 +270,12 @@ export const handleGetShareLinkList = async (req, res, next) => {
  * /presentations/{projectId}/shares/videos:
  *   get:
  *     summary: 공유 가능 영상 목록 조회 (무한 스크롤)
- *     description: 공유 링크 생성 시 선택 가능한 '녹화 완료(ready)' 상태의 영상 목록을 조회합니다. 페이지네이션 정보를 포함합니다.
+ *     description: |
+ *       공유 링크 생성 시 선택 가능한 '녹화 완료(ready)' 상태의 영상 목록을 조회합니다.
+ *       **입력값 보정 정책**: `page`, `pageSize`에 부적절한 값(0, 음수, 문자열 등)이 입력될 경우,
+ *       에러를 발생시키는 대신 아래와 같이 기본값으로 자동 보정하여 결과를 반환합니다.
+ *       - `page`: 1보다 작거나 숫자가 아닐 경우 **1**로 보정
+ *       - `pageSize`: 1~50 범위를 벗어날 경우 **최소 1, 최대 50** 사이로 제한 (기본값 10)
  *     tags: [ShareLink]
  *     security:
  *       - bearerAuth: []
@@ -282,18 +290,21 @@ export const handleGetShareLinkList = async (req, res, next) => {
  *       - in: query
  *         name: page
  *         schema:
- *            type: integer
- *            default: 1
- *         description: 조회할 페이지 번호
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: 조회할 페이지 번호 (부적절한 입력 시 1로 자동 보정)
  *       - in: query
  *         name: pageSize
  *         schema:
- *            type: integer
- *            default: 10
- *         description: 한 페이지당 보여줄 영상 개수
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 50
+ *           default: 10
+ *         description: 한 페이지당 보여줄 영상 개수 (최대 50개 제한)
  *     responses:
  *       200:
- *         description: 영상 목록 조회 성공
+ *         description: 영상 목록 조회 성공 (데이터가 없어도 SUCCESS이며 빈 배열 반환)
  *         content:
  *           application/json:
  *             example:
@@ -313,17 +324,6 @@ export const handleGetShareLinkList = async (req, res, next) => {
  *                      currentPage: 1
  *                      totalCount: 25
  *                      hasNext: true
- *       400:
- *         description: 유효하지 않은 페이지 번호 (P003)
- *         content:
- *           application/json:
- *             example:
- *               resultType: "FAILURE"
- *               error:
- *                 errorCode: "P003"
- *                 reason: "페이지 번호는 1보다 커야 합니다."
- *                 data: null
- *               success: null
  */
 export const handleGetVideoListForSharing = async (req, res, next) => {
   try {

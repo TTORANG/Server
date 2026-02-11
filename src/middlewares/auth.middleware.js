@@ -17,11 +17,10 @@ export const isLogin = (req, res, next) => {
         where: {
           id: user.sessionId,
           userId: BigInt(user.id),
-          isAnonymous: false,
         },
       });
 
-      if (!session || !session.refreshToken) {
+      if (!session) {
         // DB에 세션이 없으면 무효화 처리
         return next(new AuthSessionRequiredError("유효하지 않은 세션입니다. 다시 로그인해주세요."));
       }
