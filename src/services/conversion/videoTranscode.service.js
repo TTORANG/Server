@@ -1,10 +1,11 @@
 import fs from "fs/promises";
+import { createReadStream, createWriteStream } from "fs";
 import path from "path";
+import { pipeline } from "stream/promises";
 import {
   getVideoWithChunks,
   updateVideoStatus,
   updateVideoHlsUrl,
-  deleteVideoChunks,
   updateVideoMetadata,
 } from "../../repositories/video.repository.js";
 import { getJobById } from "../../repositories/conversionJob.repository.js";
@@ -206,12 +207,14 @@ const mergeChunks = async (chunksDir, outputPath, chunks, ext) => {
   }
 
   const assembledInputPath = path.join(chunksDir, `assembled.${ext}`);
-  await fs.writeFile(assembledInputPath, Buffer.alloc(0));
-
-  for (const c of orderedChunks) {
+  for (let i = 0; i < orderedChunks.length; i += 1) {
+    const c = orderedChunks[i];
     const chunkPath = path.join(chunksDir, `chunk_${String(c.chunkIndex).padStart(5, "0")}.${ext}`);
-    const chunkBytes = await fs.readFile(chunkPath);
-    await fs.appendFile(assembledInputPath, chunkBytes);
+
+    await pipeline(
+      createReadStream(chunkPath),
+      createWriteStream(assembledInputPath, { flags: i === 0 ? "w" : "a" })
+    );
   }
 
   await runCmd(

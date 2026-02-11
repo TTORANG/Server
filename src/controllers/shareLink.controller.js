@@ -272,12 +272,12 @@ export const handleGetShareComments = async (req, res, next) => {
   try {
     const { shareToken } = req.params;
     const { sessionId } = req.query;
-    const comments = await processGetShareComments(shareToken, sessionId);
+    const shareCommentsData = await processGetShareComments(shareToken, sessionId);
 
     res.status(200).json({
       resultType: "SUCCESS",
       error: null,
-      success: getShareCommentsResponseDTO(comments),
+      success: getShareCommentsResponseDTO(shareCommentsData),
     });
   } catch (error) {
     next(error);

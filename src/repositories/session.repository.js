@@ -43,6 +43,22 @@ export const findSessionById = async (sessionId) => {
   });
 };
 
+// ID로 세션 조회 (userId만)
+export const findSessionUserIdById = async (sessionId) => {
+  return await prisma.session.findUnique({
+    where: { id: sessionId },
+    select: { userId: true },
+  });
+};
+
+// ID로 세션 조회 (유저 포함)
+export const findSessionByIdWithUser = async (sessionId) => {
+  return await prisma.session.findUnique({
+    where: { id: sessionId },
+    include: { user: true },
+  });
+};
+
 // 유저의 로그인 세션 조회 (비익명)
 export const findUserSession = async (userId) => {
   return await prisma.session.findUnique({

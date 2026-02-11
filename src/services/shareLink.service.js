@@ -21,7 +21,11 @@ import {
 } from "../repositories/shareLink.repository.js";
 import { v4 as uuidv4 } from "uuid";
 import { issueAnonymousSession } from "./session.service.js";
-import { prisma } from "../db.config.js";
+import {
+  findSessionById,
+  findSessionByIdWithUser,
+  findSessionUserIdById,
+} from "../repositories/session.repository.js";
 import { toPublicStorageUrl } from "../utils/storageUrl.util.js";
 
 const SCOPE_VIDEO = "slides_script_video";
@@ -29,10 +33,7 @@ const SCOPE_VIDEO = "slides_script_video";
 const resolveUserIdFromSessionId = async (sessionId) => {
   if (!sessionId) return null;
 
-  const session = await prisma.session.findUnique({
-    where: { id: sessionId },
-    select: { userId: true },
-  });
+  const session = await findSessionUserIdById(sessionId);
 
   return session?.userId ?? null;
 };
@@ -63,13 +64,10 @@ const ensureShareTokenIsNotSessionId = async (shareToken, shareLink) => {
     return;
   }
 
-  const session = await prisma.session.findUnique({
-    where: { id: shareToken },
-    select: { id: true },
-  });
+  const session = await findSessionById(shareToken);
 
   if (session) {
-    throw new InvalidShareTokenError({ shareToken });
+    throw new InvalidShareTokenError();
   }
 };
 
@@ -138,10 +136,7 @@ export const processGetShareContent = async (shareToken, sessionId = null) => {
   let sessionRecord = null;
 
   if (currentSessionId) {
-    sessionRecord = await prisma.session.findUnique({
-      where: { id: currentSessionId },
-      include: { user: true },
-    });
+    sessionRecord = await findSessionByIdWithUser(currentSessionId);
 
     if (!sessionRecord) {
       currentSessionId = null;
