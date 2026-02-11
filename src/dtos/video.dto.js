@@ -89,3 +89,9 @@ export const recordingFinishSuccessDTO = ({ videoId, status, slideDurations }) =
 export const videoDeleteSuccessDTO = ({ videoId }) => ({
   videoId: videoId.toString(),
 });
+
+export const videoTitleUpdateSuccessDTO = (video) => ({
+  videoId: video.id.toString(),
+  title: video.title,
+  updatedAt: video.updatedAt,
+});

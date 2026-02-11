@@ -306,6 +306,18 @@ export const updateVideoStatus = async (videoId, status, extra = {}) => {
   });
 };
 
+export const updateVideoTitle = async (videoId, title) => {
+  return await prisma.video.update({
+    where: { id: BigInt(videoId) },
+    data: { title },
+    select: {
+      id: true,
+      title: true,
+      updatedAt: true,
+    },
+  });
+};
+
 export const updateVideoHlsUrl = async (videoId, hlsMasterUrl) => {
   return await prisma.video.update({
     where: { id: BigInt(videoId) },

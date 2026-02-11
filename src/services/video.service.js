@@ -33,11 +33,13 @@ import {
   saveVideoSlideLogsAndSetStatus,
   setVideoUploadingWithContainer,
   updateVideoStatus,
+  updateVideoTitle,
 } from "../repositories/video.repository.js";
 import { countSlidesByIdsAndProjectId } from "../repositories/slide.repository.js";
 import {
   recordingFinishSuccessDTO,
   recordingStartSuccessDTO,
+  videoTitleUpdateSuccessDTO,
   videoDeleteSuccessDTO,
   videoChunkUploadSuccessDTO,
   videoDetailResponseDTO,
@@ -468,6 +470,31 @@ export async function deleteVideo({ videoId, userId }) {
     resultType: "SUCCESS",
     error: null,
     success: videoDeleteSuccessDTO({ videoId: vid }),
+  };
+}
+
+// 영상 제목 수정
+export async function patchVideoTitle({ videoId, userId, title }) {
+  const vid = toInt(videoId);
+  if (!Number.isInteger(vid) || vid <= 0) {
+    throw new InvalidParameterError({ videoId: String(videoId) }, "videoId가 올바르지 않습니다.");
+  }
+
+  if (!userId) {
+    throw new AuthSessionRequiredError({ videoId: String(videoId) });
+  }
+
+  const video = await findVideoByIdWithOwner(vid, userId);
+  if (!video) {
+    throw new VideoNotFoundError({ videoId: String(videoId) });
+  }
+
+  const updatedVideo = await updateVideoTitle(vid, title);
+
+  return {
+    resultType: "SUCCESS",
+    error: null,
+    success: videoTitleUpdateSuccessDTO(updatedVideo),
   };
 }
 
