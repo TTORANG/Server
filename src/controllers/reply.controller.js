@@ -1,5 +1,5 @@
 import {
-  commentResponseDTO,
+  commentListItemDTO,
   createCommentReplyRequestDTO,
   replyCreateResponseDTO,
 } from "../dtos/comment.dto.js";
@@ -157,7 +157,7 @@ export const getCommentReplies = async (req, res, next) => {
     res.status(200).json({
       resultType: "SUCCESS",
       error: null,
-      success: replies.map(commentResponseDTO),
+      success: replies.map(commentListItemDTO),
     });
   } catch (e) {
     next(e);
@@ -186,12 +186,29 @@ export const getCommentReplies = async (req, res, next) => {
  *         content:
  *           type: string
  *           example: "좋은 의견 감사합니다"
- *         userId:
+ *         parentCommentId:
  *           type: string
- *           example: "3"
+ *           nullable: true
+ *           description: 답글인 경우 부모 댓글 ID
+ *           example: "10"
+ *         user:
+ *           type: object
+ *           properties:
+ *             userId:
+ *               type: string
+ *               nullable: true
+ *               example: "3"
+ *             nickName:
+ *               type: string
+ *               nullable: true
+ *               example: "조이"
  *         createdAt:
  *           type: string
  *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
 
  *     ReplyCreateSuccess:
  *       type: object

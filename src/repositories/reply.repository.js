@@ -7,5 +7,13 @@ export const findReplies = async (parentCommentId) => {
       isDeleted: false,
     },
     orderBy: { createdAt: "asc" },
+    include: {
+      user: {
+        select: {
+          id: true,
+          nickName: true,
+        },
+      },
+    },
   });
 };

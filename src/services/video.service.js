@@ -11,7 +11,7 @@ import { AuthSessionRequiredError } from "../errors/auth.error.js";
 import { uploadBufferToGCS } from "./gcs.service.js";
 import crypto from "crypto";
 import { ALLOWED_VIDEO_MIME } from "../constants/files.js";
-import { MAX_SLIDE_DURATION_MS } from "../constants/videos.js";
+import { MAX_SLIDE_DURATION_MS, VIDEO_TITLE_MAX_LENGTH } from "../constants/videos.js";
 import {
   createVideoChunk,
   createVideoSession,
@@ -508,6 +508,21 @@ export async function patchVideoTitle({ videoId, userId, title }) {
   const video = await findVideoByIdWithOwner(vid, userId);
   if (!video) {
     throw new VideoNotFoundError({ videoId: String(videoId) });
+  }
+
+  if (title !== undefined && title !== null) {
+    if (typeof title !== "string") {
+      throw new InvalidParameterError({ title }, "제목은 문자열이어야 합니다.");
+    }
+    if (title.trim().length === 0) {
+      throw new InvalidParameterError({ title }, "제목은 공백으로만 이루어질 수 없습니다.");
+    }
+    if (title.length > VIDEO_TITLE_MAX_LENGTH) {
+      throw new InvalidParameterError(
+        { title },
+        `제목은 ${VIDEO_TITLE_MAX_LENGTH}자를 초과할 수 없습니다.`
+      );
+    }
   }
 
   const updatedVideo = await updateVideoTitle(vid, title);

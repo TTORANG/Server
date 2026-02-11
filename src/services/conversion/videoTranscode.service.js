@@ -1,5 +1,7 @@
 import fs from "fs/promises";
+import { createReadStream, createWriteStream } from "fs";
 import path from "path";
+import { pipeline } from "stream/promises";
 import {
   getVideoWithChunks,
   updateVideoStatus,
@@ -144,6 +146,9 @@ export const videoTranscode = async (jobOrId) => {
     await encodeToHLS(mergedPath, hlsDir);
     const hlsMasterUrl = await uploadHLSToGCS(hlsDir, video);
 
+    // 트랜스코딩이 완료되면 원본 청크 메타데이터 정리
+    await deleteVideoChunks(video.id);
+
     // 최종 HLS URL 업데이트
     await updateVideoHlsUrl(video.id, hlsMasterUrl);
 
@@ -206,12 +211,14 @@ const mergeChunks = async (chunksDir, outputPath, chunks, ext) => {
   }
 
   const assembledInputPath = path.join(chunksDir, `assembled.${ext}`);
-  await fs.writeFile(assembledInputPath, Buffer.alloc(0));
-
-  for (const c of orderedChunks) {
+  for (let i = 0; i < orderedChunks.length; i += 1) {
+    const c = orderedChunks[i];
     const chunkPath = path.join(chunksDir, `chunk_${String(c.chunkIndex).padStart(5, "0")}.${ext}`);
-    const chunkBytes = await fs.readFile(chunkPath);
-    await fs.appendFile(assembledInputPath, chunkBytes);
+
+    await pipeline(
+      createReadStream(chunkPath),
+      createWriteStream(assembledInputPath, { flags: i === 0 ? "w" : "a" })
+    );
   }
 
   await runCmd(

@@ -1,14 +1,14 @@
 import { toPublicStorageUrl } from "../utils/storageUrl.util.js";
 
 const shareCommentItemDTO = (comment, currentUserId = null) => {
-  const commentUserId = comment.user?.id?.toString() ?? comment.userId?.toString() ?? null;
+  const commentUserId = comment.userId.toString();
   const currentUserIdStr = currentUserId ? currentUserId.toString() : null;
 
   return {
     commentId: comment.id.toString(),
     content: comment.content,
     userId: commentUserId,
-    isMine: Boolean(currentUserIdStr && commentUserId && commentUserId === currentUserIdStr),
+    isMine: !!(currentUserIdStr && commentUserId === currentUserIdStr),
     writer: comment.user?.nickName || "익명",
     targetType: comment.targetType,
     targetId: comment.targetId ? comment.targetId.toString() : null,

@@ -6,3 +6,4 @@ export const THUMBNAIL_WIDTH = 512;
 export const THUMBNAIL_HEIGHT = 288;
 
 export const MAX_SLIDE_DURATION_MS = 60 * 60 * 1000;
+export const VIDEO_TITLE_MAX_LENGTH = 100;
