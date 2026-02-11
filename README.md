@@ -199,7 +199,7 @@ PPTX/PDF 업로드
 
 - `POST /presentations/` - 프로젝트 생성
 - `GET /presentations/` - 프로젝트 목록 / 검색
-- `GET /presentations/:projectId` - 프로젝트 조회
+- `GET /presentations/:projectId` - 프로젝트 제목 조회
 - `PATCH /presentations/:projectId` - 프로젝트 수정
 - `DELETE /presentations/:projectId` - 프로젝트 삭제
 
@@ -257,7 +257,9 @@ PPTX/PDF 업로드
 - `POST /analytics/slide-view` - 슬라이드뷰 기록
 - `POST /analytics/video-event` - 영상 이벤트 기록
 - `GET /presentations/:projectId/analytics/summary` - 종합 분석
+- `GET /presentations/:projectId/analytics/slides` - 슬라이드별 분석
 - `GET /presentations/:projectId/analytics/slide-retention` - 슬라이드 리텐션
+- `GET /presentations/:projectId/analytics/recent-comments` - 최근 댓글 분석
 - `GET /videos/:videoId/analytics/retention` - 영상 리텐션
 
 > 상세한 API 명세는 Swagger 문서를 참고해주세요.
