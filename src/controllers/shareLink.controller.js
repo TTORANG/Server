@@ -1,11 +1,13 @@
 import {
   GetShareLinkListResponseDTO,
+  getShareCommentsResponseDTO,
   getShareLinkResponseDTO,
   getVideoListResponseDTO,
   shareLinkResponseDTO,
 } from "../dtos/shareLink.dto.js";
 import {
   processCreateShareLink,
+  processGetShareComments,
   processGetShareContent,
   processGetShareLinkList,
   processGetVideoList,
@@ -187,7 +189,7 @@ export const handleCreateShareLink = async (req, res, next) => {
  *                       timestampMs: 12000
  *                       createdAt: "2026-02-10T15:00:00.000Z"
  *       403:
- *         description: 유효하지 않거나 만료되거나 프로젝트가 삭제된 링크 (L003, L004, L005)
+ *         description: 유효하지 않거나 만료되거나 프로젝트가 삭제된 링크 (L003, L005, L004)
  *         content:
  *           application/json:
  *             example:
@@ -210,6 +212,60 @@ export const handleGetShareContent = async (req, res, next) => {
       resultType: "SUCCESS",
       error: null,
       success: getShareLinkResponseDTO(result),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @swagger
+ * /shares/{shareToken}/comments:
+ *   get:
+ *     summary: 공유 댓글 목록 조회
+ *     description: |
+ *       토큰을 통해 외부 공유된 프로젝트의 댓글/답글 전체 목록만 조회합니다. (인증 불필요)
+ *       - 조회수(viewCount) 및 페이지뷰를 증가시키지 않습니다.
+ *       - 댓글 필터링 기준은 기존 공유 콘텐츠 조회와 동일합니다.
+ *     tags: [ShareLink]
+ *     parameters:
+ *       - in: path
+ *         name: shareToken
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "abc-123-uuid"
+ *         description: 공유 링크의 유니크 토큰
+ *     responses:
+ *       200:
+ *         description: 공유 댓글 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             example:
+ *               resultType: "SUCCESS"
+ *               error: null
+ *               success:
+ *                 comments:
+ *                   - commentId: "1"
+ *                     content: "이 부분 설명이 아주 좋네요!"
+ *                     writer: "가넷"
+ *                     targetType: "video"
+ *                     targetId: "456"
+ *                     parentId: "2"
+ *                     timestampMs: 12000
+ *                     createdAt: "2026-02-10T15:00:00.000Z"
+ *       403:
+ *         description: 유효하지 않거나 만료되거나 프로젝트가 삭제된 링크 (L003, L005, L004)
+ */
+export const handleGetShareComments = async (req, res, next) => {
+  try {
+    const { shareToken } = req.params;
+    const comments = await processGetShareComments(shareToken);
+
+    res.status(200).json({
+      resultType: "SUCCESS",
+      error: null,
+      success: getShareCommentsResponseDTO(comments),
     });
   } catch (error) {
     next(error);
