@@ -109,7 +109,7 @@ export const findShareLinkWithContent = async (token) => {
 
 export const findShareLinkWithComments = async (token) => {
   const shareLink = await prisma.shareLink.findUnique({
-    where: { shareToken: token },
+    where: { uq_share_token_unique: { shareToken: token } },
     select: {
       id: true,
       isActive: true,
