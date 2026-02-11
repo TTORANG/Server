@@ -4,6 +4,7 @@ import {
   handleCreateProject,
   handleDeleteProject,
   handleGetProjectList,
+  handleGetProjectName,
   handleUpdateProjectName,
 } from "../controllers/project.controller.js";
 import { handleGetSlideAnalytics, handleGetSummary } from "../controllers/analytics.controller.js";
@@ -21,6 +22,9 @@ router.patch("/:projectId", isLogin, handleUpdateProjectName);
 
 // 프로젝트 삭제
 router.delete("/:projectId", isLogin, handleDeleteProject);
+
+// 프로젝트 이름 조회
+router.get("/:projectId", isLogin, handleGetProjectName);
 
 router.get("/:projectId/analytics/summary", isLogin, handleGetSummary);
 router.get("/:projectId/analytics/slides", isLogin, handleGetSlideAnalytics);

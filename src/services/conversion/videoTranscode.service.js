@@ -90,9 +90,9 @@ export const videoTranscode = async (jobOrId) => {
 
     let thumbnailUrl = null;
     const atSeconds =
-        meta.durationSeconds && meta.durationSeconds > MIN_DURATION_FOR_ADVANCED_THUMBNAIL_SECONDS
-            ? DEFAULT_THUMBNAIL_EXTRACT_SECONDS
-            : FALLBACK_THUMBNAIL_EXTRACT_SECONDS;
+      meta.durationSeconds && meta.durationSeconds > MIN_DURATION_FOR_ADVANCED_THUMBNAIL_SECONDS
+        ? DEFAULT_THUMBNAIL_EXTRACT_SECONDS
+        : FALLBACK_THUMBNAIL_EXTRACT_SECONDS;
 
     try {
       thumbnailUrl = await extractVideoThumbnail({
@@ -123,15 +123,19 @@ export const videoTranscode = async (jobOrId) => {
     if (lastEvent && meta.durationSeconds) {
       const videoDurationMs = meta.durationSeconds * 1000;
       const lastDurationMs = Math.max(
-          0,
-          Math.min(videoDurationMs - lastEvent.timestampMs, MAX_SLIDE_DURATION_MS)
+        0,
+        Math.min(videoDurationMs - lastEvent.timestampMs, MAX_SLIDE_DURATION_MS)
       );
 
       if (lastDurationMs > 0) {
         await prisma.videoSlideDuration.upsert({
           where: { videoId_slideId: { videoId: video.id, slideId: lastEvent.slideId } },
           update: { totalDurationMs: { increment: lastDurationMs } },
-          create: { videoId: video.id, slideId: lastEvent.slideId, totalDurationMs: lastDurationMs },
+          create: {
+            videoId: video.id,
+            slideId: lastEvent.slideId,
+            totalDurationMs: lastDurationMs,
+          },
         });
       }
     }
@@ -161,40 +165,79 @@ export const videoTranscode = async (jobOrId) => {
 const downloadChunks = async (chunks, destDir, ext) => {
   const limit = pLimit(5); // 동시 다운로드 제한
   await Promise.all(
-      chunks.map((chunk) =>
-          limit(async () => {
-            const destPath = path.join(destDir, `chunk_${String(chunk.chunkIndex).padStart(5, "0")}.${ext}`);
-            await downloadFromGCS({ bucketName: chunk.storageBucket, objectKey: chunk.storageKey, destPath });
-          })
-      )
+    chunks.map((chunk) =>
+      limit(async () => {
+        const destPath = path.join(
+          destDir,
+          `chunk_${String(chunk.chunkIndex).padStart(5, "0")}.${ext}`
+        );
+        await downloadFromGCS({
+          bucketName: chunk.storageBucket,
+          objectKey: chunk.storageKey,
+          destPath,
+        });
+      })
+    )
   );
 };
 
 /**
- * FFmpeg concat demuxer를 사용하여 청크 병합
- * - 데이터 결함 보정 및 타임스탬프 재생성을 위해 재인코딩 수행
+ * 청크를 바이트 단위로 순서대로 재조립한 뒤 ffmpeg로 재인코딩
+ * - 프론트에서 완성 Blob을 raw split해 업로드한 경우를 처리
  */
 const mergeChunks = async (chunksDir, outputPath, chunks, ext) => {
-  const listPath = path.join(chunksDir, "concat_list.txt");
-  const fileList = chunks
-      .map((c) => `file 'chunk_${String(c.chunkIndex).padStart(5, "0")}.${ext}'`)
-      .join("\n");
+  const orderedChunks = [...chunks].sort((a, b) => a.chunkIndex - b.chunkIndex);
+  const firstIndex = orderedChunks[0]?.chunkIndex;
+  if (firstIndex !== 0) {
+    throw new InvalidParameterError({ firstIndex }, "청크 인덱스는 0부터 연속이어야 합니다.");
+  }
 
-  await fs.writeFile(listPath, fileList);
+  for (let i = 1; i < orderedChunks.length; i += 1) {
+    const expected = orderedChunks[i - 1].chunkIndex + 1;
+    if (orderedChunks[i].chunkIndex !== expected) {
+      throw new InvalidParameterError(
+        {
+          prevChunkIndex: orderedChunks[i - 1].chunkIndex,
+          currentChunkIndex: orderedChunks[i].chunkIndex,
+        },
+        "청크 인덱스가 연속되지 않아 원본 영상을 재조립할 수 없습니다."
+      );
+    }
+  }
 
-  await runCmd(FFMPEG, [
-    "-f", "concat",
-    "-safe", "0",
-    "-i", listPath,
-    "-c:v", "libx264",
-    "-preset", "ultrafast",
-    "-pix_fmt", "yuv420p",
-    "-c:a", "aac",      // 오디오 재인코딩
-    "-b:a", "128k",
-    "-movflags", "faststart",
-    "-y",
-    outputPath
-  ], { cwd: chunksDir });
+  const assembledInputPath = path.join(chunksDir, `assembled.${ext}`);
+  await fs.writeFile(assembledInputPath, Buffer.alloc(0));
+
+  for (const c of orderedChunks) {
+    const chunkPath = path.join(chunksDir, `chunk_${String(c.chunkIndex).padStart(5, "0")}.${ext}`);
+    const chunkBytes = await fs.readFile(chunkPath);
+    await fs.appendFile(assembledInputPath, chunkBytes);
+  }
+
+  await runCmd(
+    FFMPEG,
+    [
+      "-fflags",
+      "+genpts",
+      "-i",
+      assembledInputPath,
+      "-c:v",
+      "libx264",
+      "-preset",
+      "ultrafast",
+      "-pix_fmt",
+      "yuv420p",
+      "-c:a",
+      "aac", // 오디오 재인코딩
+      "-b:a",
+      "128k",
+      "-movflags",
+      "faststart",
+      "-y",
+      outputPath,
+    ],
+    { cwd: chunksDir }
+  );
 };
 
 /**
@@ -203,20 +246,33 @@ const mergeChunks = async (chunksDir, outputPath, chunks, ext) => {
  */
 const encodeToHLS = async (inputPath, hlsDir) => {
   await runCmd(FFMPEG, [
-    "-i", inputPath,
-    "-c:v", "libx264",
-    "-preset", "veryfast",
-    "-crf", "23",
-    "-s", "1280x720",
-    "-c:a", "aac",
-    "-b:a", "128k",
-    "-ac", "2",
-    "-af", "aresample=async=1",
-    "-f", "hls",
-    "-hls_time", "10",
-    "-hls_list_size", "0",
-    "-hls_segment_filename", path.join(hlsDir, "segment_%03d.ts"),
-    path.join(hlsDir, "master.m3u8")
+    "-i",
+    inputPath,
+    "-c:v",
+    "libx264",
+    "-preset",
+    "veryfast",
+    "-crf",
+    "23",
+    "-s",
+    "1280x720",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "128k",
+    "-ac",
+    "2",
+    "-af",
+    "aresample=async=1",
+    "-f",
+    "hls",
+    "-hls_time",
+    "10",
+    "-hls_list_size",
+    "0",
+    "-hls_segment_filename",
+    path.join(hlsDir, "segment_%03d.ts"),
+    path.join(hlsDir, "master.m3u8"),
   ]);
 };
 
@@ -245,5 +301,7 @@ const uploadHLSToGCS = async (hlsDir, video) => {
   }
 
   const cdnHost = process.env.CDN_HOST;
-  return cdnHost ? `${cdnHost}/${destPrefix}/master.m3u8` : `gs://${bucketName}/${destPrefix}/master.m3u8`;
+  return cdnHost
+    ? `${cdnHost}/${destPrefix}/master.m3u8`
+    : `gs://${bucketName}/${destPrefix}/master.m3u8`;
 };
