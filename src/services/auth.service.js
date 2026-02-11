@@ -16,6 +16,7 @@ import {
   findUserByEmail,
   findUserById,
   updateSessionToken,
+  updateUserProfileImage,
 } from "../repositories/auth.repository.js";
 import { findUserSession, upsertUserSession } from "../repositories/session.repository.js";
 import { v4 as uuidv4 } from "uuid";
@@ -39,18 +40,26 @@ export const socialLoginVerification = async (profile, provider) => {
   let email;
   let name;
   let providerId = profile.id;
+  let profileImageUrl;
 
   if (provider === "google") {
     email = profile.emails?.[0]?.value;
     name = profile.displayName;
+    profileImageUrl = profile.photos?.[0]?.value || null;
   } else if (provider === "kakao") {
     email = profile._json?.kakao_account?.email;
     name = profile.displayName || profile._json?.properties?.nickname;
+    profileImageUrl =
+      profile._json?.kakao_account?.profile?.profile_image_url ||
+      profile._json?.properties?.profile_image ||
+      profile._json?.properties?.thumbnail_image ||
+      null;
   } else if (provider === "naver") {
     const response = profile._json?.response || profile._json;
     email = response?.email || profile.emails?.[0]?.value;
     name = response?.name || profile.displayName;
     providerId = response?.id || profile.id;
+    profileImageUrl = response?.profile_image || null;
   }
 
   if (!email) throw new EmailNotFoundError({ profileId: providerId });
@@ -61,7 +70,16 @@ export const socialLoginVerification = async (profile, provider) => {
     throw new WithdrawUserError();
   }
   if (!user) {
-    user = await createSocialUser(email, name || "사용자", provider, providerId.toString());
+    user = await createSocialUser(
+      email,
+      name || "사용자",
+      provider,
+      providerId.toString(),
+      undefined,
+      profileImageUrl
+    );
+  } else if (profileImageUrl && user.profileImageUrl !== profileImageUrl) {
+    user = await updateUserProfileImage(user.id, profileImageUrl);
   }
 
   return user;

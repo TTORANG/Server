@@ -31,6 +31,7 @@ model User {
   name          String         @db.VarChar(100) @map("name")
   nickName      String?        @db.VarChar(20)  @map("nick_name")
   email         String         @unique @db.VarChar(200) @map("email") 
+  profileImageUrl String?      @db.Text @map("profile_image")
   oauthProvider OauthProvider  @map("oauth_provider")
   oauthId       String         @db.VarChar(100) @map("oauth_id")
   role          UserRole       @default(user) @map("role") 

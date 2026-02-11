@@ -15,16 +15,31 @@ export const findUserById = async (id) => {
 };
 
 // 신규 소셜 유저 생성
-export const createSocialUser = async (email, name, provider, providerId, role) => {
+export const createSocialUser = async (
+  email,
+  name,
+  provider,
+  providerId,
+  role,
+  profileImageUrl
+) => {
   return await prisma.user.create({
     data: {
       email,
       name,
       nickName: name,
+      profileImageUrl,
       oauthProvider: provider,
       oauthId: providerId,
       role: role,
     },
+  });
+};
+
+export const updateUserProfileImage = async (userId, profileImageUrl) => {
+  return await prisma.user.update({
+    where: { id: BigInt(userId) },
+    data: { profileImageUrl },
   });
 };
 
