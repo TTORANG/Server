@@ -173,8 +173,14 @@ export const getSummary = async ({ projectId }) => {
   const uniqueSessions = await analyticsRepository.groupPageViewsBySession(pid);
   const totalViews = uniqueSessions.length;
 
-  // 평균 체류 시간 계산
-  const avgDurationResult = await analyticsRepository.getAvgDuration(pid);
+  // 영상 목록 조회 (체류시간 상한 계산 + 피드백 집계용)
+  const videos = await analyticsRepository.findVideosByProjectId(pid);
+  const videoIds = videos.map((v) => v.id);
+
+  // 평균 체류 시간 계산 (상한 = 영상 길이 + 30분)
+  const maxVideoDuration = Math.max(0, ...videos.map((v) => v.durationSeconds || 0));
+  const maxDurationSeconds = maxVideoDuration + 30 * 60;
+  const avgDurationResult = await analyticsRepository.getAvgDuration(pid, maxDurationSeconds);
   const avgDuration = avgDurationResult[0]?.avg_duration
     ? Math.round(Number(avgDurationResult[0].avg_duration))
     : 0;
@@ -200,10 +206,6 @@ export const getSummary = async ({ projectId }) => {
     analyticsRepository.countReactionsByTarget({ targetType: "slide", targetIds: slideIds }),
     analyticsRepository.countCommentsByTarget({ targetType: "slide", targetIds: slideIds }),
   ]);
-
-  // 영상 관련 피드백도 포함
-  const videos = await analyticsRepository.findVideosByProjectId(pid);
-  const videoIds = videos.map((v) => v.id);
 
   const [videoReactionCount, videoCommentCount] = await Promise.all([
     analyticsRepository.countReactionsByTarget({ targetType: "video", targetIds: videoIds }),
