@@ -29,3 +29,9 @@ export class ProjectDeletedError extends BaseError {
     super("삭제된 발표입니다.", 403, "L005", data);
   }
 }
+
+export class InvalidShareTokenError extends BaseError {
+  constructor(data) {
+    super("공유 토큰이 유효하지 않습니다. 세션 ID가 아닌 shareToken을 전달해주세요.", 400, "L006", data);
+  }
+}

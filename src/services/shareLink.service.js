@@ -1,5 +1,6 @@
 import { InvalidPageError } from "../errors/project.error.js";
 import {
+  InvalidShareTokenError,
   ProjectDeletedError,
   ShareLinkExpiredError,
   ShareLinkNotActiveError,
@@ -39,6 +40,25 @@ const validateShareLinkAccess = (shareLink) => {
   // 링크 만료일 확인
   if (shareLink.expiredAt && new Date() > shareLink.expiredAt) {
     throw new ShareLinkExpiredError();
+  }
+};
+
+const ensureShareTokenIsNotSessionId = async (shareToken, shareLink) => {
+  if (shareLink) {
+    return;
+  }
+
+  if (!shareToken || typeof shareToken !== "string") {
+    return;
+  }
+
+  const session = await prisma.session.findUnique({
+    where: { id: shareToken },
+    select: { id: true },
+  });
+
+  if (session) {
+    throw new InvalidShareTokenError({ shareToken });
   }
 };
 
@@ -97,6 +117,7 @@ export const processCreateShareLink = async (projectId, shareData) => {
 
 export const processGetShareContent = async (shareToken, sessionId = null) => {
   const shareLink = await findShareLinkWithContent(shareToken);
+  await ensureShareTokenIsNotSessionId(shareToken, shareLink);
   validateShareLinkAccess(shareLink);
 
   await incrementViewCount(shareLink.id);
@@ -178,6 +199,7 @@ export const processGetShareContent = async (shareToken, sessionId = null) => {
 
 export const processGetShareComments = async (shareToken) => {
   const shareLink = await findShareLinkWithComments(shareToken);
+  await ensureShareTokenIsNotSessionId(shareToken, shareLink);
   validateShareLinkAccess(shareLink);
 
   return shareLink.project.comments || [];
