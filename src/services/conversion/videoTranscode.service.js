@@ -6,6 +6,7 @@ import {
   getVideoWithChunks,
   updateVideoStatus,
   updateVideoHlsUrl,
+  deleteVideoChunks,
   updateVideoMetadata,
 } from "../../repositories/video.repository.js";
 import { getJobById } from "../../repositories/conversionJob.repository.js";
@@ -144,6 +145,9 @@ export const videoTranscode = async (jobOrId) => {
     // 6. HLS 변환 및 업로드
     await encodeToHLS(mergedPath, hlsDir);
     const hlsMasterUrl = await uploadHLSToGCS(hlsDir, video);
+
+    // 트랜스코딩이 완료되면 원본 청크 메타데이터 정리
+    await deleteVideoChunks(video.id);
 
     // 최종 HLS URL 업데이트
     await updateVideoHlsUrl(video.id, hlsMasterUrl);

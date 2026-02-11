@@ -342,6 +342,12 @@ export const updateVideoHlsUrl = async (videoId, hlsMasterUrl) => {
   });
 };
 
+export const deleteVideoChunks = async (videoId) => {
+  return prisma.videoChunk.deleteMany({
+    where: { videoId: BigInt(videoId) },
+  });
+};
+
 export const updateVideoMetadata = async (videoId, metadata) => {
   return prisma.video.update({
     where: { id: BigInt(videoId) },
