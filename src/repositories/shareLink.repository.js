@@ -172,3 +172,44 @@ export const findProjectById = async (projectId) => {
     select: { id: true, isDeleted: true },
   });
 };
+
+// shareToken으로 projectId 찾기 (활성화 여부 및 만료일 검증 포함)
+export const findProjectIdByShareToken = async (shareToken) => {
+  const shareLink = await prisma.shareLink.findFirst({
+    where: { shareToken },
+    select: {
+      projectId: true,
+      isActive: true,
+      expiredAt: true,
+      project: {
+        select: {
+          isDeleted: true,
+        },
+      },
+    },
+  });
+
+  if (!shareLink) {
+    return null;
+  }
+
+  // 활성화 여부 확인
+  if (!shareLink.isActive) {
+    return null;
+  }
+
+  // 프로젝트 삭제 여부 확인
+  if (shareLink.project.isDeleted) {
+    return null;
+  }
+
+  // 만료일 확인
+  if (shareLink.expiredAt && new Date() > shareLink.expiredAt) {
+    return null;
+  }
+
+  return {
+    projectId: Number(shareLink.projectId),
+    shareLink,
+  };
+};

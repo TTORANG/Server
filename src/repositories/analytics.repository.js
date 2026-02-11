@@ -194,6 +194,6 @@ export const getSlideViewSessionPairs = (projectId) =>
 export const getMaxTimestampPerSession = (videoId) =>
   prisma.analyticsVideoEvent.groupBy({
     by: ["sessionId"],
-    where: { videoId, eventType: "play" },
+    where: { videoId, eventType: { in: ["play", "pause", "seek"] } },
     _max: { timestampMs: true },
   });

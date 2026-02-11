@@ -406,7 +406,15 @@ export const getVideoExits = async ({ videoId }) => {
 
   // 총 세션 수 (영상을 재생한 세션)
   const totalSessions = await analyticsRepository.groupVideoEventsBySession(vid);
-  const totalSessionCount = totalSessions.length || 1; // 0 방지
+  const totalSessionCount = totalSessions.length;
+
+  if (totalSessionCount === 0) {
+    return {
+      resultType: "SUCCESS",
+      error: null,
+      success: { exits: [] },
+    };
+  }
 
   // 정렬된 이탈률 배열 생성
   const exitRates = Object.entries(exitMap)
@@ -559,24 +567,26 @@ export const getSlideRetention = async ({ projectId }) => {
   // 슬라이드-세션 쌍 조회
   const slideViewPairs = await analyticsRepository.getSlideViewSessionPairs(pid);
 
-  // slideId별 고유 세션 Set 구성
-  const slideSessionMap = {};
+  // slideId → slideNum 매핑
+  const slideNumMap = {};
   slides.forEach((s) => {
-    slideSessionMap[s.id.toString()] = new Set();
+    slideNumMap[s.id.toString()] = s.slideNum ? Number(s.slideNum) : 0;
   });
 
+  // 세션별 최대 도달 슬라이드 번호 계산
+  const sessionMaxSlideNum = {};
   slideViewPairs.forEach((pair) => {
-    const key = pair.slideId.toString();
-    if (slideSessionMap[key]) {
-      slideSessionMap[key].add(pair.sessionId);
+    const sid = pair.sessionId;
+    const slideNum = slideNumMap[pair.slideId.toString()] || 0;
+    if (!sessionMaxSlideNum[sid] || slideNum > sessionMaxSlideNum[sid]) {
+      sessionMaxSlideNum[sid] = slideNum;
     }
   });
 
-  // 첫 번째 슬라이드 세션 수 = baseline (100%)
-  const firstSlide = slides[0];
-  const baselineSessions = slideSessionMap[firstSlide.id.toString()].size;
+  // baseline = 총 고유 세션 수
+  const totalSessions = Object.keys(sessionMaxSlideNum).length;
 
-  if (baselineSessions === 0) {
+  if (totalSessions === 0) {
     return {
       resultType: "SUCCESS",
       error: null,
@@ -593,10 +603,13 @@ export const getSlideRetention = async ({ projectId }) => {
     };
   }
 
-  // 각 슬라이드별 잔존률 계산
+  // 각 슬라이드별 잔존률 계산 (max slideNum >= 해당 slideNum인 세션 수)
   const slideRetention = slides.map((slide) => {
-    const sessionCount = slideSessionMap[slide.id.toString()].size;
-    const retentionRate = Math.round((sessionCount / baselineSessions) * 100);
+    const slideNum = slide.slideNum ? Number(slide.slideNum) : 0;
+    const sessionCount = Object.values(sessionMaxSlideNum).filter(
+      (maxNum) => maxNum >= slideNum
+    ).length;
+    const retentionRate = Math.round((sessionCount / totalSessions) * 100);
 
     return {
       slideId: slide.id.toString(),
@@ -611,7 +624,7 @@ export const getSlideRetention = async ({ projectId }) => {
     resultType: "SUCCESS",
     error: null,
     success: {
-      totalSessions: baselineSessions,
+      totalSessions,
       slideRetention,
     },
   };

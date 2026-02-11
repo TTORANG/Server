@@ -1,4 +1,10 @@
+<<<<<<< Updated upstream
 import { findProjectIdByShareToken } from "../../repositories/shareLink.repository.js";
+=======
+export const registerRoomHandlers = (io, socket) => {
+  socket.on("join-project", (data) => {
+    const { projectId } = data;
+>>>>>>> Stashed changes
 
 export const registerRoomHandlers = (io, socket) => {
 
@@ -39,7 +45,6 @@ export const registerRoomHandlers = (io, socket) => {
       projectId,
       message: `Joined project ${projectId}`,
     });
-
   });
 
   socket.on("leave-project", async (data) => {
