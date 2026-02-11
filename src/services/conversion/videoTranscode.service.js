@@ -40,7 +40,7 @@ import { prisma } from "../../db.config.js";
 
 /**
  * Video Transcode 서비스
- * - 청크 다운로드 → 병합(재인코딩) → HLS 변환 → GCS 업로드
+ * - 청크 다운로드 → 병합(무손실 재조립) → HLS 변환 → GCS 업로드
  *  * jobType: video_transcode
  */
 
@@ -73,8 +73,8 @@ export const videoTranscode = async (jobOrId) => {
   // GCS 원본 청크 확장자
   const mergedExt = video.container === "webm" ? "webm" : "mp4";
 
-  //FFmpeg 인코딩 호환성을 위해 병합 파일은 .mp4로 고정
-  const mergedPath = path.join(workDir, `merged.mp4`);
+  // 컨테이너를 유지한 상태로 병합 파일 생성 (불필요한 중간 재인코딩 방지)
+  const mergedPath = path.join(workDir, `merged.${mergedExt}`);
   const hlsDir = path.join(workDir, "hls");
 
   try {
@@ -187,7 +187,7 @@ const downloadChunks = async (chunks, destDir, ext) => {
 };
 
 /**
- * 청크를 바이트 단위로 순서대로 재조립한 뒤 ffmpeg로 재인코딩
+ * 청크를 바이트 단위로 순서대로 무손실 재조립
  * - 프론트에서 완성 Blob을 raw split해 업로드한 경우를 처리
  */
 const mergeChunks = async (chunksDir, outputPath, chunks, ext) => {
@@ -210,45 +210,52 @@ const mergeChunks = async (chunksDir, outputPath, chunks, ext) => {
     }
   }
 
-  const assembledInputPath = path.join(chunksDir, `assembled.${ext}`);
+  await fs.rm(outputPath, { force: true }).catch(() => {});
   for (let i = 0; i < orderedChunks.length; i += 1) {
     const c = orderedChunks[i];
     const chunkPath = path.join(chunksDir, `chunk_${String(c.chunkIndex).padStart(5, "0")}.${ext}`);
 
     await pipeline(
       createReadStream(chunkPath),
-      createWriteStream(assembledInputPath, { flags: i === 0 ? "w" : "a" })
+      createWriteStream(outputPath, { flags: i === 0 ? "w" : "a" })
     );
   }
 
+  try {
+    await validateMergedInput(outputPath);
+    return;
+  } catch (e) {
+    console.warn(
+      "[VideoTranscode] Byte-append merge validation failed. Falling back to ffmpeg concat demuxer:",
+      e.message
+    );
+  }
+
+  await rebuildWithConcatDemuxer(chunksDir, outputPath, orderedChunks, ext);
+  await validateMergedInput(outputPath);
+};
+
+const validateMergedInput = async (inputPath) => {
+  await runCmd(FFMPEG, ["-v", "error", "-i", inputPath, "-t", "0.2", "-f", "null", "-"]);
+};
+
+const rebuildWithConcatDemuxer = async (chunksDir, outputPath, orderedChunks, ext) => {
+  const concatListPath = path.join(chunksDir, "concat-list.txt");
+  const listContent = orderedChunks
+    .map((chunk) => `file 'chunk_${String(chunk.chunkIndex).padStart(5, "0")}.${ext}'`)
+    .join("\n");
+
+  await fs.writeFile(concatListPath, listContent, "utf8");
+
   await runCmd(
     FFMPEG,
-    [
-      "-fflags",
-      "+genpts",
-      "-i",
-      assembledInputPath,
-      "-c:v",
-      "libx264",
-      "-preset",
-      "ultrafast",
-      "-pix_fmt",
-      "yuv420p",
-      "-c:a",
-      "aac", // 오디오 재인코딩
-      "-b:a",
-      "128k",
-      "-movflags",
-      "faststart",
-      "-y",
-      outputPath,
-    ],
+    ["-f", "concat", "-safe", "0", "-i", concatListPath, "-fflags", "+genpts", "-c", "copy", "-y", outputPath],
     { cwd: chunksDir }
   );
 };
 
 /**
- * 단일 품질(720p) HLS 변환
+ * 단일 품질 HLS 변환
  * - aresample 옵션을 추가하여 오디오 패킷 누락 시 싱크 오류 방지
  */
 const encodeToHLS = async (inputPath, hlsDir) => {
@@ -258,11 +265,9 @@ const encodeToHLS = async (inputPath, hlsDir) => {
     "-c:v",
     "libx264",
     "-preset",
-    "veryfast",
+    "medium",
     "-crf",
-    "23",
-    "-s",
-    "1280x720",
+    "20",
     "-c:a",
     "aac",
     "-b:a",
