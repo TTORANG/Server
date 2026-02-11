@@ -8,8 +8,6 @@ import {
   SlideNotFoundError,
 } from "../errors/comment.error.js";
 import { InvalidParameterError, VideoNotFoundError } from "../errors/video.error.js";
-import eventBus from "../events/eventBus.js";
-import { EventTypes } from "../events/eventTypes.js";
 import {
   createComment,
   createVideoComment as createVideoCommentRepo,
@@ -21,7 +19,7 @@ import {
 } from "../repositories/comment.repository.js";
 import { getSlideWithProject } from "../repositories/slide.repository.js";
 import { findVideoByIdWithProject } from "../repositories/video.repository.js";
-import { buildCommentTargetPayload } from "../utils/commentTargetPayload.util.js";
+
 
 // 댓글 작성
 export const createSlideComment = async ({ slideId, content, userId }) => {
@@ -45,16 +43,6 @@ export const createSlideComment = async ({ slideId, content, userId }) => {
     targetType: "slide",
     targetId: slideId,
     content,
-  });
-
-  await eventBus.publish(EventTypes.COMMENT_CREATED, {
-    commentId: comment.id,
-    projectId: slide.project.id,
-    userId,
-    content: comment.content,
-    parentCommentId: comment.parentId ?? null,
-    ...buildCommentTargetPayload(comment),
-    createdAt: comment.createdAt,
   });
 
   return comment;
@@ -82,16 +70,6 @@ export const updateComment = async ({ commentId, content }) => {
 
   const updatedComment = await updateCommentContent(commentId, content);
 
-  await eventBus.publish(EventTypes.COMMENT_UPDATED, {
-    commentId: updatedComment.id,
-    projectId: comment.projectId,
-    userId: updatedComment.userId,
-    content: updatedComment.content,
-    updatedAt: updatedComment.updatedAt,
-    parentCommentId: updatedComment.parentId ?? null,
-    ...buildCommentTargetPayload(comment),
-  });
-
   return updatedComment;
 };
 
@@ -112,14 +90,6 @@ export const deleteComment = async ({ commentId }) => {
   }
 
   await softDeleteComment(commentId);
-
-  await eventBus.publish(EventTypes.COMMENT_DELETED, {
-    commentId: comment.id,
-    projectId: comment.projectId,
-    userId: comment.userId,
-    parentCommentId: comment.parentId ?? null,
-    ...buildCommentTargetPayload(comment),
-  });
 
   return {
     commentId: comment.id,
@@ -207,21 +177,6 @@ export async function createVideoComment({ videoId, content, timestampMs, userId
     videoId: vid,
     timestampMs: ts,
     content,
-  });
-
-  // 실시간 알림을 위한 이벤트 발행
-  await eventBus.publish(EventTypes.COMMENT_CREATED, {
-    commentId: comment.id,
-    projectId: video.projectId,
-    userId,
-    content: comment.content,
-    parentCommentId: comment.parentId ?? null,
-    ...buildCommentTargetPayload({
-      targetType: "video",
-      targetId: vid,
-      timestampMs: comment.timestampMs,
-    }),
-    createdAt: comment.createdAt,
   });
 
   return comment;

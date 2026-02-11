@@ -8,6 +8,8 @@ import {
   getVideoTimeline,
   getVideoExits,
   getRecentComments,
+  getSlideRetention,
+  getVideoRetention,
 } from "../services/analytics.service.js";
 
 /**
@@ -511,6 +513,28 @@ export const handleGetRecentComments = async (req, res, next) => {
     const result = await getRecentComments({
       projectId: req.params.projectId,
       limit: req.query.limit,
+    });
+    res.json(result);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const handleGetSlideRetention = async (req, res, next) => {
+  try {
+    const result = await getSlideRetention({
+      projectId: req.params.projectId,
+    });
+    res.json(result);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const handleGetVideoRetention = async (req, res, next) => {
+  try {
+    const result = await getVideoRetention({
+      videoId: req.params.videoId,
     });
     res.json(result);
   } catch (e) {

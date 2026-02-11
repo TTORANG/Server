@@ -9,15 +9,6 @@ import { specs } from "./swagger.config.js";
 import cookieParser from "cookie-parser";
 import { handleProcessJob } from "./controllers/conversionJob.controller.js";
 
-import { createServer } from "http";
-
-// Pub/Sub 이벤트 시스템
-import eventBus from "./events/eventBus.js";
-import { registerSubscribers } from "./events/subscribers/index.js";
-
-// Socket.io
-import { initializeSocket } from "./socket/index.js";
-
 // 라우터
 import authRouter from "./routes/auth.route.js";
 import sessionRouter from "./routes/session.route.js";
@@ -44,9 +35,7 @@ app.set("json replacer", (key, value) => {
   return value;
 });
 
-const httpServer = createServer(app); // HTTP 서버 생성 (Socket.io용)
 const port = process.env.PORT || 8080;
-const realtimeHealthCheckMs = Number(process.env.REALTIME_HEALTH_CHECK_MS || 30000);
 
 app.use(
   cors({
@@ -122,42 +111,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-const startRealtimeHealthMonitor = () => {
-  setInterval(() => {
-    const status = eventBus.getHealthStatus();
-    if (!status.isConnected) {
-      console.warn(
-        `[Realtime][HealthWarning] EventBus disconnected. publisherStatus=${status.publisherStatus}, subscriberStatus=${status.subscriberStatus}`
-      );
-    }
-  }, realtimeHealthCheckMs);
-};
-
-// 서버 시작
-const startServer = async () => {
-  try {
-    // Redis Pub/Sub 연결
-    await eventBus.connect();
-
-    // 이벤트 구독자 등록
-    await registerSubscribers();
-
-    // Socket.io 초기화
-    await initializeSocket(httpServer);
-
-    // HTTP 서버 시작 (Express + Socket.io)
-    httpServer.listen(port, () => {
-      console.log(`Server listening on port ${port}`);
-      startRealtimeHealthMonitor();
-    });
-  } catch (error) {
-    console.error("Server startup error:", error);
-    // Redis 연결 실패해도 서버는 시작 (graceful degradation)
-    httpServer.listen(port, () => {
-      console.log(`Server listening on port ${port} (without Redis)`);
-      startRealtimeHealthMonitor();
-    });
-  }
-};
-
-startServer();
+app.listen(port, () => {
+  console.log(`Server listening on port ${port}`);
+});

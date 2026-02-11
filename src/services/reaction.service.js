@@ -14,12 +14,9 @@ import {
   SlideNotFoundError,
 } from "../errors/reaction.error.js";
 import { InvalidParameterError, VideoNotFoundError } from "../errors/video.error.js";
-import eventBus from "../events/eventBus.js";
-import { EventTypes } from "../events/eventTypes.js";
 import {
   aggregateVideoReactionsByBucket,
   aggregateVideoReactionsByTimeWindow,
-  countVideoReactionsByEmoji,
   countProjectSlideReactionsBySlideIds,
   countSlideReactions,
   createVideoReaction as createVideoReactionRow,
@@ -44,41 +41,6 @@ const reactionRateLimitRedis = new Redis(process.env.REDIS_URL || "redis://local
 let isReactionRateLimitRedisUnavailable = false;
 let lastReactionRateLimitRedisRetryAt = 0;
 let lastReactionRateLimitFallbackCleanupAt = 0;
-
-async function publishSlideReactionEvent({ reactionId, projectId, slideId, userId, emojiType }) {
-  const payload = {
-    reactionId,
-    projectId,
-    targetType: "slide",
-    targetId: BigInt(slideId),
-    slideId: BigInt(slideId),
-    videoId: null,
-    timestampMs: null,
-    emojiType,
-    userId: userId ?? null,
-    active: true,
-  };
-
-  await eventBus.publish(EventTypes.REACTION_ADDED, payload);
-}
-
-async function publishVideoReactionCountUpdated({ projectId, videoId }) {
-  const rows = await countVideoReactionsByEmoji(videoId);
-  const counts = Object.fromEntries(ALLOWED_EMOJIS.map((emoji) => [emoji, 0]));
-
-  for (const row of rows) {
-    counts[row.emojiType] = Number(row._count._all);
-  }
-
-  const totalCount = Object.values(counts).reduce((sum, current) => sum + current, 0);
-
-  await eventBus.publish(EventTypes.REACTION_COUNT_UPDATED, {
-    projectId,
-    videoId: BigInt(videoId),
-    counts,
-    totalCount,
-  });
-}
 
 // 리액션 추가 및 취소
 export async function createSlideReactionEvent({ slideId, emojiType, userId }) {
@@ -105,14 +67,6 @@ export async function createSlideReactionEvent({ slideId, emojiType, userId }) {
       timestampMs: null,
       emojiType,
       projectId: slide.projectId,
-    });
-
-    await publishSlideReactionEvent({
-      reactionId: createdReaction.id,
-      projectId: slide.projectId,
-      slideId,
-      userId,
-      emojiType,
     });
 
     return slideReactionCreateResponseDTO({
@@ -169,24 +123,6 @@ export async function createVideoReactionEvent({ videoId, emojiType, timestampMs
     projectId: video.projectId,
     timestampMs: ts,
     emojiType,
-  });
-
-  await eventBus.publish(EventTypes.REACTION_ADDED, {
-    reactionId: created.id,
-    projectId: video.projectId,
-    targetType: "video",
-    targetId: vid,
-    slideId: null,
-    videoId: vid,
-    userId: userId ?? null,
-    emojiType,
-    timestampMs: ts,
-    active: true,
-  });
-
-  await publishVideoReactionCountUpdated({
-    projectId: video.projectId,
-    videoId: vid,
   });
 
   return videoReactionCreateResponseDTO({
