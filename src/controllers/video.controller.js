@@ -375,58 +375,58 @@ export async function finishRecording(req, res, next) {
 export async function handleGetVideoList(req, res, next) {
   /**
    * @swagger
- * /presentations/{projectId}/videos:
- *   get:
- *     summary: 프로젝트 녹화 영상 목록 조회
- *     description:
- *       특정 프로젝트에 속한 녹화 영상 목록을 조회합니다.
- *       정렬(sort), 길이 필터(filter), 제목 검색(search)을 지원합니다.
- *       영상이 없는 경우에도 오류가 아닌 빈 목록을 반환합니다.
- *       각 영상에는 일반 댓글 수(rootCommentCount), 답글 수(replyCount),
- *       리액션 수(reactionCount), 조회 수(viewCount)가 함께 포함됩니다.
+   * /presentations/{projectId}/videos:
+   *   get:
+   *     summary: 프로젝트 녹화 영상 목록 조회
+   *     description:
+   *       특정 프로젝트에 속한 녹화 영상 목록을 조회합니다.
+   *       정렬(sort), 길이 필터(filter), 제목 검색(search)을 지원합니다.
+   *       영상이 없는 경우에도 오류가 아닌 빈 목록을 반환합니다.
+   *       각 영상에는 일반 댓글 수(rootCommentCount), 답글 수(replyCount),
+   *       리액션 수(reactionCount), 조회 수(viewCount)가 함께 포함됩니다.
    *     tags:
    *       - Video
    *     security:
    *       - bearerAuth: []
    *     parameters:
- *       - in: path
- *         name: projectId
- *         required: true
- *         description: 프로젝트 ID
- *         schema:
- *           type: string
- *           example: "1"
- *       - in: query
- *         name: sort
- *         required: false
- *         description: |
- *           정렬 조건
- *           - recent: 최신순(기본값)
- *           - commentCount: 피드백 많은 순(feedbackCount 내림차순)
- *           - name: 가나다순(title 오름차순)
- *         schema:
- *           type: string
- *           enum: [recent, commentCount, name]
- *           default: recent
- *       - in: query
- *         name: filter
- *         required: false
- *         description: |
- *           길이 필터
- *           - all: 전체(기본값)
- *           - 3m: 3분 이하(durationSeconds <= 180)
- *           - 5m: 5분 이하(durationSeconds <= 300)
- *         schema:
- *           type: string
- *           enum: [all, 3m, 5m]
- *           default: all
- *       - in: query
- *         name: search
- *         required: false
- *         description: 영상 제목 검색어(부분 일치, 대소문자 구분 없음)
- *         schema:
- *           type: string
- *           example: "발표"
+   *       - in: path
+   *         name: projectId
+   *         required: true
+   *         description: 프로젝트 ID
+   *         schema:
+   *           type: string
+   *           example: "1"
+   *       - in: query
+   *         name: sort
+   *         required: false
+   *         description: |
+   *           정렬 조건
+   *           - recent: 최신순(기본값)
+   *           - commentCount: 피드백 많은 순(feedbackCount 내림차순)
+   *           - name: 가나다순(title 오름차순)
+   *         schema:
+   *           type: string
+   *           enum: [recent, commentCount, name]
+   *           default: recent
+   *       - in: query
+   *         name: filter
+   *         required: false
+   *         description: |
+   *           길이 필터
+   *           - all: 전체(기본값)
+   *           - 3m: 3분 이하(durationSeconds <= 180)
+   *           - 5m: 5분 이하(durationSeconds <= 300)
+   *         schema:
+   *           type: string
+   *           enum: [all, 3m, 5m]
+   *           default: all
+   *       - in: query
+   *         name: search
+   *         required: false
+   *         description: 영상 제목 검색어(부분 일치, 대소문자 구분 없음)
+   *         schema:
+   *           type: string
+   *           example: "발표"
    *     responses:
    *       200:
    *         description: 영상 목록 조회 성공
@@ -675,6 +675,187 @@ export async function handleGetVideoDetail(req, res, next) {
   try {
     const { videoId } = req.params;
     const result = await videoService.getVideoDetail({ videoId });
+    res.json(result);
+  } catch (e) {
+    next(e);
+  }
+}
+
+// 영상 제목 조회
+export async function handleGetVideoTitle(req, res, next) {
+  /**
+   * @swagger
+   * /videos/{videoId}/title:
+   *   get:
+   *     summary: 영상 제목 조회
+   *     description: 특정 영상의 제목과 생성일을 조회합니다.
+   *     tags: [Video]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: videoId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *           example: 2
+   *         description: 영상 ID
+   *     responses:
+   *       200:
+   *         description: 영상 제목 조회 성공
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "SUCCESS"
+   *               error: null
+   *               success:
+   *                 videoId: "2"
+   *                 title: "발표 영상"
+   *                 createdAt: "2026-02-11T10:00:00.000Z"
+   *       400:
+   *         description: 잘못된 videoId 파라미터
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "P001"
+   *                 reason: "videoId가 올바르지 않습니다."
+   *                 data:
+   *                   videoId: "abc"
+   *               success: null
+   *       401:
+   *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "A004"
+   *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+   *                 data: null
+   *               success: null
+   *       404:
+   *         description: 영상을 찾을 수 없음
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "V001"
+   *                 reason: "영상을 찾을 수 없습니다."
+   *                 data:
+   *                   videoId: "2"
+   *               success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   */
+  try {
+    const { videoId } = req.params;
+    const result = await videoService.getVideoTitle({ videoId });
+    res.json(result);
+  } catch (e) {
+    next(e);
+  }
+}
+
+// 영상 제목 수정
+export async function handlePatchVideoTitle(req, res, next) {
+  /**
+   * @swagger
+   * /videos/{videoId}:
+   *   patch:
+   *     summary: 영상 제목 수정
+   *     description: |
+   *       특정 영상의 제목을 수정합니다.
+   *       본인이 소유한 영상만 수정할 수 있습니다.
+   *     tags: [Video]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: videoId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *           example: 2
+   *         description: 영상 ID
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               title:
+   *                 type: string
+   *                 example: "수정된 영상 제목"
+   *     responses:
+   *       200:
+   *         description: 영상 제목 수정 성공
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "SUCCESS"
+   *               error: null
+   *               success:
+   *                 videoId: "2"
+   *                 title: "수정된 영상 제목"
+   *                 updatedAt: "2026-02-11T10:00:00.000Z"
+   *       400:
+   *         description: 잘못된 videoId 파라미터
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "P001"
+   *                 reason: "videoId가 올바르지 않습니다."
+   *                 data:
+   *                   videoId: "abc"
+   *               success: null
+   *       401:
+   *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "A004"
+   *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+   *                 data: null
+   *               success: null
+   *       404:
+   *         description: 영상 없음 또는 본인이 소유한 영상이 아님
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "V001"
+   *                 reason: "영상을 찾을 수 없습니다."
+   *                 data:
+   *                   videoId: "2"
+   *               success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   */
+  try {
+    const { videoId } = req.params;
+    const { title } = req.body;
+    const result = await videoService.patchVideoTitle({
+      videoId,
+      userId: req.user?.id,
+      title,
+    });
     res.json(result);
   } catch (e) {
     next(e);

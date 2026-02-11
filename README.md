@@ -227,6 +227,8 @@ PPTX/PDF 업로드
 - `POST /videos/:videoId/chunks/:chunkIndex` - 청크 업로드
 - `POST /videos/:videoId/finish` - 녹화 완료 및 인코딩 시작
 - `GET /videos/:videoId` - 영상 상세 조회
+- `GET /videos/:videoId/title` - 영상 제목 조회
+- `PATCH /videos/:videoId` - 영상 제목 수정
 - `DELETE /videos/:videoId` - 영상 삭제
 - `GET /videos/:videoId/slides` - 영상-슬라이드 타임라인
 
