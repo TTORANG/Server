@@ -182,6 +182,8 @@ export const handleCreateShareLink = async (req, res, next) => {
  *                   comments:
  *                     - commentId: "1"
  *                       content: "이 부분 설명이 아주 좋네요!"
+ *                       userId: "12"
+ *                       isMine: true
  *                       writer: "가넷"
  *                       targetType: "video"
  *                       targetId: "456"
@@ -236,6 +238,13 @@ export const handleGetShareContent = async (req, res, next) => {
  *           type: string
  *           example: "abc-123-uuid"
  *         description: 공유 링크의 유니크 토큰
+ *       - in: query
+ *         name: sessionId
+ *         required: false
+ *         schema:
+ *           type: string
+ *           example: "106fbf2c-3357-40f7-..."
+ *         description: 내 댓글 여부(isMine) 계산에 사용할 세션 ID
  *     responses:
  *       200:
  *         description: 공유 댓글 목록 조회 성공
@@ -248,6 +257,8 @@ export const handleGetShareContent = async (req, res, next) => {
  *                 comments:
  *                   - commentId: "1"
  *                     content: "이 부분 설명이 아주 좋네요!"
+ *                     userId: "12"
+ *                     isMine: true
  *                     writer: "가넷"
  *                     targetType: "video"
  *                     targetId: "456"
@@ -260,7 +271,8 @@ export const handleGetShareContent = async (req, res, next) => {
 export const handleGetShareComments = async (req, res, next) => {
   try {
     const { shareToken } = req.params;
-    const comments = await processGetShareComments(shareToken);
+    const { sessionId } = req.query;
+    const comments = await processGetShareComments(shareToken, sessionId);
 
     res.status(200).json({
       resultType: "SUCCESS",
