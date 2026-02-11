@@ -1,15 +1,19 @@
 import { prisma } from "../db.config.js";
 import { SessionNotFoundError, SessionAccessDeniedError } from "../errors/session.error.js";
+import { getUniqueNickname } from "../utils/nickname.util.js";
 
 // 익명 세션 및 임시 유저 생성
 export const createAnonymousSession = async (sessionId) => {
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7일
+
+  const nickname = await getUniqueNickname(sessionId);
 
   return await prisma.$transaction(async (tx) => {
     // 임시유저 생성
     const anonymousUser = await tx.user.create({
       data: {
         name: "익명 사용자",
+        nickName: nickname,
         email: `anon_${sessionId}@ttorang.com`,
         oauthProvider: "anonymous",
         oauthId: sessionId,
@@ -24,6 +28,9 @@ export const createAnonymousSession = async (sessionId) => {
         userId: anonymousUser.id,
         isAnonymous: true,
         expiresAt,
+      },
+      include: {
+        user: true,
       },
     });
   });

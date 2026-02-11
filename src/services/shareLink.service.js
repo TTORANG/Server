@@ -99,13 +99,15 @@ export const processGetShareContent = async (shareToken, sessionId = null) => {
 
   let currentSessionId = sessionId;
   let newTokens = null;
+  let sessionRecord = null;
 
   if (currentSessionId) {
-    const sessionExists = await prisma.session.findUnique({
+    sessionRecord = await prisma.session.findUnique({
       where: { id: currentSessionId },
+      include: { user: true },
     });
 
-    if (!sessionExists) {
+    if (!sessionRecord) {
       currentSessionId = null;
     }
   }
@@ -115,7 +117,14 @@ export const processGetShareContent = async (shareToken, sessionId = null) => {
     const sessionData = await issueAnonymousSession();
     currentSessionId = sessionData.sessionId;
     newTokens = sessionData.tokens; // 새로 만든 토큰은 클라이언트에 전달해야 함
+    sessionRecord = sessionData.session;
   }
+
+  const sessionName = sessionRecord?.user
+    ? sessionRecord.isAnonymous
+      ? sessionRecord.user.nickName || sessionRecord.user.name
+      : sessionRecord.user.name
+    : null;
 
   await createPageView({
     projectId: shareLink.projectId,
@@ -132,6 +141,7 @@ export const processGetShareContent = async (shareToken, sessionId = null) => {
     return {
       slideId: slide.id.toString(),
       slideNum: Number(slide.slideNum),
+      title: slide.title || null,
       imageUrl: toPublicStorageUrl(slide.assets[0]?.url || null),
       scriptText: slide.script?.scriptText || "",
       timestampMs: durationInfo ? durationInfo.totalDurationMs : null,
@@ -158,6 +168,7 @@ export const processGetShareContent = async (shareToken, sessionId = null) => {
     shareLink,
     sessionId: currentSessionId,
     tokens: newTokens,
+    sessionName,
   };
 };
 
