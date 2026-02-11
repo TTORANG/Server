@@ -7,7 +7,6 @@ import {
   getVideoReactionsByTimeController,
   handleCreateSlideReaction,
   handleCreateVideoReaction,
-  toggleSlideReactionController,
 } from "../controllers/reaction.controller.js";
 import { isLogin } from "../middlewares/auth.middleware.js";
 
@@ -15,8 +14,6 @@ const router = express.Router();
 
 // 리액션 생성 (신규 경로)
 router.post("/slides/:slideId/reactions", isLogin, handleCreateSlideReaction);
-// 리액션 생성 (구 경로 - deprecated)
-router.post("/slides/:slideId/reactions/toggle", isLogin, toggleSlideReactionController);
 // 리액션 집계 조회
 router.get("/slides/:slideId/reactions/summary", isLogin, getSlideReactionSummaryController);
 // 영상 타임스탬프 리액션 생성

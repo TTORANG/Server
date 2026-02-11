@@ -1,7 +1,7 @@
 import {
+  CreateSlideReactionDto,
   reactionBucketsResponseDTO,
   reactionMarkersResponseDTO,
-  ToggleReactionDto,
 } from "../dtos/reaction.dto.js";
 import {
   createSlideReactionEvent,
@@ -15,7 +15,7 @@ import {
 
 async function createSlideReaction(req, res, next) {
   try {
-    const dto = ToggleReactionDto(req.body);
+    const dto = CreateSlideReactionDto(req.body);
 
     const result = await createSlideReactionEvent({
       slideId: req.params.slideId,
@@ -31,115 +31,6 @@ async function createSlideReaction(req, res, next) {
   } catch (e) {
     next(e);
   }
-}
-
-// 리액션 생성 (구 경로 - deprecated)
-export async function toggleSlideReactionController(req, res, next) {
-  /**
-   * @swagger
-   * /slides/{slideId}/reactions/toggle:
-   *   post:
-   *     deprecated: true
-   *     summary: (Deprecated) 슬라이드 이모지 리액션 생성
-   *     description: |
-   *       이 경로는 하위 호환용입니다. 신규 연동은 `POST /slides/{slideId}/reactions`를 사용하세요.
-   *       동작/요청/응답은 신규 경로와 동일합니다.
-   *     tags:
-   *       - Reaction
-   *     security:
-   *       - bearerAuth: []
-   *     parameters:
-   *       - in: path
-   *         name: slideId
-   *         required: true
-   *         schema:
-   *           type: string
-   *         description: 슬라이드 ID
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             $ref: "#/components/schemas/SlideReactionCreateRequest"
-   *     responses:
-   *       200:
-   *         description: 리액션 생성 성공 (카운트 +1 반영)
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: "#/components/schemas/SlideReactionCreateResponse"
-   *       400:
-   *         description: 잘못된 요청 (유효하지 않은 이모지 타입 등)
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: "#/components/schemas/ErrorResponse"
-   *             examples:
-   *               INVALID_EMOJI:
-   *                 summary: 유효하지 않은 이모지 타입
-   *                 value:
-   *                   resultType: FAILURE
-   *                   error:
-   *                     errorCode: R002
-   *                     reason: 유효하지 않은 이모지 타입입니다.
-   *                     data:
-   *                       emojiType: angry
-   *                   success: null
-   *               REACTION_PROCESS_FAILED:
-   *                 summary: 리액션 처리 실패
-   *                 value:
-   *                   resultType: FAILURE
-   *                   error:
-   *                     errorCode: R003
-   *                     reason: 리액션을 처리할 수 없습니다.
-   *                     data:
-   *                       slideId: "10"
-   *                       emojiType: "fire"
-   *                   success: null
-   *
-   *       401:
-   *         description: 인증 실패
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: "#/components/schemas/ErrorResponse"
-   *             examples:
-   *               UNAUTHORIZED:
-   *                 summary: 인증 정보 없음
-   *                 value:
-   *                   resultType: FAILURE
-   *                   error:
-   *                     errorCode: A004
-   *                     reason: 인증 세션 정보가 없거나 유효하지 않습니다.
-   *                     data: null
-   *                   success: null
-   *
-   *       404:
-   *         description: 슬라이드 없음
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: "#/components/schemas/ErrorResponse"
-   *             examples:
-   *               SLIDE_NOT_FOUND:
-   *                 summary: 슬라이드 미존재
-   *                 value:
-   *                   resultType: FAILURE
-   *                   error:
-   *                     errorCode: R001
-   *                     reason: 슬라이드를 찾을 수 없습니다.
-   *                     data:
-   *                       slideId: "10"
-   *                   success: null
-   *       500:
-   *         description: 서버 내부 오류
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: "#/components/schemas/ErrorResponse"
-   *
-   */
-  return createSlideReaction(req, res, next);
 }
 
 // 리액션 생성 (신규 경로)
