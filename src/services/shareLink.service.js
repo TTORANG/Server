@@ -117,11 +117,7 @@ export const processGetShareContent = async (shareToken, sessionId = null) => {
     const sessionData = await issueAnonymousSession();
     currentSessionId = sessionData.sessionId;
     newTokens = sessionData.tokens; // 새로 만든 토큰은 클라이언트에 전달해야 함
-
-    sessionRecord = await prisma.session.findUnique({
-      where: { id: currentSessionId },
-      include: { user: true },
-    });
+    sessionRecord = sessionData.session;
   }
 
   const sessionName = sessionRecord?.user

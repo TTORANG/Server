@@ -29,6 +29,9 @@ export const createAnonymousSession = async (sessionId) => {
         isAnonymous: true,
         expiresAt,
       },
+      include: {
+        user: true,
+      },
     });
   });
 };
