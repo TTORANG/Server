@@ -70,6 +70,7 @@ export async function uploadPresentationAndCreateProject({ userId, title, file }
     await startConversionPipeline({
       uploadedFileId: uf.id,
       fileExt: ext,
+      projectId: project.id,
     });
   }
 

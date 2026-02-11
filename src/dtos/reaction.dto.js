@@ -1,4 +1,4 @@
-import { ALLOWED_EMOJIS } from "../constants/reaction.js";
+import { ALLOWED_EMOJIS, createEmptyReactionMap } from "../constants/reaction.js";
 
 export function ToggleReactionDto(body) {
   return {
@@ -65,14 +65,8 @@ export const videoReactionCreateResponseDTO = ({
   createdAt,
 });
 
-const makeEmptyReactionMap = () => {
-  const map = {};
-  ALLOWED_EMOJIS.forEach((e) => (map[e] = 0));
-  return map;
-};
-
 export const projectSlideReactionSummaryResponseDTO = ({ projectId, rows }) => {
-  const totalReactions = makeEmptyReactionMap();
+  const totalReactions = createEmptyReactionMap();
   let totalCount = 0;
 
   rows.forEach((r) => {

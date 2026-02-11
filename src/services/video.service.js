@@ -362,7 +362,7 @@ export async function finishRecording({ videoId, slideLogs, userId }) {
   const slideDurations = await findVideoSlideDurations(vid);
 
   // 인코딩 파이프라인 시작
-  await startVideoEncodingPipeline({ videoId: vid });
+  await startVideoEncodingPipeline({ videoId: vid, projectId: video.projectId });
 
   return {
     resultType: "SUCCESS",
