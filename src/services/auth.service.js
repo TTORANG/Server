@@ -23,7 +23,7 @@ import { v4 as uuidv4 } from "uuid";
 
 const secret = process.env.JWT_SECRET;
 export const generateTokens = (payload) => {
-  const { id, email, sessionId } = payload;
+  const { id, email, sessionId, profileImageUrl = "" } = payload;
 
   const accessToken = jwt.sign(
     { id: id.toString(), email: email, sessionId: sessionId || null },
@@ -33,7 +33,7 @@ export const generateTokens = (payload) => {
     }
   );
   const refreshToken = jwt.sign({ id: id.toString() }, secret, { expiresIn: "14d" });
-  return { accessToken, refreshToken };
+  return { accessToken, refreshToken, profileImageUrl };
 };
 
 export const socialLoginVerification = async (profile, provider) => {
@@ -95,6 +95,7 @@ export const handleSocialLoginSuccess = async (profile, provider) => {
     id: user.id,
     email: user.email,
     sessionId: sessionId,
+    profileImageUrl: user.profileImageUrl || "",
   });
 
   await upsertUserSession(user.id, tokens.refreshToken, sessionId);
@@ -167,6 +168,7 @@ export const reissueToken = async (oldRefreshToken) => {
     id: user.id,
     email: user.email,
     sessionId: session.id,
+    profileImageUrl: user.profileImageUrl || "",
   });
 
   // DB의 리프레시 토큰을 새 것으로 교체하여 보안성 유지

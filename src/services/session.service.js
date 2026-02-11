@@ -17,6 +17,7 @@ export const issueAnonymousSession = async () => {
     id: session.userId,
     email: `anon_${sessionId}@ttorang.com`,
     sessionId: sessionId,
+    profileImageUrl: "",
   });
 
   return { sessionId, tokens, session };
