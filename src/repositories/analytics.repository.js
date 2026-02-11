@@ -102,13 +102,11 @@ export const groupSlideViewsBySlideIdAndSession = ({ projectId, slideId }) =>
     where: { projectId, slideId },
   });
 
-export const findExitsByVideoId = (videoId) =>
-  prisma.analyticsExit.findMany({
-    where: {
-      lastVideoId: videoId,
-      lastVideoTimeMs: { not: null },
-    },
-    select: { lastVideoTimeMs: true, sessionId: true },
+export const getExitMaxTimePerSession = (videoId) =>
+  prisma.analyticsExit.groupBy({
+    by: ["sessionId"],
+    where: { lastVideoId: videoId, lastVideoTimeMs: { not: null } },
+    _max: { lastVideoTimeMs: true },
   });
 
 export const groupVideoEventsBySession = (videoId) =>

@@ -387,22 +387,8 @@ export const getVideoExits = async ({ videoId }) => {
     throw new AnalyticsVideoNotFoundError({ videoId: vid });
   }
 
-  // 영상 관련 이탈 기록 조회
-  const exits = await analyticsRepository.findExitsByVideoId(vid);
-
-  // 10초(10000ms) 단위로 그룹화
-  const intervalMs = 10000;
-  const exitMap = {};
-
-  exits.forEach((e) => {
-    if (e.lastVideoTimeMs !== null) {
-      const bucket = Math.floor(e.lastVideoTimeMs / intervalMs) * intervalMs;
-      if (!exitMap[bucket]) {
-        exitMap[bucket] = new Set();
-      }
-      exitMap[bucket].add(e.sessionId);
-    }
-  });
+  // 세션별 마지막 이탈 시점 조회
+  const exitMax = await analyticsRepository.getExitMaxTimePerSession(vid);
 
   // 총 세션 수 (영상을 재생한 세션)
   const totalSessions = await analyticsRepository.groupVideoEventsBySession(vid);
@@ -416,12 +402,22 @@ export const getVideoExits = async ({ videoId }) => {
     };
   }
 
+  // 10초(10000ms) 단위로 그룹화 (세션당 1회만 카운트)
+  const intervalMs = 10000;
+  const exitMap = {};
+
+  exitMax.forEach((e) => {
+    const t = e._max.lastVideoTimeMs || 0;
+    const bucket = Math.floor(t / intervalMs) * intervalMs;
+    exitMap[bucket] = (exitMap[bucket] || 0) + 1;
+  });
+
   // 정렬된 이탈률 배열 생성
   const exitRates = Object.entries(exitMap)
-    .map(([ts, sessions]) => ({
+    .map(([ts, count]) => ({
       timestampMs: Number(ts),
-      exitCount: sessions.size,
-      exitRate: Math.round((sessions.size / totalSessionCount) * 100),
+      exitCount: count,
+      exitRate: Math.round((count / totalSessionCount) * 100),
     }))
     .sort((a, b) => a.timestampMs - b.timestampMs);
 
