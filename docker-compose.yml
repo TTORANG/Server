@@ -17,10 +17,15 @@ services:
       PORT: ${PORT:-3000}
       CHOKIDAR_USEPOLLING: "true"
       CHOKIDAR_INTERVAL: "500"
+      GOOGLE_APPLICATION_CREDENTIALS: /app/gcp-key.json
+      GCS_BUCKET_NAME: ttorang-upload-dev
+      FFMPEG_PATH: /usr/bin/ffmpeg
+      FFPROBE_PATH: /usr/bin/ffprobe
     command: sh -c "npx prisma migrate deploy && npm run dev"
     volumes:
       - ./src:/app/src
       - ./prisma:/app/prisma
+      - ./src/gcp-key.json:/app/gcp-key.json:ro
     ports:
       - "3000:3000"
     depends_on:
