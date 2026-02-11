@@ -26,6 +26,17 @@ import { toPublicStorageUrl } from "../utils/storageUrl.util.js";
 
 const SCOPE_VIDEO = "slides_script_video";
 
+const resolveUserIdFromSessionId = async (sessionId) => {
+  if (!sessionId) return null;
+
+  const session = await prisma.session.findUnique({
+    where: { id: sessionId },
+    select: { userId: true },
+  });
+
+  return session?.userId ?? null;
+};
+
 const validateShareLinkAccess = (shareLink) => {
   // 링크 존재여부 확인
   if (!shareLink || !shareLink.isActive) {
@@ -194,15 +205,21 @@ export const processGetShareContent = async (shareToken, sessionId = null) => {
     sessionId: currentSessionId,
     tokens: newTokens,
     sessionName,
+    currentUserId: sessionRecord?.userId ?? null,
   };
 };
 
-export const processGetShareComments = async (shareToken) => {
+export const processGetShareComments = async (shareToken, sessionId = null) => {
   const shareLink = await findShareLinkWithComments(shareToken);
   await ensureShareTokenIsNotSessionId(shareToken, shareLink);
   validateShareLinkAccess(shareLink);
 
-  return shareLink.project.comments || [];
+  const currentUserId = await resolveUserIdFromSessionId(sessionId);
+
+  return {
+    comments: shareLink.project.comments || [],
+    currentUserId,
+  };
 };
 
 export const processGetShareLinkList = async (projectId) => {

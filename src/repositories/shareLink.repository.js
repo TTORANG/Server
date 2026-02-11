@@ -95,6 +95,7 @@ export const findShareLinkWithContent = async (token) => {
             include: {
               user: {
                 select: {
+                  id: true,
                   nickName: true,
                 },
               },
@@ -147,6 +148,7 @@ export const findShareLinkWithComments = async (token) => {
             include: {
               user: {
                 select: {
+                  id: true,
                   nickName: true,
                 },
               },
