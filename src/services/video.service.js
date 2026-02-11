@@ -19,6 +19,7 @@ import {
   findVideosByOwnerId,
   findVideoByIdWithOwner,
   findProjectById,
+  findVideoTitleById,
   findVideoForChunkUpload,
   findVideoForFinish,
   findVideoDetailById,
@@ -39,6 +40,7 @@ import { countSlidesByIdsAndProjectId } from "../repositories/slide.repository.j
 import {
   recordingFinishSuccessDTO,
   recordingStartSuccessDTO,
+  videoTitleResponseDTO,
   videoTitleUpdateSuccessDTO,
   videoDeleteSuccessDTO,
   videoChunkUploadSuccessDTO,
@@ -445,6 +447,25 @@ export async function getVideoDetail({ videoId }) {
       reactions,
       comments,
     }),
+  };
+}
+
+// 영상 제목 조회
+export async function getVideoTitle({ videoId }) {
+  const vid = toInt(videoId);
+  if (!Number.isInteger(vid) || vid <= 0) {
+    throw new InvalidParameterError({ videoId: String(videoId) }, "videoId가 올바르지 않습니다.");
+  }
+
+  const video = await findVideoTitleById(vid);
+  if (!video) {
+    throw new VideoNotFoundError({ videoId: String(videoId) });
+  }
+
+  return {
+    resultType: "SUCCESS",
+    error: null,
+    success: videoTitleResponseDTO(video),
   };
 }
 

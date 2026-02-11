@@ -681,6 +681,88 @@ export async function handleGetVideoDetail(req, res, next) {
   }
 }
 
+// 영상 제목 조회
+export async function handleGetVideoTitle(req, res, next) {
+  /**
+   * @swagger
+   * /videos/{videoId}/title:
+   *   get:
+   *     summary: 영상 제목 조회
+   *     description: 특정 영상의 제목과 생성일을 조회합니다.
+   *     tags: [Video]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: videoId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *           example: 2
+   *         description: 영상 ID
+   *     responses:
+   *       200:
+   *         description: 영상 제목 조회 성공
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "SUCCESS"
+   *               error: null
+   *               success:
+   *                 videoId: "2"
+   *                 title: "발표 영상"
+   *                 createdAt: "2026-02-11T10:00:00.000Z"
+   *       400:
+   *         description: 잘못된 videoId 파라미터
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "P001"
+   *                 reason: "videoId가 올바르지 않습니다."
+   *                 data:
+   *                   videoId: "abc"
+   *               success: null
+   *       401:
+   *         description: 인증 실패
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "A004"
+   *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+   *                 data: null
+   *               success: null
+   *       404:
+   *         description: 영상을 찾을 수 없음
+   *         content:
+   *           application/json:
+   *             example:
+   *               resultType: "FAILURE"
+   *               error:
+   *                 errorCode: "V001"
+   *                 reason: "영상을 찾을 수 없습니다."
+   *                 data:
+   *                   videoId: "2"
+   *               success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   */
+  try {
+    const { videoId } = req.params;
+    const result = await videoService.getVideoTitle({ videoId });
+    res.json(result);
+  } catch (e) {
+    next(e);
+  }
+}
+
 // 영상 제목 수정
 export async function handlePatchVideoTitle(req, res, next) {
   /**

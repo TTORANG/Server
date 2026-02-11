@@ -90,6 +90,12 @@ export const videoDeleteSuccessDTO = ({ videoId }) => ({
   videoId: videoId.toString(),
 });
 
+export const videoTitleResponseDTO = (video) => ({
+  videoId: video.id.toString(),
+  title: video.title,
+  createdAt: video.createdAt,
+});
+
 export const videoTitleUpdateSuccessDTO = (video) => ({
   videoId: video.id.toString(),
   title: video.title,

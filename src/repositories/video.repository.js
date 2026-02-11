@@ -288,6 +288,20 @@ export async function findVideoDetailById(videoId) {
   });
 }
 
+export async function findVideoTitleById(videoId) {
+  return prisma.video.findFirst({
+    where: {
+      id: videoId,
+      deletedAt: null,
+    },
+    select: {
+      id: true,
+      title: true,
+      createdAt: true,
+    },
+  });
+}
+
 export const getVideoWithChunks = async (videoId) => {
   return await prisma.video.findUnique({
     where: { id: BigInt(videoId) },
