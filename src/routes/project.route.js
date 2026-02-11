@@ -7,7 +7,12 @@ import {
   handleGetProjectName,
   handleUpdateProjectName,
 } from "../controllers/project.controller.js";
-import { handleGetSlideAnalytics, handleGetSummary } from "../controllers/analytics.controller.js";
+import {
+  handleGetRecentComments,
+  handleGetSlideAnalytics,
+  handleGetSlideRetention,
+  handleGetSummary,
+} from "../controllers/analytics.controller.js";
 
 const router = express.Router();
 
@@ -28,5 +33,7 @@ router.get("/:projectId", isLogin, handleGetProjectName);
 
 router.get("/:projectId/analytics/summary", isLogin, handleGetSummary);
 router.get("/:projectId/analytics/slides", isLogin, handleGetSlideAnalytics);
+router.get("/:projectId/analytics/slide-retention", isLogin, handleGetSlideRetention);
+router.get("/:projectId/analytics/recent-comments", isLogin, handleGetRecentComments);
 
 export default router;
