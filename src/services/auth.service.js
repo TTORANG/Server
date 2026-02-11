@@ -26,7 +26,7 @@ export const generateTokens = (payload) => {
   const { id, email, sessionId, profileImageUrl = "" } = payload;
 
   const accessToken = jwt.sign(
-    { id: id.toString(), email: email, sessionId: sessionId || null },
+    { id: id.toString(), email: email, sessionId: sessionId || null, profileImageUrl },
     secret,
     {
       expiresIn: "1h",
