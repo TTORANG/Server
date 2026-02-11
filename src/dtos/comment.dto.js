@@ -13,6 +13,7 @@ export const commentResponseDTO = (comment) => ({
 
 export const updateCommentResponseDTO = (comment) => {
   const baseResponse = {
+    message: comment.parentId ? "답글이 수정되었습니다." : "댓글이 수정되었습니다.",
     content: comment.content,
     userId: comment.userId?.toString(),
     createdAt: comment.createdAt,
@@ -38,6 +39,7 @@ export const updateCommentResponseDTO = (comment) => {
 export const commentListItemDTO = (comment) => ({
   commentId: comment.id.toString(),
   content: comment.content,
+  parentCommentId: comment.parentId?.toString() ?? null,
   user: {
     userId: comment.user?.id?.toString() ?? null,
     nickName: comment.user?.nickName ?? null,

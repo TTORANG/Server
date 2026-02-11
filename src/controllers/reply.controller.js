@@ -128,7 +128,7 @@ export const getCommentReplies = async (req, res, next) => {
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/CommentListResponse"
+   *               $ref: "#/components/schemas/ReplyListResponse"
    *       400:
    *         description: 잘못된 요청
    *         content:
@@ -177,7 +177,7 @@ export const getCommentReplies = async (req, res, next) => {
  *           type: string
  *           example: "이 부분에 공감해요!"
  *
- *     CommentResponse:
+ *     ReplyListItem:
  *       type: object
  *       properties:
  *         commentId:
@@ -193,18 +193,6 @@ export const getCommentReplies = async (req, res, next) => {
  *           type: string
  *           format: date-time
 
- *     CommentCreateResponse:
- *       type: object
- *       properties:
- *         resultType:
- *           type: string
- *           example: SUCCESS
- *         error:
- *           nullable: true
- *           example: null
- *         success:
- *           $ref: "#/components/schemas/CommentResponse"
- *
  *     ReplyCreateSuccess:
  *       type: object
  *       properties:
@@ -238,7 +226,7 @@ export const getCommentReplies = async (req, res, next) => {
  *         success:
  *           $ref: "#/components/schemas/ReplyCreateSuccess"
 
- *     CommentListResponse:
+ *     ReplyListResponse:
  *       type: object
  *       properties:
  *         resultType:
@@ -250,38 +238,5 @@ export const getCommentReplies = async (req, res, next) => {
  *         success:
  *           type: array
  *           items:
- *             $ref: "#/components/schemas/CommentResponse"
- *
- *     SuccessResponse:
- *       type: object
- *       properties:
- *         resultType:
- *           type: string
- *           example: SUCCESS
- *         error:
- *           type: null
- *         success:
- *           type: boolean
- *           example: true
- *
- *     ErrorResponse:
- *       type: object
- *       properties:
- *         resultType:
- *           type: string
- *           example: FAILURE
- *         error:
- *           type: object
- *           properties:
- *             errorCode:
- *               type: string
- *               example: C001
- *             reason:
- *               type: string
- *               example: 서버 내부 오류
- *             data:
- *               type: object
- *               nullable: true
- *         success:
- *           type: null
+ *             $ref: "#/components/schemas/ReplyListItem"
  */

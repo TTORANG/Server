@@ -1,6 +1,6 @@
 import { ALLOWED_EMOJIS, createEmptyReactionMap } from "../constants/reaction.js";
 
-export function CreateSlideReactionDto(body) {
+export function createSlideReactionDto(body) {
   return {
     emojiType: body?.emojiType,
   };
