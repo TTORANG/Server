@@ -71,10 +71,6 @@ export const getProjectList = async (userId, { page, limit, search, maxDuration,
     ...(search && {
       title: { contains: search },
     }),
-
-    ...(maxDuration && {
-      durationSeconds: { lte: parseInt(maxDuration) },
-    }),
   };
 
   const [total, projects] = await prisma.$transaction([
@@ -103,9 +99,18 @@ export const getProjectList = async (userId, { page, limit, search, maxDuration,
         },
         _count: {
           select: {
-            materials: true,
+            slides: true,
             reactions: true,
             comments: true,
+          },
+        },
+
+        slides: {
+          where: { isDeleted: false },
+          select: {
+            script: {
+              select: { estimatedDurationSeconds: true },
+            },
           },
         },
       },

@@ -67,18 +67,25 @@ export const projectListResponseDTO = (projects, total, page, limit) => {
     const totalViews =
       project.shareLinks?.reduce((acc, link) => acc + (link.viewCount || 0), 0) || 0;
 
+    const slides = project.slides || [];
+    const slideCount = slides.length;
+    const durationSeconds = slides.reduce(
+      (sum, slide) => sum + (slide.script?.estimatedDurationSeconds || 0),
+      0
+    );
+
     return {
       ...baseResponse,
       thumbnailUrl: toPublicStorageUrl(
         project.thumbnailUrl || (primaryFile ? primaryFile.storageUrl : null)
       ),
-      slideCount: project._count.materials,
+      slideCount,
 
       reactionCount: project._count.reactions || 0, // 집계된 리액션 수
       viewCount: totalViews, // 합산된 조회수
       feedbackCount: project._count.comments || 0, // 피드백(댓글) 수
 
-      durationSeconds: project.durationSeconds || 0,
+      durationSeconds,
     };
   });
 
