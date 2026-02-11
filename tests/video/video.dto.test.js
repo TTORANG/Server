@@ -69,7 +69,11 @@ describe("video.dto", () => {
       emojiType: "fire",
       count: 2,
     });
-    expect(response.timeline.comments[0].user).toEqual({ userId: "1", name: "kim" });
+    expect(response.timeline.comments[0].user).toEqual({
+      userId: "1",
+      name: "kim",
+      profileImageUrl: null,
+    });
   });
 
   test("recordingFinishSuccessDTO applies slideCount correction", () => {

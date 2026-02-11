@@ -82,7 +82,7 @@ describe("comment.dto", () => {
       commentId: "22",
       content: "reply",
       parentCommentId: "10",
-      user: { userId: "3", nickName: "alice" },
+      user: { userId: "3", nickName: "alice", profileImageUrl: null },
       createdAt: now,
       updatedAt: null,
     });
