@@ -713,17 +713,37 @@ export async function handleGetVideoTitle(req, res, next) {
    *                 title: "발표 영상"
    *                 createdAt: "2026-02-11T10:00:00.000Z"
    *       400:
-   *         description: 잘못된 videoId 파라미터
+   *         description: 잘못된 요청 파라미터(videoId/title)
    *         content:
    *           application/json:
-   *             example:
-   *               resultType: "FAILURE"
-   *               error:
-   *                 errorCode: "P001"
-   *                 reason: "videoId가 올바르지 않습니다."
-   *                 data:
-   *                   videoId: "abc"
-   *               success: null
+   *             examples:
+   *               invalidVideoId:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "P001"
+   *                     reason: "videoId가 올바르지 않습니다."
+   *                     data:
+   *                       videoId: "abc"
+   *                   success: null
+   *               invalidTitleType:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "P001"
+   *                     reason: "제목은 문자열이어야 합니다."
+   *                     data:
+   *                       title: 123
+   *                   success: null
+   *               blankTitle:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "P001"
+   *                     reason: "제목은 공백으로만 이루어질 수 없습니다."
+   *                     data:
+   *                       title: "   "
+   *                   success: null
    *       401:
    *         description: 인증 실패
    *         content:
@@ -1309,6 +1329,9 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *                             type: string
  *                             nullable: true
  *                           name:
+ *                             type: string
+ *                             nullable: true
+ *                           profileImageUrl:
  *                             type: string
  *                             nullable: true
  *

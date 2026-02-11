@@ -55,6 +55,7 @@ export const videoCommentTimelineDTO = (comments) =>
     user: {
       userId: c.user?.id?.toString() ?? null,
       name: c.user?.name ?? null,
+      profileImageUrl: c.user?.profileImageUrl ?? null,
     },
   }));
 

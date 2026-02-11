@@ -47,6 +47,7 @@ export const findCommentsBySlideId = async ({ slideId, skip, take }) => {
           select: {
             id: true,
             nickName: true,
+            profileImageUrl: true,
           },
         },
       },
@@ -80,6 +81,7 @@ export async function findVideoComments(videoId) {
         select: {
           id: true,
           name: true,
+          profileImageUrl: true,
         },
       },
     },
@@ -100,7 +102,7 @@ export const findVideoCommentsByTimestamp = async ({ videoId, fromMs, toMs }) =>
     orderBy: { timestampMs: "asc" },
     include: {
       user: {
-        select: { id: true, nickName: true },
+        select: { id: true, nickName: true, profileImageUrl: true },
       },
     },
   });
@@ -149,6 +151,7 @@ export const findRecentVideoCommentsByProjectId = async ({ projectId, limit = 10
           id: true,
           nickName: true,
           name: true,
+          profileImageUrl: true,
         },
       },
     },

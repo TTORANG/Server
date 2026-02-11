@@ -12,6 +12,7 @@ export const findReplies = async (parentCommentId) => {
         select: {
           id: true,
           nickName: true,
+          profileImageUrl: true,
         },
       },
     },
