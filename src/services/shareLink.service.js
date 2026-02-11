@@ -86,7 +86,7 @@ export const processGetShareContent = async (shareToken, sessionId = null) => {
   }
 
   // 프로젝트 삭제여부 확인
-  if (shareLink.project.isDeleted) {
+  if (!shareLink.project || shareLink.project.isDeleted) {
     throw new ProjectDeletedError();
   }
 
@@ -124,9 +124,9 @@ export const processGetShareContent = async (shareToken, sessionId = null) => {
 
   const { scope, project, video, videoId } = shareLink;
 
-  const filteredComments = project.comments;
+  const filteredComments = project.comments || [];
 
-  const slides = project.slides.map((slide) => {
+  const slides = (project.slides || []).map((slide) => {
     const durationInfo = slide.slideDurations?.find((sd) => String(sd.videoId) === String(videoId));
 
     return {
@@ -166,24 +166,24 @@ export const processGetShareLinkList = async (projectId) => {
 };
 
 export const processGetVideoList = async (projectId, page, pageSize) => {
-  const p = parseInt(page) || 1;
-  const rawSize = parseInt(pageSize) || 10;
+  // 1. page 보정: 숫자가 아니거나(NaN), 0, 음수라면 1로 고정
+  const p = Math.max(1, parseInt(page) || 1);
 
-  if (p < 1) {
-    throw new InvalidPageError();
-  }
+  // 2. pageSize 보정: 숫자가 아니면 10, 그 외엔 최소 1 ~ 최대 50 사이로 제한
+  const pSize = Math.max(1, Math.min(parseInt(pageSize) || 10, 50));
 
-  // pageSize 유효성 검사 (0 이하 방지 및 최대치 제한)
-  if (rawSize < 1) rawSize = 10;
-  const pSize = rawSize > 50 ? 50 : rawSize; // 최대 50개 까지만 가져오도록 제한 (서버 부하 방지)
-
+  // 3. 데이터 조회 및 null 방어적 처리
   const { totalCount, videos } = await getVideoList(projectId, p, pSize);
 
-  const hasNext = totalCount > p * pSize;
+  const safeVideos = videos || [];
+  const safeTotalCount = totalCount || 0;
+
+  // 4. 다음 페이지 여부 계산
+  const hasNext = safeTotalCount > p * pSize;
 
   return {
-    videos,
-    totalCount,
+    videos: safeVideos,
+    totalCount: safeTotalCount,
     hasNext,
     currentPage: p,
   };
