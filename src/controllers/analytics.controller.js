@@ -368,52 +368,6 @@ export const handleGetSlideAnalytics = async (req, res, next) => {
 
 /**
  * @swagger
- * /presentations/{projectId}/analytics/slide-retention:
- *   get:
- *     summary: 슬라이드별 잔존률 조회
- *     tags: [Analytics]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: projectId
- *         required: true
- *         schema:
- *           type: integer
- *         description: 프로젝트 ID
- *     responses:
- *       200:
- *         description: 슬라이드별 잔존률 분석
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SlideRetentionResponse'
- *       400:
- *         description: 잘못된 요청 파라미터
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AnalyticsError400'
- *       404:
- *         description: 프로젝트를 찾을 수 없음
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AnalyticsError404Project'
- */
-export const handleGetSlideRetention = async (req, res, next) => {
-  try {
-    const result = await getSlideRetention({
-      projectId: req.params.projectId,
-    });
-    res.json(result);
-  } catch (e) {
-    next(e);
-  }
-};
-
-/**
- * @swagger
  * /videos/{videoId}/analytics/timeline:
  *   get:
  *     summary: 영상 타임라인 분석 조회
@@ -506,52 +460,6 @@ export const handleGetVideoExits = async (req, res, next) => {
 
 /**
  * @swagger
- * /videos/{videoId}/analytics/retention:
- *   get:
- *     summary: 영상 시청 잔존률 조회
- *     tags: [Analytics]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: videoId
- *         required: true
- *         schema:
- *           type: integer
- *         description: 영상 ID
- *     responses:
- *       200:
- *         description: 잔존률 분석
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/VideoRetentionResponse'
- *       400:
- *         description: 잘못된 요청 파라미터
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AnalyticsError400'
- *       404:
- *         description: 영상을 찾을 수 없음
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AnalyticsError404Video'
- */
-export const handleGetVideoRetention = async (req, res, next) => {
-  try {
-    const result = await getVideoRetention({
-      videoId: req.params.videoId,
-    });
-    res.json(result);
-  } catch (e) {
-    next(e);
-  }
-};
-
-/**
- * @swagger
  * /presentations/{projectId}/analytics/recent-comments:
  *   get:
  *     summary: 최근 댓글 피드백 조회
@@ -612,6 +520,28 @@ export const handleGetRecentComments = async (req, res, next) => {
   }
 };
 
+export const handleGetSlideRetention = async (req, res, next) => {
+  try {
+    const result = await getSlideRetention({
+      projectId: req.params.projectId,
+    });
+    res.json(result);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const handleGetVideoRetention = async (req, res, next) => {
+  try {
+    const result = await getVideoRetention({
+      videoId: req.params.videoId,
+    });
+    res.json(result);
+  } catch (e) {
+    next(e);
+  }
+};
+
 /**
  * @swagger
  * components:
@@ -637,7 +567,7 @@ export const handleGetRecentComments = async (req, res, next) => {
  *       properties:
  *         resultType:
  *           type: string
- *           example: FAILURE
+ *           example: FAIL
  *         error:
  *           type: object
  *           properties:
@@ -659,7 +589,7 @@ export const handleGetRecentComments = async (req, res, next) => {
  *       properties:
  *         resultType:
  *           type: string
- *           example: FAILURE
+ *           example: FAIL
  *         error:
  *           type: object
  *           properties:
@@ -680,7 +610,7 @@ export const handleGetRecentComments = async (req, res, next) => {
  *       properties:
  *         resultType:
  *           type: string
- *           example: FAILURE
+ *           example: FAIL
  *         error:
  *           type: object
  *           properties:
@@ -701,7 +631,7 @@ export const handleGetRecentComments = async (req, res, next) => {
  *       properties:
  *         resultType:
  *           type: string
- *           example: FAILURE
+ *           example: FAIL
  *         error:
  *           type: object
  *           properties:
@@ -722,7 +652,7 @@ export const handleGetRecentComments = async (req, res, next) => {
  *       properties:
  *         resultType:
  *           type: string
- *           example: FAILURE
+ *           example: FAIL
  *         error:
  *           type: object
  *           properties:
@@ -743,7 +673,7 @@ export const handleGetRecentComments = async (req, res, next) => {
  *       properties:
  *         resultType:
  *           type: string
- *           example: FAILURE
+ *           example: FAIL
  *         error:
  *           type: object
  *           properties:
@@ -874,93 +804,6 @@ export const handleGetRecentComments = async (req, res, next) => {
  *                     type: integer
  *                   exitRate:
  *                     type: integer
- *
- *     SlideRetentionResponse:
- *       type: object
- *       properties:
- *         resultType:
- *           type: string
- *           example: SUCCESS
- *         error:
- *           nullable: true
- *         success:
- *           type: object
- *           properties:
- *             totalSessions:
- *               type: integer
- *               description: 첫 번째 슬라이드를 본 총 세션 수 (기준값)
- *               example: 150
- *             slideRetention:
- *               type: array
- *               description: 슬라이드별 잔존률 목록
- *               items:
- *                 type: object
- *                 properties:
- *                   slideId:
- *                     type: string
- *                     description: 슬라이드 ID
- *                     example: "1"
- *                   slideNum:
- *                     type: integer
- *                     nullable: true
- *                     description: 슬라이드 번호
- *                     example: 1
- *                   title:
- *                     type: string
- *                     nullable: true
- *                     description: 슬라이드 제목
- *                     example: "서론"
- *                   sessionCount:
- *                     type: integer
- *                     description: 해당 슬라이드를 본 세션 수
- *                     example: 150
- *                   retentionRate:
- *                     type: integer
- *                     description: 잔존률 (%)
- *                     example: 100
- *
- *     VideoRetentionResponse:
- *       type: object
- *       properties:
- *         resultType:
- *           type: string
- *           example: SUCCESS
- *         error:
- *           nullable: true
- *         success:
- *           type: object
- *           properties:
- *             totalSessions:
- *               type: integer
- *               description: 영상을 시작한 총 세션 수
- *               example: 100
- *             durationSeconds:
- *               type: integer
- *               nullable: true
- *               description: 영상 전체 길이 (초)
- *               example: 180
- *             intervalMs:
- *               type: integer
- *               description: 잔존률 측정 간격 (ms)
- *               example: 30000
- *             videoRetention:
- *               type: array
- *               description: 시점별 잔존률 목록 (30초 단위)
- *               items:
- *                 type: object
- *                 properties:
- *                   timestampMs:
- *                     type: integer
- *                     description: 영상 내 시점 (ms)
- *                     example: 0
- *                   sessionCount:
- *                     type: integer
- *                     description: 해당 시점까지 도달한 세션 수
- *                     example: 100
- *                   retentionRate:
- *                     type: integer
- *                     description: 잔존률 (%)
- *                     example: 100
  *
  *     RecentCommentsResponse:
  *       type: object

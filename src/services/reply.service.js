@@ -1,11 +1,7 @@
 import { CommentNotFoundError } from "../errors/comment.error.js";
 import { InvalidParameterError } from "../errors/video.error.js";
-import eventBus from "../events/eventBus.js";
-import { EventTypes } from "../events/eventTypes.js";
 import { createComment, findCommentById } from "../repositories/comment.repository.js";
 import { findReplies } from "../repositories/reply.repository.js";
-import { buildCommentTargetPayload } from "../utils/commentTargetPayload.util.js";
-
 // 답글 작성
 export const createCommentReply = async ({ parentCommentId, content, userId }) => {
   if (!content) {
@@ -32,16 +28,6 @@ export const createCommentReply = async ({ parentCommentId, content, userId }) =
     targetId: parent.targetId,
     parentId: parentCommentId,
     content,
-  });
-
-  await eventBus.publish(EventTypes.COMMENT_CREATED, {
-    commentId: reply.id,
-    projectId: parent.projectId,
-    userId,
-    content: reply.content,
-    createdAt: reply.createdAt,
-    parentCommentId: parentCommentId,
-    ...buildCommentTargetPayload(parent),
   });
 
   return reply;

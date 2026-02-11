@@ -173,8 +173,14 @@ export const getSummary = async ({ projectId }) => {
   const uniqueSessions = await analyticsRepository.groupPageViewsBySession(pid);
   const totalViews = uniqueSessions.length;
 
-  // 평균 체류 시간 계산
-  const avgDurationResult = await analyticsRepository.getAvgDuration(pid);
+  // 영상 목록 조회 (체류시간 상한 계산 + 피드백 집계용)
+  const videos = await analyticsRepository.findVideosByProjectId(pid);
+  const videoIds = videos.map((v) => v.id);
+
+  // 평균 체류 시간 계산 (상한 = 영상 길이 + 30분)
+  const maxVideoDuration = Math.max(0, ...videos.map((v) => v.durationSeconds || 0));
+  const maxDurationSeconds = maxVideoDuration + 30 * 60;
+  const avgDurationResult = await analyticsRepository.getAvgDuration(pid, maxDurationSeconds);
   const avgDuration = avgDurationResult[0]?.avg_duration
     ? Math.round(Number(avgDurationResult[0].avg_duration))
     : 0;
@@ -200,10 +206,6 @@ export const getSummary = async ({ projectId }) => {
     analyticsRepository.countReactionsByTarget({ targetType: "slide", targetIds: slideIds }),
     analyticsRepository.countCommentsByTarget({ targetType: "slide", targetIds: slideIds }),
   ]);
-
-  // 영상 관련 피드백도 포함
-  const videos = await analyticsRepository.findVideosByProjectId(pid);
-  const videoIds = videos.map((v) => v.id);
 
   const [videoReactionCount, videoCommentCount] = await Promise.all([
     analyticsRepository.countReactionsByTarget({ targetType: "video", targetIds: videoIds }),
@@ -250,14 +252,20 @@ export const getSlideAnalytics = async ({ projectId }) => {
     slideViewCount[key] = (slideViewCount[key] || 0) + 1;
   });
 
-  // 슬라이드별 이탈 수
-  const slideExits = await analyticsRepository.groupExitsByLastSlide(slideIds);
+  // 슬라이드별 이탈 수 (세션별 마지막으로 본 슬라이드 = 이탈 지점)
+  const lastSlidePerSession = {};
+  slideViews.forEach((sv) => {
+    const sid = sv.sessionId;
+    const viewedAt = sv._max.createdAt;
+    if (!lastSlidePerSession[sid] || viewedAt > lastSlidePerSession[sid].viewedAt) {
+      lastSlidePerSession[sid] = { slideId: sv.slideId, viewedAt };
+    }
+  });
 
   const slideExitCount = {};
-  slideExits.forEach((se) => {
-    if (se.lastSlideId) {
-      slideExitCount[se.lastSlideId.toString()] = se._count._all;
-    }
+  Object.values(lastSlidePerSession).forEach((entry) => {
+    const key = entry.slideId.toString();
+    slideExitCount[key] = (slideExitCount[key] || 0) + 1;
   });
 
   // 슬라이드별 피드백 (리액션 + 댓글)
@@ -276,6 +284,9 @@ export const getSlideAnalytics = async ({ projectId }) => {
     slideCommentCount[c.targetId.toString()] = c._count._all;
   });
 
+  // 총 고유 세션 수 (이탈률 분모)
+  const totalSessions = Object.keys(lastSlidePerSession).length;
+
   // 결과 조합
   const result = slides.map((slide) => {
     const slideIdStr = slide.id.toString();
@@ -284,8 +295,8 @@ export const getSlideAnalytics = async ({ projectId }) => {
     const reactionCnt = slideReactionCount[slideIdStr] || 0;
     const commentCnt = slideCommentCount[slideIdStr] || 0;
 
-    // 이탈률 계산
-    const exitRate = viewCount > 0 ? Math.round((exitCount / viewCount) * 100) : 0;
+    // 이탈률 계산 (분모 = 총 고유 세션)
+    const exitRate = totalSessions > 0 ? Math.round((exitCount / totalSessions) * 100) : 0;
 
     return {
       slideId: slideIdStr,
@@ -378,33 +389,37 @@ export const getVideoExits = async ({ videoId }) => {
     throw new AnalyticsVideoNotFoundError({ videoId: vid });
   }
 
-  // 영상 관련 이탈 기록 조회
-  const exits = await analyticsRepository.findExitsByVideoId(vid);
-
-  // 10초(10000ms) 단위로 그룹화
-  const intervalMs = 10000;
-  const exitMap = {};
-
-  exits.forEach((e) => {
-    if (e.lastVideoTimeMs !== null) {
-      const bucket = Math.floor(e.lastVideoTimeMs / intervalMs) * intervalMs;
-      if (!exitMap[bucket]) {
-        exitMap[bucket] = new Set();
-      }
-      exitMap[bucket].add(e.sessionId);
-    }
-  });
+  // 세션별 마지막 이탈 시점 조회
+  const exitMax = await analyticsRepository.getExitMaxTimePerSession(vid);
 
   // 총 세션 수 (영상을 재생한 세션)
   const totalSessions = await analyticsRepository.groupVideoEventsBySession(vid);
-  const totalSessionCount = totalSessions.length || 1; // 0 방지
+  const totalSessionCount = totalSessions.length;
+
+  if (totalSessionCount === 0) {
+    return {
+      resultType: "SUCCESS",
+      error: null,
+      success: { exits: [] },
+    };
+  }
+
+  // 10초(10000ms) 단위로 그룹화 (세션당 1회만 카운트)
+  const intervalMs = 10000;
+  const exitMap = {};
+
+  exitMax.forEach((e) => {
+    const t = e._max.lastVideoTimeMs || 0;
+    const bucket = Math.floor(t / intervalMs) * intervalMs;
+    exitMap[bucket] = (exitMap[bucket] || 0) + 1;
+  });
 
   // 정렬된 이탈률 배열 생성
   const exitRates = Object.entries(exitMap)
-    .map(([ts, sessions]) => ({
+    .map(([ts, count]) => ({
       timestampMs: Number(ts),
-      exitCount: sessions.size,
-      exitRate: Math.round((sessions.size / totalSessionCount) * 100),
+      exitCount: count,
+      exitRate: Math.round((count / totalSessionCount) * 100),
     }))
     .sort((a, b) => a.timestampMs - b.timestampMs);
 
@@ -550,24 +565,26 @@ export const getSlideRetention = async ({ projectId }) => {
   // 슬라이드-세션 쌍 조회
   const slideViewPairs = await analyticsRepository.getSlideViewSessionPairs(pid);
 
-  // slideId별 고유 세션 Set 구성
-  const slideSessionMap = {};
+  // slideId → slideNum 매핑
+  const slideNumMap = {};
   slides.forEach((s) => {
-    slideSessionMap[s.id.toString()] = new Set();
+    slideNumMap[s.id.toString()] = s.slideNum ? Number(s.slideNum) : 0;
   });
 
+  // 세션별 최대 도달 슬라이드 번호 계산
+  const sessionMaxSlideNum = {};
   slideViewPairs.forEach((pair) => {
-    const key = pair.slideId.toString();
-    if (slideSessionMap[key]) {
-      slideSessionMap[key].add(pair.sessionId);
+    const sid = pair.sessionId;
+    const slideNum = slideNumMap[pair.slideId.toString()] || 0;
+    if (!sessionMaxSlideNum[sid] || slideNum > sessionMaxSlideNum[sid]) {
+      sessionMaxSlideNum[sid] = slideNum;
     }
   });
 
-  // 첫 번째 슬라이드 세션 수 = baseline (100%)
-  const firstSlide = slides[0];
-  const baselineSessions = slideSessionMap[firstSlide.id.toString()].size;
+  // baseline = 총 고유 세션 수
+  const totalSessions = Object.keys(sessionMaxSlideNum).length;
 
-  if (baselineSessions === 0) {
+  if (totalSessions === 0) {
     return {
       resultType: "SUCCESS",
       error: null,
@@ -584,10 +601,13 @@ export const getSlideRetention = async ({ projectId }) => {
     };
   }
 
-  // 각 슬라이드별 잔존률 계산
+  // 각 슬라이드별 잔존률 계산 (max slideNum >= 해당 slideNum인 세션 수)
   const slideRetention = slides.map((slide) => {
-    const sessionCount = slideSessionMap[slide.id.toString()].size;
-    const retentionRate = Math.round((sessionCount / baselineSessions) * 100);
+    const slideNum = slide.slideNum ? Number(slide.slideNum) : 0;
+    const sessionCount = Object.values(sessionMaxSlideNum).filter(
+      (maxNum) => maxNum >= slideNum
+    ).length;
+    const retentionRate = Math.round((sessionCount / totalSessions) * 100);
 
     return {
       slideId: slide.id.toString(),
@@ -602,7 +622,7 @@ export const getSlideRetention = async ({ projectId }) => {
     resultType: "SUCCESS",
     error: null,
     success: {
-      totalSessions: baselineSessions,
+      totalSessions,
       slideRetention,
     },
   };

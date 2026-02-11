@@ -38,7 +38,7 @@ export const findLastSlideByProjectId = (projectId) =>
 export const findVideosByProjectId = (projectId) =>
   prisma.video.findMany({
     where: { projectId, deletedAt: null },
-    select: { id: true },
+    select: { id: true, durationSeconds: true },
   });
 
 // ==================== Analytics 생성 ====================
@@ -68,31 +68,47 @@ export const groupPageViewsBySession = (projectId) =>
     where: { projectId },
   });
 
-export const getAvgDuration = (projectId) =>
+export const getAvgDuration = (projectId, maxDurationSeconds) =>
   prisma.$queryRaw`
-    SELECT AVG(duration_seconds) as avg_duration
-    FROM (
+    WITH pageviews AS (
       SELECT
-        TIMESTAMPDIFF(SECOND, pv.min_created, ae.max_created) as duration_seconds
-      FROM (
-        SELECT session_id, MIN(created_at) as min_created
-        FROM analytics_page_view
-        WHERE project_id = ${projectId}
-        GROUP BY session_id
-      ) pv
-      INNER JOIN (
-        SELECT session_id, MAX(created_at) as max_created
-        FROM analytics_exit
-        WHERE project_id = ${projectId}
-        GROUP BY session_id
-      ) ae ON pv.session_id = ae.session_id
-    ) durations
+        session_id,
+        created_at AS pv_start,
+        LEAD(created_at) OVER (PARTITION BY session_id ORDER BY created_at) AS next_pv_start
+      FROM analytics_page_view
+      WHERE project_id = ${projectId}
+    ),
+    all_events AS (
+      SELECT session_id, created_at AS event_time
+      FROM analytics_page_view WHERE project_id = ${projectId}
+      UNION ALL
+      SELECT session_id, created_at AS event_time
+      FROM analytics_slide_view WHERE project_id = ${projectId}
+      UNION ALL
+      SELECT ave.session_id, ave.created_at AS event_time
+      FROM analytics_video_event ave
+      INNER JOIN video v ON ave.video_id = v.id
+      WHERE v.project_id = ${projectId}
+    ),
+    visit_durations AS (
+      SELECT
+        TIMESTAMPDIFF(SECOND, pv.pv_start, MAX(ae.event_time)) AS duration_seconds
+      FROM pageviews pv
+      LEFT JOIN all_events ae ON ae.session_id = pv.session_id
+        AND ae.event_time >= pv.pv_start
+        AND (pv.next_pv_start IS NULL OR ae.event_time < pv.next_pv_start)
+      GROUP BY pv.session_id, pv.pv_start
+    )
+    SELECT AVG(duration_seconds) AS avg_duration
+    FROM visit_durations
+    WHERE duration_seconds BETWEEN 1 AND ${maxDurationSeconds}
   `;
 
 export const groupSlideViewsBySlideAndSession = (slideIds) =>
   prisma.analyticsSlideView.groupBy({
     by: ["slideId", "sessionId"],
     where: { slideId: { in: slideIds } },
+    _max: { createdAt: true },
   });
 
 export const groupSlideViewsBySlideIdAndSession = ({ projectId, slideId }) =>
@@ -101,20 +117,11 @@ export const groupSlideViewsBySlideIdAndSession = ({ projectId, slideId }) =>
     where: { projectId, slideId },
   });
 
-export const groupExitsByLastSlide = (slideIds) =>
+export const getExitMaxTimePerSession = (videoId) =>
   prisma.analyticsExit.groupBy({
-    by: ["lastSlideId"],
-    where: { lastSlideId: { in: slideIds } },
-    _count: { _all: true },
-  });
-
-export const findExitsByVideoId = (videoId) =>
-  prisma.analyticsExit.findMany({
-    where: {
-      lastVideoId: videoId,
-      lastVideoTimeMs: { not: null },
-    },
-    select: { lastVideoTimeMs: true, sessionId: true },
+    by: ["sessionId"],
+    where: { lastVideoId: videoId, lastVideoTimeMs: { not: null } },
+    _max: { lastVideoTimeMs: true },
   });
 
 export const groupVideoEventsBySession = (videoId) =>
@@ -200,6 +207,6 @@ export const getSlideViewSessionPairs = (projectId) =>
 export const getMaxTimestampPerSession = (videoId) =>
   prisma.analyticsVideoEvent.groupBy({
     by: ["sessionId"],
-    where: { videoId, eventType: "play" },
+    where: { videoId, eventType: { in: ["play", "pause", "seek"] } },
     _max: { timestampMs: true },
   });
