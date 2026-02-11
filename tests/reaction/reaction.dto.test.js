@@ -1,12 +1,12 @@
 import {
-  CreateSlideReactionDto,
+  createSlideReactionDto,
   projectSlideReactionSummaryResponseDTO,
   slideReactionSummaryResponseDTO,
 } from "../../src/dtos/reaction.dto.js";
 
 describe("reaction.dto", () => {
-  test("CreateSlideReactionDto returns emojiType", () => {
-    expect(CreateSlideReactionDto({ emojiType: "fire" })).toEqual({ emojiType: "fire" });
+  test("createSlideReactionDto returns emojiType", () => {
+    expect(createSlideReactionDto({ emojiType: "fire" })).toEqual({ emojiType: "fire" });
   });
 
   test("slideReactionSummaryResponseDTO includes default zeros", () => {

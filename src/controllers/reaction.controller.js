@@ -1,5 +1,5 @@
 import {
-  CreateSlideReactionDto,
+  createSlideReactionDto,
   reactionBucketsResponseDTO,
   reactionMarkersResponseDTO,
 } from "../dtos/reaction.dto.js";
@@ -15,7 +15,7 @@ import {
 
 async function createSlideReaction(req, res, next) {
   try {
-    const dto = CreateSlideReactionDto(req.body);
+    const dto = createSlideReactionDto(req.body);
 
     const result = await createSlideReactionEvent({
       slideId: req.params.slideId,

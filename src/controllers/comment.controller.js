@@ -196,6 +196,7 @@ export const patchComment = async (req, res, next) => {
    *                   success:
    *                     updatedTargetType: comment
    *                     commentId: "10"
+   *                     message: "댓글이 수정되었습니다."
    *                     content: "수정된 댓글 내용입니다."
    *                     userId: "3"
    *                     createdAt: "2026-02-07T09:00:00.000Z"
@@ -208,6 +209,7 @@ export const patchComment = async (req, res, next) => {
    *                     updatedTargetType: reply
    *                     parentCommentId: "10"
    *                     replyId: "22"
+   *                     message: "답글이 수정되었습니다."
    *                     content: "수정된 답글 내용입니다."
    *                     userId: "3"
    *                     createdAt: "2026-02-07T09:30:00.000Z"
@@ -920,6 +922,9 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *         commentId:
  *           type: string
  *           example: "10"
+ *         message:
+ *           type: string
+ *           example: "댓글이 수정되었습니다."
  *         content:
  *           type: string
  *           example: "수정된 댓글 내용입니다."
@@ -935,6 +940,7 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *       required:
  *         - updatedTargetType
  *         - commentId
+ *         - message
  *         - content
  *         - userId
  *         - createdAt
@@ -953,6 +959,9 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *         replyId:
  *           type: string
  *           example: "22"
+ *         message:
+ *           type: string
+ *           example: "답글이 수정되었습니다."
  *         content:
  *           type: string
  *           example: "수정된 답글 내용입니다."
@@ -969,6 +978,7 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *         - updatedTargetType
  *         - parentCommentId
  *         - replyId
+ *         - message
  *         - content
  *         - userId
  *         - createdAt
@@ -1065,6 +1075,11 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *         content:
  *           type: string
  *           example: "이 슬라이드 이해하기 쉬워요"
+ *         parentCommentId:
+ *           type: string
+ *           nullable: true
+ *           description: 답글인 경우 부모 댓글 ID, 일반 댓글이면 null
+ *           example: "9"
  *         user:
  *           type: object
  *           properties:
