@@ -93,19 +93,13 @@ export const groupSlideViewsBySlideAndSession = (slideIds) =>
   prisma.analyticsSlideView.groupBy({
     by: ["slideId", "sessionId"],
     where: { slideId: { in: slideIds } },
+    _max: { createdAt: true },
   });
 
 export const groupSlideViewsBySlideIdAndSession = ({ projectId, slideId }) =>
   prisma.analyticsSlideView.groupBy({
     by: ["sessionId"],
     where: { projectId, slideId },
-  });
-
-export const groupExitsByLastSlide = (slideIds) =>
-  prisma.analyticsExit.groupBy({
-    by: ["lastSlideId"],
-    where: { lastSlideId: { in: slideIds } },
-    _count: { _all: true },
   });
 
 export const findExitsByVideoId = (videoId) =>

@@ -250,14 +250,20 @@ export const getSlideAnalytics = async ({ projectId }) => {
     slideViewCount[key] = (slideViewCount[key] || 0) + 1;
   });
 
-  // 슬라이드별 이탈 수
-  const slideExits = await analyticsRepository.groupExitsByLastSlide(slideIds);
+  // 슬라이드별 이탈 수 (세션별 마지막으로 본 슬라이드 = 이탈 지점)
+  const lastSlidePerSession = {};
+  slideViews.forEach((sv) => {
+    const sid = sv.sessionId;
+    const viewedAt = sv._max.createdAt;
+    if (!lastSlidePerSession[sid] || viewedAt > lastSlidePerSession[sid].viewedAt) {
+      lastSlidePerSession[sid] = { slideId: sv.slideId, viewedAt };
+    }
+  });
 
   const slideExitCount = {};
-  slideExits.forEach((se) => {
-    if (se.lastSlideId) {
-      slideExitCount[se.lastSlideId.toString()] = se._count._all;
-    }
+  Object.values(lastSlidePerSession).forEach((entry) => {
+    const key = entry.slideId.toString();
+    slideExitCount[key] = (slideExitCount[key] || 0) + 1;
   });
 
   // 슬라이드별 피드백 (리액션 + 댓글)
@@ -276,6 +282,9 @@ export const getSlideAnalytics = async ({ projectId }) => {
     slideCommentCount[c.targetId.toString()] = c._count._all;
   });
 
+  // 총 고유 세션 수 (이탈률 분모)
+  const totalSessions = Object.keys(lastSlidePerSession).length;
+
   // 결과 조합
   const result = slides.map((slide) => {
     const slideIdStr = slide.id.toString();
@@ -284,8 +293,8 @@ export const getSlideAnalytics = async ({ projectId }) => {
     const reactionCnt = slideReactionCount[slideIdStr] || 0;
     const commentCnt = slideCommentCount[slideIdStr] || 0;
 
-    // 이탈률 계산
-    const exitRate = viewCount > 0 ? Math.round((exitCount / viewCount) * 100) : 0;
+    // 이탈률 계산 (분모 = 총 고유 세션)
+    const exitRate = totalSessions > 0 ? Math.round((exitCount / totalSessions) * 100) : 0;
 
     return {
       slideId: slideIdStr,
