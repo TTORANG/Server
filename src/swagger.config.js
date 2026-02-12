@@ -12,12 +12,12 @@ const options = {
     },
     servers: [
       {
-        url: "http://localhost:3000",
-        description: "로컬 테스트 서버",
+        url: process.env.SERVER_URL || "https://api.ttorang.com",
+        description: "또랑 운영 서버",
       },
       {
-        url: process.env.SERVER_URL,
-        description: "개발용 배포 서버 (GCP)",
+        url: "http://localhost:3000",
+        description: "로컬 테스트 서버",
       },
     ],
     components: {
