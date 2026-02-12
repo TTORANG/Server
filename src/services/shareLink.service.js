@@ -163,6 +163,7 @@ export const processGetShareContent = async (shareToken, sessionId = null) => {
   });
 
   const { scope, project, video, videoId } = shareLink;
+  const publisherName = project?.user?.nickName || project?.user?.name || "익명 사용자";
 
   const filteredComments = project.comments || [];
 
@@ -197,6 +198,7 @@ export const processGetShareContent = async (shareToken, sessionId = null) => {
     scope,
     content,
     shareLink,
+    publisherName,
     sessionId: currentSessionId,
     tokens: newTokens,
     sessionName,

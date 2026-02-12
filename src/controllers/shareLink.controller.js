@@ -160,6 +160,7 @@ export const handleCreateShareLink = async (req, res, next) => {
  *                   shareToken: "abc-123-uuid"
  *                   scope: "slides_script_video"
  *                   createdAt: "2026-01-30T10:00:00.000Z"
+ *                   publisherName: "또랑한 고양이"
  *                 projectContent:
  *                   title: "기말고사 발표 자료"
  *                   slides:

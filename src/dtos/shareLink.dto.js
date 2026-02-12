@@ -38,7 +38,7 @@ export const shareLinkResponseDTO = (link) => {
 };
 
 export const getShareLinkResponseDTO = (data) => {
-  const { scope, content, shareLink, currentUserId } = data;
+  const { scope, content, shareLink, currentUserId, publisherName } = data;
 
   return {
     message: "공유된 프로젝트에 접속했습니다.",
@@ -52,6 +52,7 @@ export const getShareLinkResponseDTO = (data) => {
       shareToken: shareLink.shareToken,
       scope: scope,
       createdAt: shareLink.createdAt,
+      publisherName,
     },
     projectContent: {
       title: content.title,
