@@ -100,7 +100,6 @@ PPTX/PDF 업로드
 
 - **DTO Pattern**: 계층 간 데이터 전송 및 응답 형식 통일
 - **Repository Pattern**: Prisma 기반 데이터 접근 추상화
-- **Event-Driven**: Redis Pub/Sub 기반 이벤트 버스
 - **Error Handling**: 도메인별 커스텀 에러 클래스 (BaseError 상속)
 - **Chunked Upload**: 대용량 영상 청크 분할 업로드
 
