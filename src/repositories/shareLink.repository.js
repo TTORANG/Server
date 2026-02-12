@@ -59,6 +59,13 @@ export const findShareLinkWithContent = async (token) => {
     include: {
       project: {
         include: {
+          user: {
+            select: {
+              id: true,
+              nickName: true,
+              name: true,
+            },
+          },
           slides: {
             where: {
               isDeleted: false,
