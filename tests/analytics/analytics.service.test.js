@@ -321,21 +321,21 @@ describe("getVideoExits (영상 이탈)", () => {
 });
 
 describe("getVideoRetention (영상 잔존률)", () => {
-  test("30초 버킷, 첫 버킷 100%", async () => {
-    repo.findVideoById.mockResolvedValue({ id: 10n, durationSeconds: 90, projectId: 1n });
+  test("10초 버킷(기본값), 첫 버킷 100%", async () => {
+    repo.findVideoById.mockResolvedValue({ id: 10n, durationSeconds: 30, projectId: 1n });
     repo.getMaxTimestampPerSession.mockResolvedValue([
-      { sessionId: "A", _max: { timestampMs: 80000 } },
-      { sessionId: "B", _max: { timestampMs: 40000 } },
-      { sessionId: "C", _max: { timestampMs: 20000 } },
+      { sessionId: "A", _max: { timestampMs: 25000 } },
+      { sessionId: "B", _max: { timestampMs: 15000 } },
+      { sessionId: "C", _max: { timestampMs: 5000 } },
     ]);
 
     const result = await getVideoRetention({ videoId: "10" });
     const retention = result.success.videoRetention;
 
     expect(retention[0]).toEqual({ timestampMs: 0, sessionCount: 3, retentionRate: 100 });
-    expect(retention[1]).toEqual({ timestampMs: 30000, sessionCount: 2, retentionRate: 67 });
-    expect(retention[2]).toEqual({ timestampMs: 60000, sessionCount: 1, retentionRate: 33 });
-    expect(retention[3]).toEqual({ timestampMs: 90000, sessionCount: 0, retentionRate: 0 });
+    expect(retention[1]).toEqual({ timestampMs: 10000, sessionCount: 2, retentionRate: 67 });
+    expect(retention[2]).toEqual({ timestampMs: 20000, sessionCount: 1, retentionRate: 33 });
+    expect(retention[3]).toEqual({ timestampMs: 30000, sessionCount: 0, retentionRate: 0 });
   });
 
   test("세션 없으면 빈 배열", async () => {
