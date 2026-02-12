@@ -5,10 +5,13 @@ import {
   handleLogout,
   handleReissueToken,
   handleSocialLoginCallback,
+  handleSocialLoginFailed,
   handleWithdrawal,
 } from "../controllers/auth.controller.js";
 
 const router = express.Router();
+
+router.get("/login-failed", handleSocialLoginFailed);
 
 // 구글 라우트
 router.get("/auth/google/login", passport.authenticate("google", { session: false }));

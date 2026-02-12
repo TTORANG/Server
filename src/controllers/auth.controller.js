@@ -7,6 +7,19 @@ import {
   reissueToken,
 } from "../services/auth.service.js";
 
+const DEFAULT_SOCIAL_LOGIN_ERROR_REASON = "소셜 로그인에 실패했습니다.";
+
+const createOAuthCallbackRedirectUrl = ({ accessToken, sessionId, error } = {}) => {
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const redirectUrl = new URL("/auth/callback", frontendUrl);
+
+  if (accessToken) redirectUrl.searchParams.set("accessToken", accessToken);
+  if (sessionId) redirectUrl.searchParams.set("sessionId", sessionId);
+  if (error) redirectUrl.searchParams.set("error", error);
+
+  return redirectUrl.toString();
+};
+
 /**
  * @swagger
  * /auth/google/callback:
@@ -63,7 +76,7 @@ export const handleSocialLoginCallback = async (req, res, next) => {
     const { profile, provider } = req.user;
 
     // 서비스 호출 ( 세션 저장 + 토큰 발급이 한 번에 일어남)
-    const { user, tokens, sessionId } = await handleSocialLoginSuccess(profile, provider);
+    const { tokens, sessionId } = await handleSocialLoginSuccess(profile, provider);
 
     // refreshToken을 HttpOnly 쿠키에 설정
     res.cookie("refreshToken", tokens.refreshToken, {
@@ -73,17 +86,23 @@ export const handleSocialLoginCallback = async (req, res, next) => {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7일 (밀리초 단위)
     });
 
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-    const redirectUrl = new URL("/auth/callback", frontendUrl);
-
-    // accessToken과 sessionId만 URL에 포함
-    redirectUrl.searchParams.set("accessToken", tokens.accessToken);
-    redirectUrl.searchParams.set("sessionId", sessionId);
-
-    return res.redirect(redirectUrl.toString());
+    return res.redirect(
+      createOAuthCallbackRedirectUrl({
+        accessToken: tokens.accessToken,
+        sessionId,
+      })
+    );
   } catch (error) {
-    next(error);
+    console.log(error);
+    const reason = error?.reason || DEFAULT_SOCIAL_LOGIN_ERROR_REASON;
+    return res.redirect(createOAuthCallbackRedirectUrl({ error: reason }));
   }
+};
+
+export const handleSocialLoginFailed = (_req, res) => {
+  return res.redirect(
+    createOAuthCallbackRedirectUrl({ error: DEFAULT_SOCIAL_LOGIN_ERROR_REASON })
+  );
 };
 
 /**
