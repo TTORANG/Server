@@ -60,8 +60,8 @@ jobs:
       # 7. Cloud Run에 배포
       - name: Deploy to Cloud Run
         env:
-          CLOUD_SQL_CONNECTION: ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:ttorang-db
-          DATABASE_URL: mysql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost/${{ secrets.DB_NAME }}?socket=/cloudsql/${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:ttorang-db
+          CLOUD_SQL_CONNECTION: ${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:${{ env.DB_INSTANCE }}
+          DATABASE_URL: mysql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost/${{ secrets.DB_NAME }}?socket=/cloudsql/${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:${{ env.DB_INSTANCE }}
         run: |
           gcloud run deploy ${{ env.SERVICE_NAME }} \
             --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
@@ -83,11 +83,11 @@ jobs:
               PASSPORT_NAVER_CLIENT_ID=${{ secrets.PASSPORT_NAVER_CLIENT_ID }}##
               PASSPORT_NAVER_CLIENT_SECRET=${{ secrets.PASSPORT_NAVER_CLIENT_SECRET }}##
               JWT_SECRET=${{ secrets.JWT_SECRET }}##
-              SERVER_URL=https://ttorang-server-407623424780.asia-northeast3.run.app##
-              GCS_BUCKET_NAME=ttorang-upload-dev##
-              CDN_HOST=https://cdn.ttorang.com##
+              SERVER_URL=${{ secrets.SERVER_URL }}##
+              GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }}##
+              CDN_HOST=${{ secrets.CDN_HOST }}##
               GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}##
-              CLOUD_RUN_SERVICE_URL=https://ttorang-server-407623424780.asia-northeast3.run.app##
+              CLOUD_RUN_SERVICE_URL=${{ secrets.CLOUD_RUN_SERVICE_URL }}##
               CLOUD_TASKS_SERVICE_ACCOUNT=${{ secrets.CLOUD_TASKS_SERVICE_ACCOUNT }}##
               REDIS_URL=${{ secrets.REDIS_URL }}##
-              FRONTEND_URL=https://ttorang.com"
+              FRONTEND_URL=${{ secrets.FRONTEND_URL }}"
