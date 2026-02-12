@@ -322,7 +322,7 @@ export const getSlideAnalytics = async ({ projectId }) => {
  * 영상 시간대별 피드백 분포
  * GET /videos/:id/analytics/timeline
  */
-export const getVideoTimeline = async ({ videoId }) => {
+export const getVideoTimeline = async ({ videoId, intervalMs: rawIntervalMs }) => {
   const vid = requireVideoId(videoId);
 
   const video = await analyticsRepository.findVideoById(vid);
@@ -330,14 +330,14 @@ export const getVideoTimeline = async ({ videoId }) => {
     throw new AnalyticsVideoNotFoundError({ videoId: vid });
   }
 
-  // 5초 단위로 그룹화하여 피드백 집계
+  // intervalMs 파라미터 처리 (기본값 10000ms = 10초)
+  const intervalMs = toPositiveInt(rawIntervalMs, 10000);
+
+  // intervalMs 단위로 그룹화하여 피드백 집계
   const [reactions, comments] = await Promise.all([
     analyticsRepository.findVideoReactionsWithTimestamp(vid),
     analyticsRepository.findVideoCommentsWithTimestamp(vid),
   ]);
-
-  // 5초(5000ms) 단위로 그룹화
-  const intervalMs = 5000;
   const timelineMap = {};
 
   reactions.forEach((r) => {
@@ -381,13 +381,16 @@ export const getVideoTimeline = async ({ videoId }) => {
  * 영상 구간별 이탈률
  * GET /videos/:id/analytics/exits
  */
-export const getVideoExits = async ({ videoId }) => {
+export const getVideoExits = async ({ videoId, intervalMs: rawIntervalMs }) => {
   const vid = requireVideoId(videoId);
 
   const video = await analyticsRepository.findVideoById(vid);
   if (!video) {
     throw new AnalyticsVideoNotFoundError({ videoId: vid });
   }
+
+  // intervalMs 파라미터 처리 (기본값 10000ms = 10초)
+  const intervalMs = toPositiveInt(rawIntervalMs, 10000);
 
   // 세션별 마지막 이탈 시점 조회
   const exitMax = await analyticsRepository.getExitMaxTimePerSession(vid);
@@ -404,8 +407,7 @@ export const getVideoExits = async ({ videoId }) => {
     };
   }
 
-  // 10초(10000ms) 단위로 그룹화 (세션당 1회만 카운트)
-  const intervalMs = 10000;
+  // intervalMs 단위로 그룹화 (세션당 1회만 카운트)
   const exitMap = {};
 
   exitMax.forEach((e) => {
@@ -530,6 +532,12 @@ const requireVideoId = (videoId) => {
   return vid;
 };
 
+const toPositiveInt = (value, defaultValue) => {
+  if (value === undefined || value === null) return defaultValue;
+  const n = Number(value);
+  return Number.isInteger(n) && n > 0 ? n : defaultValue;
+};
+
 const requireSlideId = (slideId) => {
   const sid = toInt(slideId);
   if (!Number.isInteger(sid) || sid <= 0) {
@@ -632,13 +640,16 @@ export const getSlideRetention = async ({ projectId }) => {
  * 영상 시청 잔존률 (30초 단위)
  * GET /videos/:id/analytics/retention
  */
-export const getVideoRetention = async ({ videoId }) => {
+export const getVideoRetention = async ({ videoId, intervalMs: rawIntervalMs }) => {
   const vid = requireVideoId(videoId);
 
   const video = await analyticsRepository.findVideoById(vid);
   if (!video) {
     throw new AnalyticsVideoNotFoundError({ videoId: vid });
   }
+
+  // intervalMs 파라미터 처리 (기본값 10000ms = 10초)
+  const intervalMs = toPositiveInt(rawIntervalMs, 10000);
 
   // 세션별 최대 시청 시점 조회
   const sessionMaxTimestamps = await analyticsRepository.getMaxTimestampPerSession(vid);
@@ -650,7 +661,7 @@ export const getVideoRetention = async ({ videoId }) => {
       success: {
         totalSessions: 0,
         durationSeconds: video.durationSeconds,
-        intervalMs: 30000,
+        intervalMs,
         videoRetention: [],
       },
     };
@@ -664,8 +675,7 @@ export const getVideoRetention = async ({ videoId }) => {
     ? video.durationSeconds * 1000
     : Math.max(...sessionMaxTimestamps.map((s) => s._max.timestampMs || 0));
 
-  // 30초(30000ms) 단위 버킷 생성
-  const intervalMs = 30000;
+  // intervalMs 단위 버킷 생성
   const buckets = [];
   for (let ts = 0; ts <= durationMs; ts += intervalMs) {
     buckets.push(ts);

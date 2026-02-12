@@ -381,6 +381,14 @@ export const handleGetSlideAnalytics = async (req, res, next) => {
  *         schema:
  *           type: integer
  *         description: 영상 ID
+ *       - in: query
+ *         name: intervalMs
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 10000
+ *           minimum: 1000
+ *         description: 버킷 간격 (ms, 기본값 10000 = 10초)
  *     responses:
  *       200:
  *         description: 타임라인 분석
@@ -405,6 +413,7 @@ export const handleGetVideoTimeline = async (req, res, next) => {
   try {
     const result = await getVideoTimeline({
       videoId: req.params.videoId,
+      intervalMs: req.query.intervalMs,
     });
     res.json(result);
   } catch (e) {
@@ -427,6 +436,14 @@ export const handleGetVideoTimeline = async (req, res, next) => {
  *         schema:
  *           type: integer
  *         description: 영상 ID
+ *       - in: query
+ *         name: intervalMs
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 10000
+ *           minimum: 1000
+ *         description: 버킷 간격 (ms, 기본값 10000 = 10초)
  *     responses:
  *       200:
  *         description: 이탈 분석
@@ -451,6 +468,7 @@ export const handleGetVideoExits = async (req, res, next) => {
   try {
     const result = await getVideoExits({
       videoId: req.params.videoId,
+      intervalMs: req.query.intervalMs,
     });
     res.json(result);
   } catch (e) {
@@ -520,6 +538,41 @@ export const handleGetRecentComments = async (req, res, next) => {
   }
 };
 
+/**
+ * @swagger
+ * /presentations/{projectId}/analytics/slide-retention:
+ *   get:
+ *     summary: 슬라이드별 잔존률 조회
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 프로젝트 ID
+ *     responses:
+ *       200:
+ *         description: 슬라이드별 잔존률
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SlideRetentionResponse'
+ *       400:
+ *         description: 잘못된 요청 파라미터
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError400'
+ *       404:
+ *         description: 프로젝트를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError404Project'
+ */
 export const handleGetSlideRetention = async (req, res, next) => {
   try {
     const result = await getSlideRetention({
@@ -531,10 +584,54 @@ export const handleGetSlideRetention = async (req, res, next) => {
   }
 };
 
+/**
+ * @swagger
+ * /videos/{videoId}/analytics/retention:
+ *   get:
+ *     summary: 영상 시청 잔존률 조회
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: videoId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 영상 ID
+ *       - in: query
+ *         name: intervalMs
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 10000
+ *           minimum: 1000
+ *         description: 버킷 간격 (ms, 기본값 10000 = 10초)
+ *     responses:
+ *       200:
+ *         description: 영상 시청 잔존률
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/VideoRetentionResponse'
+ *       400:
+ *         description: 잘못된 요청 파라미터
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError400'
+ *       404:
+ *         description: 영상을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsError404Video'
+ */
 export const handleGetVideoRetention = async (req, res, next) => {
   try {
     const result = await getVideoRetention({
       videoId: req.params.videoId,
+      intervalMs: req.query.intervalMs,
     });
     res.json(result);
   } catch (e) {
@@ -804,6 +901,75 @@ export const handleGetVideoRetention = async (req, res, next) => {
  *                     type: integer
  *                   exitRate:
  *                     type: integer
+ *
+ *     SlideRetentionResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *         success:
+ *           type: object
+ *           properties:
+ *             totalSessions:
+ *               type: integer
+ *               description: 총 고유 세션 수
+ *             slideRetention:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   slideId:
+ *                     type: string
+ *                   slideNum:
+ *                     type: integer
+ *                     nullable: true
+ *                   title:
+ *                     type: string
+ *                   sessionCount:
+ *                     type: integer
+ *                     description: 해당 슬라이드까지 도달한 세션 수
+ *                   retentionRate:
+ *                     type: integer
+ *                     description: 잔존률 (%)
+ *
+ *     VideoRetentionResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *         success:
+ *           type: object
+ *           properties:
+ *             totalSessions:
+ *               type: integer
+ *               description: 총 세션 수
+ *             durationSeconds:
+ *               type: integer
+ *               nullable: true
+ *               description: 영상 길이 (초)
+ *             intervalMs:
+ *               type: integer
+ *               description: 버킷 간격 (ms)
+ *             videoRetention:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   timestampMs:
+ *                     type: integer
+ *                     description: 시간 구간 (ms)
+ *                   sessionCount:
+ *                     type: integer
+ *                     description: 해당 시점까지 도달한 세션 수
+ *                   retentionRate:
+ *                     type: integer
+ *                     description: 잔존률 (%)
  *
  *     RecentCommentsResponse:
  *       type: object
