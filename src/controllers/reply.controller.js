@@ -123,7 +123,7 @@ export const postCommentReply = async (req, res, next) => {
     const parentCommentId = BigInt(req.params.commentId);
     const { content } = createCommentReplyRequestDTO(req.body);
 
-    const reply = await createCoㄸmmentReply({
+    const reply = await createCommentReply({
       parentCommentId,
       content,
       userId: req.user.id,
