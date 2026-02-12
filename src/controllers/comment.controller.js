@@ -83,11 +83,20 @@ export const postSlideComment = async (req, res, next) => {
    *                     data: null
    *                   success: null
    *       401:
-   *         description: 인증 실패
+   *         description: 인증 실패 (JWT 누락/만료)
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               unauthorized:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: A004
+   *                     reason: 인증 세션 정보가 없거나 유효하지 않습니다.
+   *                     data: null
+   *                   success: null
    *       403:
    *         description: 댓글 작성 권한 없음 (프로젝트 소유자 아님)
    *         content:
