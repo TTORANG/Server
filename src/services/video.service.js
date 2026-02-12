@@ -205,8 +205,24 @@ export async function uploadVideoChunk({ videoId, chunkIndex, file }) {
   if (!file || !file.buffer || !file.mimetype) {
     throw new InvalidVideoChunkError({ reason: "chunk 파일이 필요합니다." });
   }
-  if (!ALLOWED_VIDEO_MIME.has(file.mimetype)) {
-    throw new InvalidVideoChunkError({ contentType: file.mimetype });
+
+  const resolveVideoMime = (incomingFile) => {
+    if (ALLOWED_VIDEO_MIME.has(incomingFile.mimetype)) {
+      return incomingFile.mimetype;
+    }
+
+    const originalName = String(incomingFile.originalname || "").toLowerCase();
+    if (originalName.endsWith(".mp4")) return "video/mp4";
+    if (originalName.endsWith(".webm")) return "video/webm";
+    return null;
+  };
+
+  const resolvedMime = resolveVideoMime(file);
+  if (!resolvedMime) {
+    throw new InvalidVideoChunkError({
+      contentType: file.mimetype,
+      fileName: file.originalname || null,
+    });
   }
 
   const video = await findVideoForChunkUpload(vid);
@@ -216,7 +232,7 @@ export async function uploadVideoChunk({ videoId, chunkIndex, file }) {
     throw new InvalidVideoStatusError({ videoId: String(vid), status: video.status });
   }
 
-  const ext = file.mimetype === "video/mp4" ? "mp4" : "webm";
+  const ext = resolvedMime === "video/mp4" ? "mp4" : "webm";
 
   // mp4 + webm 혼합 업로드 방지
   if (video.container && video.container !== ext) {
@@ -241,7 +257,7 @@ export async function uploadVideoChunk({ videoId, chunkIndex, file }) {
   const uploaded = await uploadBufferToGCS({
     objectKey,
     buffer: file.buffer,
-    contentType: file.mimetype,
+    contentType: resolvedMime,
   });
 
   const sha256 = crypto.createHash("sha256").update(file.buffer).digest("hex");

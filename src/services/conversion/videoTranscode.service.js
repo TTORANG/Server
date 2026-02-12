@@ -70,8 +70,8 @@ export const videoTranscode = async (jobOrId) => {
   const workDir = tmpPath(`video-work-${jobId}`);
   const chunksDir = path.join(workDir, "chunks");
 
-  // GCS 원본 청크 확장자
-  const mergedExt = video.container === "webm" ? "webm" : "mp4";
+  // 업로드 컨테이너별 병합 경로 선택 (webm/mp4)
+  const mergedExt = video.container === "mp4" ? "mp4" : "webm";
 
   //FFmpeg 인코딩 호환성을 위해 병합 파일은 .mp4로 고정
   const mergedPath = path.join(workDir, `merged.mp4`);
@@ -186,9 +186,89 @@ const downloadChunks = async (chunks, destDir, ext) => {
   );
 };
 
+const buildOrderedChunkPaths = (chunksDir, orderedChunks, ext) =>
+  orderedChunks.map((chunk) =>
+    path.join(chunksDir, `chunk_${String(chunk.chunkIndex).padStart(5, "0")}.${ext}`)
+  );
+
 /**
- * 청크를 바이트 단위로 순서대로 재조립한 뒤 ffmpeg로 재인코딩
- * - 프론트에서 완성 Blob을 raw split해 업로드한 경우를 처리
+ * 청크로 만든 입력(webm/mp4, concat list 포함)을 "중간 mp4"로 통일합니다.
+ * 왜 필요하나:
+ * - 브라우저/청크마다 타임스탬프가 흔들릴 수 있어서(+genpts, make_zero) 먼저 정규화해야
+ *   뒤 HLS 변환에서 길이/싱크가 안정적입니다.
+ * - 코덱을 libx264+aac으로 고정해 플레이어 호환성을 높입니다.
+ * - aresample=async로 오디오 타임라인을 보정해 소리 싱크 깨짐을 줄입니다.
+ */
+const transcodeToIntermediateMp4 = async (inputPath, outputPath, chunksDir, mode = "raw") => {
+  const inputArgs =
+    mode === "concat"
+      ? ["-f", "concat", "-safe", "0", "-i", inputPath]
+      : ["-i", inputPath];
+
+  await runCmd(
+    FFMPEG,
+    [
+      "-fflags",
+      "+genpts",
+      "-avoid_negative_ts",
+      "make_zero",
+      ...inputArgs,
+      "-c:v",
+      "libx264",
+      "-preset",
+      "veryfast",
+      "-crf",
+      "21",
+      "-pix_fmt",
+      "yuv420p",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "128k",
+      "-ar",
+      "48000",
+      "-ac",
+      "2",
+      "-af",
+      "aresample=async=1:first_pts=0",
+      "-movflags",
+      "+faststart",
+      "-max_muxing_queue_size",
+      "1024",
+      "-y",
+      outputPath,
+    ],
+    { cwd: chunksDir }
+  );
+};
+
+const mergeByConcatDemuxer = async (chunkPaths, outputPath, chunksDir) => {
+  const concatListPath = path.join(chunksDir, "concat.txt");
+  const concatContent = chunkPaths
+    .map((chunkPath) => `file '${path.basename(chunkPath).replaceAll("'", "'\\''")}'`)
+    .join("\n");
+  await fs.writeFile(concatListPath, `${concatContent}\n`, "utf-8");
+  await transcodeToIntermediateMp4(concatListPath, outputPath, chunksDir, "concat");
+};
+
+const mergeByRawAppend = async (orderedChunks, chunksDir, ext) => {
+  const assembledInputPath = path.join(chunksDir, `assembled.${ext}`);
+  const chunkPaths = buildOrderedChunkPaths(chunksDir, orderedChunks, ext);
+
+  for (let i = 0; i < chunkPaths.length; i += 1) {
+    await pipeline(
+      createReadStream(chunkPaths[i]),
+      createWriteStream(assembledInputPath, { flags: i === 0 ? "w" : "a" })
+    );
+  }
+
+  return assembledInputPath;
+};
+
+/**
+ * 청크 병합 + 중간 mp4 생성
+ * - webm: raw append 고정 (MediaRecorder timeslice 안정성)
+ * - mp4: concat demuxer 우선, 실패 시 raw append 폴백
  */
 const mergeChunks = async (chunksDir, outputPath, chunks, ext) => {
   const orderedChunks = [...chunks].sort((a, b) => a.chunkIndex - b.chunkIndex);
@@ -210,59 +290,56 @@ const mergeChunks = async (chunksDir, outputPath, chunks, ext) => {
     }
   }
 
-  const assembledInputPath = path.join(chunksDir, `assembled.${ext}`);
-  for (let i = 0; i < orderedChunks.length; i += 1) {
-    const c = orderedChunks[i];
-    const chunkPath = path.join(chunksDir, `chunk_${String(c.chunkIndex).padStart(5, "0")}.${ext}`);
-
-    await pipeline(
-      createReadStream(chunkPath),
-      createWriteStream(assembledInputPath, { flags: i === 0 ? "w" : "a" })
-    );
+  if (ext === "webm") {
+    const assembledInputPath = await mergeByRawAppend(orderedChunks, chunksDir, ext);
+    await transcodeToIntermediateMp4(assembledInputPath, outputPath, chunksDir);
+    console.log("[VideoTranscode] webm chunk merge succeeded with raw append");
+    return;
   }
 
-  await runCmd(
-    FFMPEG,
-    [
-      "-fflags",
-      "+genpts",
-      "-i",
-      assembledInputPath,
-      "-c:v",
-      "libx264",
-      "-preset",
-      "ultrafast",
-      "-pix_fmt",
-      "yuv420p",
-      "-c:a",
-      "aac", // 오디오 재인코딩
-      "-b:a",
-      "128k",
-      "-movflags",
-      "faststart",
-      "-y",
-      outputPath,
-    ],
-    { cwd: chunksDir }
-  );
+  const chunkPaths = buildOrderedChunkPaths(chunksDir, orderedChunks, ext);
+  try {
+    await mergeByConcatDemuxer(chunkPaths, outputPath, chunksDir);
+    console.log("[VideoTranscode] mp4 chunk merge succeeded with concat demuxer");
+    return;
+  } catch (concatError) {
+    const concatMessage =
+      concatError?.message?.split("\n").slice(0, 6).join("\n") || String(concatError);
+    console.warn(`[VideoTranscode] mp4 concat merge failed, fallback to raw append\n${concatMessage}`);
+  }
+
+  const assembledInputPath = await mergeByRawAppend(orderedChunks, chunksDir, ext);
+  await transcodeToIntermediateMp4(assembledInputPath, outputPath, chunksDir);
+  console.log("[VideoTranscode] mp4 chunk merge succeeded with raw append fallback");
 };
 
 /**
- * 단일 품질(720p) HLS 변환
- * - aresample 옵션을 추가하여 오디오 패킷 누락 시 싱크 오류 방지
+ * 중간 mp4를 실제 서비스 재생용 HLS(master.m3u8 + segment.ts)로 변환합니다.
+ * 왜 필요하나:
+ * - 720p 고정(scale+pad)으로 화면 크기를 일정하게 맞춰 디바이스별 재생 차이를 줄입니다.
+ * - GOP(키프레임 간격)을 고정해 HLS 세그먼트 경계를 안정화합니다.
+ * - independent_segments로 각 세그먼트 시작을 독립 재생 가능하게 만듭니다.
  */
 const encodeToHLS = async (inputPath, hlsDir) => {
   await runCmd(FFMPEG, [
     "-i",
     inputPath,
+    "-vf",
+    "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2",
     "-c:v",
     "libx264",
     "-preset",
     "veryfast",
     "-crf",
     "23",
-    "-s",
-    "1280x720",
+    "-pix_fmt",
+    "yuv420p",
+    "-g",
+    "60",
+    "-keyint_min",
+    "60",
+    "-sc_threshold",
+    "0",
     "-c:a",
     "aac",
     "-b:a",
@@ -277,6 +354,8 @@ const encodeToHLS = async (inputPath, hlsDir) => {
     "10",
     "-hls_list_size",
     "0",
+    "-hls_flags",
+    "independent_segments",
     "-hls_segment_filename",
     path.join(hlsDir, "segment_%03d.ts"),
     path.join(hlsDir, "master.m3u8"),
