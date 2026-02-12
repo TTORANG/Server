@@ -46,35 +46,55 @@ export const handleGetPresentationStatus = async (req, res, next) => {
    *         description: 잘못된 프로젝트 ID 파라미터
    *         content:
    *           application/json:
-   *             example:
-   *               resultType: "FAILURE"
-   *               error:
-   *                 errorCode: "P005"
-   *                 reason: "프로젝트 ID가 올바르지 않습니다."
-   *                 data:
-   *                   projectId: "abc"
-   *               success: null
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               invalidProjectId:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "P005"
+   *                     reason: "프로젝트 ID가 올바르지 않습니다."
+   *                     data:
+   *                       projectId: "abc"
+   *                   success: null
    *       401:
-   *         description: 인증 실패
+   *         description: 인증 실패 (JWT 누락/만료)
    *         content:
    *           application/json:
-   *             example:
-   *               resultType: "FAILURE"
-   *               error:
-   *                 errorCode: "A004"
-   *                 reason: "인증 세션 정보가 없거나 유효하지 않습니다."
-   *                 data: null
-   *               success: null
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               unauthorized:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "A004"
+   *                     reason: "인증 세션 정보가 없거나 유효하지 않습니다."
+   *                     data: null
+   *                   success: null
    *       404:
    *         description: 프로젝트를 찾을 수 없음
    *         content:
    *           application/json:
-   *             example:
-   *               resultType: "FAILURE"
-   *               error:
-   *                 errorCode: "P001"
-   *                 reason: "해당 프로젝트를 찾을 수 없습니다."
-   *               success: null
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               projectNotFound:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "P001"
+   *                     reason: "해당 프로젝트를 찾을 수 없습니다."
+   *                     data:
+   *                       projectId: "1"
+   *                   success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
   try {
     const { projectId } = req.params;

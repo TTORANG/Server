@@ -83,7 +83,7 @@ export async function postUploadPresentationFile(req, res, next) {
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/ApiResponseBase"
+   *               $ref: "#/components/schemas/ErrorResponse"
    *             examples:
    *               fileRequired:
    *                 value:
@@ -113,11 +113,11 @@ export async function postUploadPresentationFile(req, res, next) {
    *                       max: 1073741824
    *                   success: null
    *       401:
-   *         description: 인증 실패
+   *         description: 인증 실패 (JWT 누락/만료)
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/ApiResponseBase"
+   *               $ref: "#/components/schemas/ErrorResponse"
    *             examples:
    *               unauthorized:
    *                 value:
@@ -132,7 +132,7 @@ export async function postUploadPresentationFile(req, res, next) {
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: "#/components/schemas/ApiResponseBase"
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
 
   try {
