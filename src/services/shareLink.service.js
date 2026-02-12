@@ -93,7 +93,7 @@ export const processCreateShareLink = async (projectId, shareData) => {
 
   const existingLink = await findExistingLink(projectId, scope, videoId);
 
-  const baseUrl = process.env.SERVER_URL || process.env.LOCAL_URL;
+  const baseUrl = process.env.FRONTEND_URL || process.env.LOCAL_URL;
 
   if (existingLink) {
     return {
