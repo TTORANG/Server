@@ -68,13 +68,13 @@ export async function handleCreateSlideReaction(req, res, next) {
    *             $ref: "#/components/schemas/SlideReactionCreateRequest"
    *     responses:
    *       200:
-   *         description: 리액션 생성 성공 (카운트 +1 반영)
+   *         description: 리액션 생성 성공
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/SlideReactionCreateResponse"
    *       400:
-   *         description: 잘못된 요청 (유효하지 않은 이모지 타입, 요청 제한 초과 등)
+   *         description: 잘못된 요청 (유효하지 않은 이모지 타입, 요청 제한 초과, 리액션 처리 실패 등)
    *         content:
    *           application/json:
    *             schema:
@@ -99,18 +99,47 @@ export async function handleCreateSlideReaction(req, res, next) {
    *                       limit: 1
    *                       windowMs: 100
    *                   success: null
+   *               reactionProcessFailed:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: R003
+   *                     reason: 리액션을 처리할 수 없습니다.
+   *                     data:
+   *                       slideId: "10"
+   *                       emojiType: fire
+   *                   success: null
    *       401:
-   *         description: 인증 실패
+   *         description: 인증 실패 (JWT 누락/만료)
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               unauthorized:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: A004
+   *                     reason: 인증 세션 정보가 없거나 유효하지 않습니다.
+   *                     data: null
+   *                   success: null
    *       404:
    *         description: 슬라이드 없음
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               slideNotFound:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: R001
+   *                     reason: 슬라이드를 찾을 수 없습니다.
+   *                     data:
+   *                       slideId: "10"
+   *                   success: null
    *       500:
    *         description: 서버 내부 오류
    *         content:
@@ -303,7 +332,7 @@ export async function handleCreateVideoReaction(req, res, next) {
    *                 timestampMs: 2000
    *     responses:
    *       200:
-   *         description: 생성 성공 (카운트 +1 반영)
+   *         description: 생성 성공
    *         content:
    *           application/json:
    *             schema:
@@ -448,18 +477,47 @@ export const getVideoReactionMarkers = async (req, res, next) => {
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               invalidParameter:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: P001
+   *                     reason: 요청 파라미터가 올바르지 않습니다.
+   *                     data:
+   *                       intervalMs: 0
+   *                   success: null
    *       401:
-   *         description: 인증 실패
+   *         description: 인증 실패 (JWT 누락/만료)
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               unauthorized:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: A004
+   *                     reason: 인증 세션 정보가 없거나 유효하지 않습니다.
+   *                     data: null
+   *                   success: null
    *       404:
    *         description: 영상을 찾을 수 없음(미존재 또는 삭제됨)
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               videoNotFound:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: V001
+   *                     reason: 영상을 찾을 수 없습니다.
+   *                     data:
+   *                       videoId: "9999"
+   *                   success: null
    *       500:
    *         description: 서버 내부 오류
    *         content:
@@ -531,18 +589,47 @@ export const getVideoReactionBuckets = async (req, res, next) => {
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               invalidParameter:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: P001
+   *                     reason: 요청 파라미터가 올바르지 않습니다.
+   *                     data:
+   *                       intervalMs: 0
+   *                   success: null
    *       401:
-   *         description: 인증 실패
+   *         description: 인증 실패 (JWT 누락/만료)
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               unauthorized:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: A004
+   *                     reason: 인증 세션 정보가 없거나 유효하지 않습니다.
+   *                     data: null
+   *                   success: null
    *       404:
    *         description: 영상을 찾을 수 없음(미존재 또는 삭제됨)
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               videoNotFound:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: V001
+   *                     reason: 영상을 찾을 수 없습니다.
+   *                     data:
+   *                       videoId: "9999"
+   *                   success: null
    *       500:
    *         description: 서버 내부 오류
    *         content:
@@ -611,12 +698,21 @@ export const getVideoReactionsByTimeController = async (req, res, next) => {
    *             schema:
    *               $ref: "#/components/schemas/VideoReactionGroupResponse"
    *       400:
-   *         description: 잘못된 요청 파라미터
+   *         description: 잘못된 요청 파라미터(videoId/timestampMs/windowMs)
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
    *             examples:
+   *               invalidVideoId:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: P001
+   *                     reason: 요청 파라미터가 올바르지 않습니다.
+   *                     data:
+   *                       videoId: "abc"
+   *                   success: null
    *               invalidTimestamp:
    *                 value:
    *                   resultType: FAILURE
@@ -636,17 +732,36 @@ export const getVideoReactionsByTimeController = async (req, res, next) => {
    *                       windowMs: -1
    *                   success: null
    *       401:
-   *         description: 인증 실패
+   *         description: 인증 실패 (JWT 누락/만료)
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               unauthorized:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: A004
+   *                     reason: 인증 세션 정보가 없거나 유효하지 않습니다.
+   *                     data: null
+   *                   success: null
    *       404:
    *         description: 영상을 찾을 수 없음(미존재 또는 삭제됨)
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               videoNotFound:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: V001
+   *                     reason: 영상을 찾을 수 없습니다.
+   *                     data:
+   *                       videoId: "9999"
+   *                   success: null
    *       500:
    *         description: 서버 내부 오류
    *         content:
@@ -711,18 +826,47 @@ export async function getProjectSlidesReactionSummaryController(req, res, next) 
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               invalidProjectId:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: R004
+   *                     reason: 요청 파라미터가 올바르지 않습니다.
+   *                     data:
+   *                       projectId: "abc"
+   *                   success: null
    *       401:
-   *         description: 인증 실패
+   *         description: 인증 실패 (JWT 누락/만료)
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               unauthorized:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: A004
+   *                     reason: 인증 세션 정보가 없거나 유효하지 않습니다.
+   *                     data: null
+   *                   success: null
    *       404:
    *         description: 프로젝트 없음
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               projectNotFound:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: P001
+   *                     reason: 해당 프로젝트를 찾을 수 없습니다.
+   *                     data:
+   *                       projectId: "12"
+   *                   success: null
    *       500:
    *         description: 서버 내부 오류
    *         content:

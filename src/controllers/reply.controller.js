@@ -56,23 +56,61 @@ export const postCommentReply = async (req, res, next) => {
    *                     userId: "3"
    *                     createdAt: "2026-02-07T10:20:30.000Z"
    *       400:
-   *         description: 잘못된 요청
+   *         description: 잘못된 요청 (commentId 형식 오류 또는 content 누락)
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               invalidCommentId:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: C004
+   *                     reason: 유효하지 않은 댓글 ID입니다.
+   *                     data:
+   *                       commentId: "abc"
+   *                   success: null
+   *               emptyContent:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: P001
+   *                     reason: 요청 파라미터가 올바르지 않습니다.
+   *                     data:
+   *                       content: ""
+   *                   success: null
    *       401:
-   *         description: 인증 실패
+   *         description: 인증 실패 (JWT 누락/만료)
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               unauthorized:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: A004
+   *                     reason: 인증 세션 정보가 없거나 유효하지 않습니다.
+   *                     data: null
+   *                   success: null
    *       404:
    *         description: 부모 댓글 없음
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               commentNotFound:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: C005
+   *                     reason: 댓글을 찾을 수 없습니다.
+   *                     data:
+   *                       commentId: "9999"
+   *                   success: null
    *       500:
    *         description: 서버 내부 오류
    *         content:
@@ -85,7 +123,7 @@ export const postCommentReply = async (req, res, next) => {
     const parentCommentId = BigInt(req.params.commentId);
     const { content } = createCommentReplyRequestDTO(req.body);
 
-    const reply = await createCommentReply({
+    const reply = await createCoㄸmmentReply({
       parentCommentId,
       content,
       userId: req.user.id,
@@ -130,17 +168,52 @@ export const getCommentReplies = async (req, res, next) => {
    *             schema:
    *               $ref: "#/components/schemas/ReplyListResponse"
    *       400:
-   *         description: 잘못된 요청
+   *         description: 잘못된 요청 (commentId 형식 오류)
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               invalidCommentId:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: C004
+   *                     reason: 유효하지 않은 댓글 ID입니다.
+   *                     data:
+   *                       commentId: "abc"
+   *                   success: null
+   *       401:
+   *         description: 인증 실패 (JWT 누락/만료)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               unauthorized:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: A004
+   *                     reason: 인증 세션 정보가 없거나 유효하지 않습니다.
+   *                     data: null
+   *                   success: null
    *       404:
    *         description: 부모 댓글 없음
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               commentNotFound:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: C005
+   *                     reason: 댓글을 찾을 수 없습니다.
+   *                     data:
+   *                       commentId: "9999"
+   *                   success: null
    *       500:
    *         description: 서버 내부 오류
    *         content:

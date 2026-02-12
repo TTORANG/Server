@@ -83,11 +83,20 @@ export const postSlideComment = async (req, res, next) => {
    *                     data: null
    *                   success: null
    *       401:
-   *         description: 인증 실패
+   *         description: 인증 실패 (JWT 누락/만료)
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               unauthorized:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: A004
+   *                     reason: 인증 세션 정보가 없거나 유효하지 않습니다.
+   *                     data: null
+   *                   success: null
    *       403:
    *         description: 댓글 작성 권한 없음 (프로젝트 소유자 아님)
    *         content:
@@ -241,24 +250,18 @@ export const patchComment = async (req, res, next) => {
    *                     data: null
    *                   success: null
    *       401:
-   *         description: 인증 실패
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: "#/components/schemas/ErrorResponse"
-   *       403:
-   *         description: 수정 권한 없음 (본인 댓글/답글 아님)
+   *         description: 인증 실패 (JWT 누락/만료)
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
    *             examples:
-   *               noPermission:
+   *               unauthorized:
    *                 value:
    *                   resultType: FAILURE
    *                   error:
-   *                     errorCode: C006
-   *                     reason: 댓글을 작성할 권한이 없습니다.
+   *                     errorCode: A004
+   *                     reason: 인증 세션 정보가 없거나 유효하지 않습니다.
    *                     data: null
    *                   success: null
    *       404:
@@ -354,7 +357,7 @@ export const deleteCommentController = async (req, res, next) => {
    *             schema:
    *               $ref: "#/components/schemas/DeleteCommentResponse"
    *       400:
-   *         description: 잘못된 요청(댓글 ID 오류)
+   *         description: "잘못된 요청(댓글 ID 오류: 0 이하)"
    *         content:
    *           application/json:
    *             schema:
@@ -367,27 +370,21 @@ export const deleteCommentController = async (req, res, next) => {
    *                     errorCode: C004
    *                     reason: 유효하지 않은 댓글 ID입니다.
    *                     data:
-   *                       commentId: "abc"
+   *                       commentId: "0"
    *                   success: null
    *       401:
-   *         description: 인증 실패
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: "#/components/schemas/ErrorResponse"
-   *       403:
-   *         description: 삭제 권한 없음
+   *         description: 인증 실패 (JWT 누락/만료)
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
    *             examples:
-   *               noPermission:
+   *               unauthorized:
    *                 value:
    *                   resultType: FAILURE
    *                   error:
-   *                     errorCode: C006
-   *                     reason: 댓글을 조회할 권한이 없습니다.
+   *                     errorCode: A004
+   *                     reason: 인증 세션 정보가 없거나 유효하지 않습니다.
    *                     data: null
    *                   success: null
    *       404:
@@ -476,7 +473,7 @@ export const getSlideCommentsController = async (req, res, next) => {
    *             schema:
    *               $ref: "#/components/schemas/CommentListResponse"
    *       400:
-   *         description: 잘못된 슬라이드 ID
+   *         description: 잘못된 슬라이드 ID (0 이하)
    *         content:
    *           application/json:
    *             schema:
@@ -489,7 +486,22 @@ export const getSlideCommentsController = async (req, res, next) => {
    *                     errorCode: C003
    *                     reason: 유효하지 않은 슬라이드 ID입니다.
    *                     data:
-   *                       slideId: "abc"
+   *                       slideId: "0"
+   *                   success: null
+   *       401:
+   *         description: 인증 실패 (JWT 누락/만료)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               unauthorized:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: A004
+   *                     reason: 인증 세션 정보가 없거나 유효하지 않습니다.
+   *                     data: null
    *                   success: null
    *       403:
    *         description: 조회 권한 없음 (프로젝트 소유자 아님)
@@ -506,22 +518,28 @@ export const getSlideCommentsController = async (req, res, next) => {
    *                     reason: 댓글을 조회할 권한이 없습니다.
    *                     data: null
    *                   success: null
-   *       500:
-   *         description: 댓글 조회 실패
+   *       404:
+   *         description: 슬라이드 없음
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
    *             examples:
-   *               listFetchFailed:
+   *               slideNotFound:
    *                 value:
    *                   resultType: FAILURE
    *                   error:
-   *                     errorCode: C007
-   *                     reason: 댓글을 불러올 수 없습니다.
+   *                     errorCode: C002
+   *                     reason: 슬라이드를 찾을 수 없습니다.
    *                     data:
    *                       slideId: "5"
    *                   success: null
+   *       500:
+   *         description: 댓글 조회 실패 또는 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
    */
 
   try {
@@ -619,25 +637,28 @@ export async function handleCreateVideoComment(req, res, next) {
    *                     data:
    *                       content: ""
    *                   success: null
+   *               invalidTimestamp:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "P001"
+   *                     reason: "타임스탬프는 0 이상의 정수여야 합니다."
+   *                     data:
+   *                       timestampMs: -1
+   *                   success: null
    *       401:
    *         description: 인증 실패 (JWT 누락/만료)
    *         content:
    *           application/json:
    *             schema:
    *               $ref: "#/components/schemas/ErrorResponse"
-   *       403:
-   *         description: 댓글 작성 권한 없음 (프로젝트 소유자 아님)
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: "#/components/schemas/ErrorResponse"
    *             examples:
-   *               noPermission:
+   *               unauthorized:
    *                 value:
    *                   resultType: FAILURE
    *                   error:
-   *                     errorCode: C006
-   *                     reason: 댓글을 수정 또는 삭제할 권한이 없습니다.
+   *                     errorCode: A004
+   *                     reason: 인증 세션 정보가 없거나 유효하지 않습니다.
    *                     data: null
    *                   success: null
    *       404:
