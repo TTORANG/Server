@@ -316,6 +316,12 @@ npm run test -- tests/slide
 
 # 대본(스크립트)
 npm run test -- tests/script
+
+# 인증(Auth)
+npm run test -- tests/auth
+
+# 세션(Session)
+npm run test -- tests/session
 ```
 
 - 실시간 E2E 시나리오 실행
