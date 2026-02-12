@@ -257,7 +257,7 @@ describe("analytics.controller GET (조회)", () => {
   test("handleGetVideoTimeline 서비스 에러 시 next 전파", async () => {
     const error = new Error("video not found");
     mockGetVideoTimeline.mockRejectedValue(error);
-    const req = { params: { videoId: "1" } };
+    const req = { params: { videoId: "1" }, query: {} };
     const res = createRes();
     const next = jest.fn();
 
@@ -271,7 +271,7 @@ describe("analytics.controller GET (조회)", () => {
   test("handleGetVideoExits 서비스 에러 시 next 전파", async () => {
     const error = new Error("fail");
     mockGetVideoExits.mockRejectedValue(error);
-    const req = { params: { videoId: "1" } };
+    const req = { params: { videoId: "1" }, query: {} };
     const res = createRes();
     const next = jest.fn();
 
@@ -330,20 +330,20 @@ describe("analytics.controller GET (조회)", () => {
   test("handleGetVideoRetention 성공 시 res.json 호출", async () => {
     const payload = { resultType: "SUCCESS", error: null, success: { videoRetention: [] } };
     mockGetVideoRetention.mockResolvedValue(payload);
-    const req = { params: { videoId: "1" } };
+    const req = { params: { videoId: "1" }, query: {} };
     const res = createRes();
     const next = jest.fn();
 
     await handleGetVideoRetention(req, res, next);
 
-    expect(mockGetVideoRetention).toHaveBeenCalledWith({ videoId: "1" });
+    expect(mockGetVideoRetention).toHaveBeenCalledWith({ videoId: "1", intervalMs: undefined });
     expect(res.json).toHaveBeenCalledWith(payload);
   });
 
   test("handleGetVideoRetention 서비스 에러 시 next 전파", async () => {
     const error = new Error("fail");
     mockGetVideoRetention.mockRejectedValue(error);
-    const req = { params: { videoId: "1" } };
+    const req = { params: { videoId: "1" }, query: {} };
     const res = createRes();
     const next = jest.fn();
 
