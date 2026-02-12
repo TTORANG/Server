@@ -10,7 +10,7 @@
 | :-------------: | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
 |     Runtime     |                                                                                                                                                                                                                                                                                                                                               ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white)                                                                                                                                                                                                                                                                                                                                                |
 |    Language     |                                                                                                                                                                                                                                                                                                                                           ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)                                                                                                                                                                                                                                                                                                                                           |
-| Framework / API |                                                                                                                                                                                                                                                                                       ![Express](https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white) ![Socket.IO](https://img.shields.io/badge/Socket.IO-010101?style=for-the-badge&logo=socketdotio&logoColor=white)                                                                                                                                                                                                                                                                                       |
+| Framework / API |                                                                                                                                                                                                                                                                                                                                              ![Express](https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white) !                                                                                                                                                                                                                                                                                                                                               |
 |  Auth / Token   |                                                                                                                                                                                                                                                                                          ![Passport](https://img.shields.io/badge/Passport-34E27A?style=for-the-badge&logo=passport&logoColor=black) ![JWT](https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white)                                                                                                                                                                                                                                                                                           |
 |    Database     |                                                                                                                                                                                                                                                                                               ![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white) ![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white)                                                                                                                                                                                                                                                                                                |
 |      Cache      |                                                                                                                                                                                                                                                                                                                                                  ![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)                                                                                                                                                                                                                                                                                                                                                   |
@@ -41,29 +41,23 @@
 - **HLS 트랜스코딩**: FFmpeg 기반 720p + 1080p 자동 변환
 - **슬라이드 동기화**: 영상-슬라이드 타임라인 매핑
 
-### 💬 실시간 피드백
-
-- **댓글**: 슬라이드별 / 영상 타임스탬프별 댓글 및 대댓글
-- **리액션**: 이모지 반응 (fire, good, bad, sleepy, confused)
-- **실시간 동기화**: Socket.io + Redis Pub/Sub 기반 실시간 브로드캐스트
-
 ### 📈 분석 대시보드
 
-- 페이지 뷰 / 슬라이드별 조회수 추적
-- 영상 재생 이벤트 (play/pause/seek) 기록
-- 슬라이드 및 영상 리텐션 분석
-- 이탈 지점 분석
+- **페이지 뷰** / 슬라이드별 조회수 추적
+- **영상 재생 이벤트** (play/pause/seek) 기록
+- **슬라이드 및 영상 리텐션 분석**
+- **이탈 지점 분석**
 
 ### 🔗 공유 링크
 
-- 공개 공유 링크 생성 (슬라이드+스크립트 / 슬라이드+스크립트+영상)
-- 만료일 설정 및 조회수 추적
+- **공개 공유 링크 생성** (슬라이드+스크립트 / 슬라이드+스크립트+영상)
+- **만료일 설정 및 조회수 추적**
 
 ### 🔐 인증 & 보안
 
-- JWT 기반 인증 (Access Token + Refresh Token)
-- Passport.js 소셜 로그인 (Google, Kakao, Naver)
-- 익명 세션 지원 및 로그인 후 데이터 병합
+- **JWT 기반 인증** (Access Token + Refresh Token)
+- **Passport.js 소셜 로그인** (Google, Kakao, Naver)
+- **익명 세션 지원 및 로그인 후 데이터 병합**
 
 ## 🏗️ 아키텍처 및 설계
 
@@ -79,17 +73,7 @@
 ├─────────────────────────────────────┤
 │         Database (MySQL)            │  ← 영속성 계층
 └─────────────────────────────────────┘
-```
 
-### 실시간 아키텍처 (Real-time Architecture)
-
-```
-HTTP 요청 (댓글/리액션 생성)
-  └─> EventBus.publish (Redis Pub/Sub)
-        └─> Subscriber Handlers
-              ├── notification.handler  → 알림 처리
-              └── websocket.handler     → Socket.io 브로드캐스트
-                                          └─> Redis Adapter → 모든 클라이언트
 ```
 
 ### 변환 파이프라인 (Conversion Pipeline)
@@ -116,7 +100,6 @@ PPTX/PDF 업로드
 
 - **DTO Pattern**: 계층 간 데이터 전송 및 응답 형식 통일
 - **Repository Pattern**: Prisma 기반 데이터 접근 추상화
-- **Event-Driven**: Redis Pub/Sub 기반 이벤트 버스
 - **Error Handling**: 도메인별 커스텀 에러 클래스 (BaseError 상속)
 - **Chunked Upload**: 대용량 영상 청크 분할 업로드
 
@@ -296,6 +279,9 @@ npm run test
 - 특정 기능 테스트만 실행
 
 ```bash
+# 분석
+npm run test -- tests/analytics
+
 # 파일 업로드 + 변환
 npm run test -- tests/files/files.test.js tests/conversion/conversionJob.test.js
 
@@ -322,12 +308,6 @@ npm run test -- tests/auth
 
 # 세션(Session)
 npm run test -- tests/session
-```
-
-- 실시간 E2E 시나리오 실행
-
-```bash
-npm run e2e:realtime
 ```
 
 </br>
@@ -451,35 +431,37 @@ TTORANG-Server
 ├─ prisma/
 │  ├─ migrations/
 │  └─ schema.prisma
-├─ scripts/
-│  └─ realtimeE2eCheck.js
+│
 ├─ src/
 │  ├─ constants/
 │  ├─ controllers/
 │  ├─ dtos/
 │  ├─ errors/
-│  ├─ events/
-│  │  ├─ subscribers/
-│  │  ├─ eventBus.js
-│  │  └─ eventTypes.js
 │  ├─ middlewares/
 │  ├─ queues/
 │  ├─ repositories/
 │  ├─ routes/
 │  ├─ services/
 │  │  └─ conversion/
-│  ├─ socket/
-│  │  ├─ handlers/
-│  │  ├─ middleware/
-│  │  └─ eventTypes.js
+│  ├─ swagger/
 │  ├─ utils/
 │  ├─ auth.config.js
 │  ├─ db.config.js
 │  ├─ index.js
 │  └─ swagger.config.js
+│
+├─ test/
+│  ├─ analytics/
+│  ├─ comment/
+│  ├─ conversion/
+│  ├─ files/
+│  ├─ reaction/
+│  └─ video/
+│
 ├─ .env
 ├─ Dockerfile
 ├─ docker-compose.yml
+├─ jest.config.js
 ├─ package.json
 └─ prisma.config.ts
 ```
