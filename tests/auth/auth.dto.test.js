@@ -48,6 +48,7 @@ describe("auth.dto", () => {
       user: { id: "5" },
       withdrawnAt: "2026-02-12T00:00:00.000Z",
     });
+    jest.useRealTimers();
   });
 
   test("reissueTokenDTO includes accessToken only", () => {

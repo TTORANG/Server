@@ -1,8 +1,5 @@
 import { jest } from "@jest/globals";
-import {
-  anonymousSessionResponseDTO,
-  mergeResultResponseDTO,
-} from "../../src/dtos/session.dto.js";
+import { anonymousSessionResponseDTO, mergeResultResponseDTO } from "../../src/dtos/session.dto.js";
 
 describe("session.dto", () => {
   beforeEach(() => {
@@ -25,6 +22,7 @@ describe("session.dto", () => {
       expiresIn: "7d",
       expiresAt: "2026-02-19T00:00:00.000Z",
     });
+    jest.useRealTimers();
   });
 
   test("mergeResultResponseDTO returns merged count", () => {
