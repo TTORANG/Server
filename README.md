@@ -219,6 +219,7 @@ PPTX/PDF 업로드
 
 - `POST /slides/:slideId/comments` - 슬라이드 댓글 작성
 - `POST /videos/:videoId/comments` - 영상 타임스탬프 댓글 작성
+- `GET /videos/:videoId/comments/all` - 영상 전체 댓글 목록 조회 (공유 댓글 목록 조회와 동일 포맷)
 - `PATCH /comments/:commentId` - 댓글 수정
 - `DELETE /comments/:commentId` - 댓글 삭제
 - `POST /comments/:commentId/replies` - 대댓글 작성
