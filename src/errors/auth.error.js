@@ -26,7 +26,7 @@ export class WithdrawFailedError extends BaseError {
 
 export class WithdrawUserError extends BaseError {
   constructor(data) {
-    super("탈퇴한 계정입니다. 고객 센터에 문의하세요", 400, "U002", data);
+    super("탈퇴한 계정입니다. 고객 센터에 문의하세요.", 400, "U002", data);
   }
 }
 

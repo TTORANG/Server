@@ -16,6 +16,7 @@ const {
   handleLogout,
   handleReissueToken,
   handleSocialLoginCallback,
+  handleSocialLoginFailed,
   handleWithdrawal,
 } = await import("../../src/controllers/auth.controller.js");
 
@@ -76,6 +77,55 @@ describe("auth.controller", () => {
       "http://example.com/auth/callback?accessToken=access&sessionId=session-1"
     );
     expect(next).not.toHaveBeenCalled();
+  });
+
+  test("handleSocialLoginCallback redirects with reason on service error", async () => {
+    mockHandleSocialLoginSuccess.mockRejectedValue({
+      reason: "탈퇴한 계정입니다. 고객 센터에 문의하세요",
+    });
+
+    const req = { user: { profile: { id: "p" }, provider: "google" } };
+    const res = createRes();
+    const next = jest.fn();
+
+    await handleSocialLoginCallback(req, res, next);
+
+    const redirectArg = res.redirect.mock.calls[0]?.[0];
+    const redirectUrl = new URL(redirectArg);
+
+    expect(redirectUrl.pathname).toBe("/auth/callback");
+    expect(redirectUrl.searchParams.get("error")).toBe("탈퇴한 계정입니다. 고객 센터에 문의하세요");
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test("handleSocialLoginCallback redirects with default reason on unknown error", async () => {
+    mockHandleSocialLoginSuccess.mockRejectedValue(new Error("boom"));
+
+    const req = { user: { profile: { id: "p" }, provider: "google" } };
+    const res = createRes();
+    const next = jest.fn();
+
+    await handleSocialLoginCallback(req, res, next);
+
+    const redirectArg = res.redirect.mock.calls[0]?.[0];
+    const redirectUrl = new URL(redirectArg);
+
+    expect(redirectUrl.pathname).toBe("/auth/callback");
+    expect(redirectUrl.searchParams.get("error")).toBe("소셜 로그인에 실패했습니다.");
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test("handleSocialLoginFailed redirects with default reason", async () => {
+    const req = {};
+    const res = createRes();
+
+    handleSocialLoginFailed(req, res);
+
+    const redirectArg = res.redirect.mock.calls[0]?.[0];
+    const redirectUrl = new URL(redirectArg);
+
+    expect(redirectUrl.pathname).toBe("/auth/callback");
+    expect(redirectUrl.searchParams.get("error")).toBe("소셜 로그인에 실패했습니다.");
   });
 
   test("handleLogout returns dto", async () => {
