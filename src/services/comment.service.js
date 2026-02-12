@@ -11,6 +11,7 @@ import { InvalidParameterError, VideoNotFoundError } from "../errors/video.error
 import {
   createComment,
   createVideoComment as createVideoCommentRepo,
+  findAllVideoComments,
   findCommentById,
   findCommentsBySlideId,
   findVideoCommentsByTimestamp,
@@ -205,4 +206,25 @@ export const getVideoCommentsByTimestamp = async ({
     fromMs: Math.floor(ts / windowMs) * windowMs,
     toMs: Math.floor(ts / windowMs) * windowMs + windowMs,
   });
+};
+
+// 영상 전체 댓글 조회
+export const getAllVideoComments = async ({ videoId }) => {
+  let vid;
+  try {
+    vid = BigInt(videoId);
+  } catch {
+    throw new InvalidParameterError({ videoId }, "videoId가 올바르지 않습니다.");
+  }
+
+  if (vid <= 0n) {
+    throw new InvalidParameterError({ videoId }, "videoId가 올바르지 않습니다.");
+  }
+
+  const videoExists = await findVideoByIdWithProject(vid);
+  if (!videoExists) {
+    throw new VideoNotFoundError({ videoId: String(videoId) });
+  }
+
+  return findAllVideoComments({ videoId: vid });
 };

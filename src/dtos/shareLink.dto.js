@@ -1,6 +1,6 @@
 import { toPublicStorageUrl } from "../utils/storageUrl.util.js";
 
-const shareCommentItemDTO = (comment, currentUserId = null) => {
+export const shareCommentItemDTO = (comment, currentUserId = null) => {
   const commentUserId = comment.userId.toString();
   const currentUserIdStr = currentUserId ? currentUserId.toString() : null;
 

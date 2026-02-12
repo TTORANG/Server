@@ -7,10 +7,12 @@ import {
   videoCommentResponseDTO,
   videoCommentListResponseDTO,
 } from "../dtos/comment.dto.js";
+import { getShareCommentsResponseDTO } from "../dtos/shareLink.dto.js";
 import {
   createSlideComment,
   createVideoComment,
   deleteComment,
+  getAllVideoComments,
   getSlideComments,
   getVideoCommentsByTimestamp,
   updateComment,
@@ -843,6 +845,120 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
   }
 };
 
+// 영상 전체 댓글 조회
+export const getAllVideoCommentsController = async (req, res, next) => {
+  /**
+   * @swagger
+   * /videos/{videoId}/comments/all:
+   *   get:
+   *     summary: 영상 전체 댓글 목록 조회
+   *     description: |
+   *       특정 영상에 달린 댓글/답글 전체를 조회합니다.
+   *     tags: [Comment]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: videoId
+   *         required: true
+   *         schema:
+   *           type: string
+   *           example: "456"
+   *         description: 영상 ID
+   *     responses:
+   *       200:
+   *         description: 영상 전체 댓글 목록 조회 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/VideoAllCommentsResponse"
+   *             example:
+   *               resultType: "SUCCESS"
+   *               error: null
+   *               success:
+   *                 comments:
+   *                   - commentId: "1"
+   *                     content: "이 부분 설명이 아주 좋네요!"
+   *                     userId: "12"
+   *                     isMine: true
+   *                     writer: "가넷"
+   *                     targetType: "video"
+   *                     targetId: "456"
+   *                     parentId: "2"
+   *                     timestampMs: 12000
+   *                     createdAt: "2026-02-10T15:00:00.000Z"
+   *       400:
+   *         description: 잘못된 videoId
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               invalidVideoId:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "P001"
+   *                     reason: "videoId가 올바르지 않습니다."
+   *                     data:
+   *                       videoId: "abc"
+   *                   success: null
+   *       401:
+   *         description: 인증 실패 (JWT 누락/만료)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               unauthorized:
+   *                 value:
+   *                   resultType: FAILURE
+   *                   error:
+   *                     errorCode: A004
+   *                     reason: 인증 세션 정보가 없거나 유효하지 않습니다.
+   *                     data: null
+   *                   success: null
+   *       404:
+   *         description: 영상 없음
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+   *             examples:
+   *               videoNotFound:
+   *                 value:
+   *                   resultType: "FAILURE"
+   *                   error:
+   *                     errorCode: "V001"
+   *                     reason: "영상을 찾을 수 없습니다."
+   *                     data:
+   *                       videoId: "456"
+   *                   success: null
+   *       500:
+   *         description: 서버 내부 오류
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: "#/components/schemas/ErrorResponse"
+  */
+  try {
+    const { videoId } = req.params;
+
+    const comments = await getAllVideoComments({ videoId });
+
+    res.status(200).json({
+      resultType: "SUCCESS",
+      error: null,
+      success: getShareCommentsResponseDTO({
+        comments,
+        currentUserId: req.user?.id ?? null,
+      }),
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
 /**
  * @swagger
  * components:
@@ -1216,4 +1332,59 @@ export const getVideoCommentsByTimestampController = async (req, res, next) => {
  *               type: array
  *               items:
  *                 $ref: "#/components/schemas/VideoCommentListItem"
+ *
+ *     VideoAllCommentItem:
+ *       type: object
+ *       properties:
+ *         commentId:
+ *           type: string
+ *           example: "1"
+ *         content:
+ *           type: string
+ *           example: "이 부분 설명이 아주 좋네요!"
+ *         userId:
+ *           type: string
+ *           example: "12"
+ *         isMine:
+ *           type: boolean
+ *           example: true
+ *         writer:
+ *           type: string
+ *           example: "가넷"
+ *         targetType:
+ *           type: string
+ *           enum: [video]
+ *           example: "video"
+ *         targetId:
+ *           type: string
+ *           example: "456"
+ *         parentId:
+ *           type: string
+ *           nullable: true
+ *           example: "2"
+ *         timestampMs:
+ *           type: integer
+ *           nullable: true
+ *           example: 12000
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           example: "2026-02-10T15:00:00.000Z"
+ *
+ *     VideoAllCommentsResponse:
+ *       type: object
+ *       properties:
+ *         resultType:
+ *           type: string
+ *           example: SUCCESS
+ *         error:
+ *           nullable: true
+ *           example: null
+ *         success:
+ *           type: object
+ *           properties:
+ *             comments:
+ *               type: array
+ *               items:
+ *                 $ref: "#/components/schemas/VideoAllCommentItem"
  */
