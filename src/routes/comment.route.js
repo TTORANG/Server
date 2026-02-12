@@ -1,6 +1,7 @@
 import express from "express";
 import {
   deleteCommentController,
+  getAllVideoCommentsController,
   getSlideCommentsController,
   getVideoCommentsByTimestampController,
   handleCreateVideoComment,
@@ -19,6 +20,7 @@ router.delete("/comments/:commentId", isLogin, deleteCommentController); // 댓�
 router.get("/slides/:slideId/comments", isLogin, getSlideCommentsController); // 댓글 목록 조회
 router.post("/videos/:videoId/comments", isLogin, handleCreateVideoComment); // 영상 타임스탬프 댓글 생성
 router.get("/videos/:videoId/comments", isLogin, getVideoCommentsByTimestampController); // 시간대별 댓글 조회
+router.get("/videos/:videoId/comments/all", isLogin, getAllVideoCommentsController); // 영상 전체 댓글 조회
 
 // 답글 관련 라우팅
 router.post("/comments/:commentId/replies", isLogin, postCommentReply); // 답글 작성
