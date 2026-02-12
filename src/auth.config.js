@@ -55,6 +55,7 @@ export const kakaoStrategy = new KakaoStrategy(
     clientID: process.env.PASSPORT_KAKAO_CLIENT_ID,
     clientSecret: process.env.PASSPORT_KAKAO_CLIENT_SECRET, // 필요 시 설정
     callbackURL: "/auth/kakao/callback",
+    scope: ["profile_nickname", "profile_image", "account_email"],
   },
   async (accessToken, refreshToken, profile, cb) => {
     try {

@@ -51,6 +51,7 @@ export const socialLoginVerification = async (profile, provider) => {
     name = profile.displayName || profile._json?.properties?.nickname;
     profileImageUrl =
       profile._json?.kakao_account?.profile?.profile_image_url ||
+      profile._json?.kakao_account?.profile?.thumbnail_image_url ||
       profile._json?.properties?.profile_image ||
       profile._json?.properties?.thumbnail_image ||
       null;
