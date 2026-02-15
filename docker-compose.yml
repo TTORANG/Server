@@ -7,13 +7,8 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: ${DATABASE_URL:-mysql://root:password@mysql:3306/ttorang}
+      DATABASE_URL: mysql://root:password@mysql:3306/ttorang
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      DB_HOST: ${DB_HOST:-mysql}
-      DB_PORT: ${DB_PORT:-3306}
-      DB_USER: ${DB_USER:-root}
-      DB_PASSWORD: ${DB_PASSWORD:-password}
-      DB_NAME: ${DB_NAME:-ttorang}
       PORT: ${PORT:-3000}
       CHOKIDAR_USEPOLLING: "true"
       CHOKIDAR_INTERVAL: "500"
