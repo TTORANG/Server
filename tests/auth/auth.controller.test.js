@@ -131,19 +131,31 @@ describe("auth.controller", () => {
   test("handleLogout returns dto", async () => {
     mockLogoutUser.mockResolvedValue({ id: 9n });
 
-    const req = { user: { id: 9n } };
+    const req = { user: { id: 9n, sessionId: "session-1" } };
     const res = createRes();
     const next = jest.fn();
 
     await handleLogout(req, res, next);
 
-    expect(mockLogoutUser).toHaveBeenCalledWith(9n);
+    expect(mockLogoutUser).toHaveBeenCalledWith(9n, "session-1");
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
       resultType: "SUCCESS",
       error: null,
       success: logoutResponseDTO({ id: 9n }),
     });
+  });
+
+  test("handleLogout requires sessionId", async () => {
+    const req = { user: { id: 9n } };
+    const res = createRes();
+    const next = jest.fn();
+
+    await handleLogout(req, res, next);
+
+    expect(mockLogoutUser).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(next.mock.calls[0][0]).toBeInstanceOf(AuthSessionRequiredError);
   });
 
   test("handleWithdrawal blocks different user", async () => {
