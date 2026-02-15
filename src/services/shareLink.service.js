@@ -189,7 +189,7 @@ export const processGetShareContent = async (shareToken, sessionId = null) => {
   if (scope === SCOPE_VIDEO && video) {
     content.video = {
       videoId: video.id.toString(),
-      videoUrl: toPublicStorageUrl(video.sourceUrl),
+      hlsMasterUrl: toPublicStorageUrl(video.hlsMasterUrl ?? video.sourceUrl),
       thumbnailUrl: toPublicStorageUrl(video.thumbnailUrl),
     };
   }
