@@ -43,13 +43,12 @@ export const updateUserProfileImage = async (userId, profileImageUrl) => {
   });
 };
 
-export const deleteRefreshToken = async (userId) => {
-  return await prisma.session.update({
+export const deleteRefreshTokenBySession = async (userId, sessionId) => {
+  return await prisma.session.updateMany({
     where: {
-      uq_session_user_anonymous: {
-        userId: userId,
-        isAnonymous: false,
-      },
+      id: sessionId,
+      userId: BigInt(userId),
+      isAnonymous: false,
     },
     data: {
       refreshToken: null,

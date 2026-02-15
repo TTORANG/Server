@@ -109,8 +109,8 @@ export const handleSocialLoginFailed = (_req, res) => {
  * @swagger
  * /auth/logout:
  *   post:
- *     summary: 로그아웃
- *     description: 현재 로그인한 사용자의 리프레시 토큰을 무효화하고 로그아웃을 처리합니다.
+ *     summary: 현재 세션 로그아웃
+ *     description: 현재 Access Token의 sessionId에 해당하는 리프레시 토큰만 무효화합니다.
  *     tags: [Auth]
  *     security:
  *       - bearerAuth: []
@@ -141,7 +141,13 @@ export const handleSocialLoginFailed = (_req, res) => {
 export const handleLogout = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const result = await logoutUser(userId);
+    const sessionId = req.user.sessionId;
+
+    if (!sessionId) {
+      return next(new AuthSessionRequiredError("세션 정보가 없습니다. 다시 로그인해주세요."));
+    }
+
+    const result = await logoutUser(userId, sessionId);
 
     res.status(200).json({
       resultType: "SUCCESS",

@@ -69,13 +69,13 @@ model Session {
   analyticsVideoEvents AnalyticsVideoEvent[]
   analyticsExits       AnalyticsExit[]
 
-  @@unique([userId, isAnonymous], name: "uq_session_user_anonymous")                                          
   @@index([userId])                                                       
   @@index([isAnonymous])     
   @@index([refreshToken(length: 255)], name: "idx_session_token")                                            
   @@index([createdAt], name: "idx_session_created")                      
   @@index([lastSeenAt(sort: Desc)], name: "idx_session_recent")           
   @@index([userId, lastSeenAt(sort: Desc)], name: "idx_user_recent_sessions")
+  @@index([userId, isAnonymous, lastSeenAt(sort: Desc)], name: "idx_session_user_anonymous_recent")
   @@index([expiresAt], name: "idx_session_expires")
   
   @@map("session")

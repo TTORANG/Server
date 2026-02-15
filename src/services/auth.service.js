@@ -8,7 +8,7 @@ import {
   WithdrawUserError,
 } from "../errors/auth.error.js";
 import {
-  deleteRefreshToken,
+  deleteRefreshTokenBySession,
   deleteSession,
   findSessionByToken,
   withdrawUser,
@@ -18,7 +18,7 @@ import {
   updateSessionToken,
   updateUserProfileImage,
 } from "../repositories/auth.repository.js";
-import { findUserSession, upsertUserSession } from "../repositories/session.repository.js";
+import { createUserSession } from "../repositories/session.repository.js";
 import { v4 as uuidv4 } from "uuid";
 
 const secret = process.env.JWT_SECRET;
@@ -32,7 +32,15 @@ export const generateTokens = (payload) => {
       expiresIn: "1h",
     }
   );
-  const refreshToken = jwt.sign({ id: id.toString() }, secret, { expiresIn: "14d" });
+  const refreshToken = jwt.sign(
+    {
+      id: id.toString(),
+      sid: sessionId || null,
+      jti: uuidv4(),
+    },
+    secret,
+    { expiresIn: "14d" }
+  );
   return { accessToken, refreshToken, profileImageUrl };
 };
 
@@ -89,8 +97,7 @@ export const socialLoginVerification = async (profile, provider) => {
 export const handleSocialLoginSuccess = async (profile, provider) => {
   const user = await socialLoginVerification(profile, provider);
 
-  const existingSession = await findUserSession(user.id);
-  const sessionId = existingSession?.id || uuidv4();
+  const sessionId = uuidv4();
 
   const tokens = generateTokens({
     id: user.id,
@@ -99,20 +106,13 @@ export const handleSocialLoginSuccess = async (profile, provider) => {
     profileImageUrl: user.profileImageUrl || "",
   });
 
-  await upsertUserSession(user.id, tokens.refreshToken, sessionId);
+  await createUserSession(user.id, tokens.refreshToken, sessionId);
 
   return { user, tokens, sessionId };
 };
-export const logoutUser = async (userId) => {
-  try {
-    const updatedSession = await deleteRefreshToken(userId);
-    return { id: userId };
-  } catch (error) {
-    if (error.code === "P2025") {
-      return { id: userId };
-    }
-    throw error;
-  }
+export const logoutUser = async (userId, sessionId) => {
+  await deleteRefreshTokenBySession(userId, sessionId);
+  return { id: userId };
 };
 
 export const processWithdrawal = async (userId) => {
@@ -156,6 +156,11 @@ export const reissueToken = async (oldRefreshToken) => {
   // 일치하지 않으면 탈취된 토큰으로 간주하고 세션을 강제 종료(삭제)합니다.
   if (session.userId !== userId) {
     await deleteSession(session.id);
+    throw new RefreshTokenInvalidatedError();
+  }
+
+  // 신규 토큰(sid 포함)은 DB 세션 id와 반드시 일치해야 합니다.
+  if (typeof decoded.sid !== "undefined" && decoded.sid !== null && decoded.sid !== session.id) {
     throw new RefreshTokenInvalidatedError();
   }
 

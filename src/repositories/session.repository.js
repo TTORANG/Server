@@ -1,5 +1,5 @@
 import { prisma } from "../db.config.js";
-import { SessionNotFoundError, SessionAccessDeniedError } from "../errors/session.error.js";
+import { SessionNotFoundError } from "../errors/session.error.js";
 import { getUniqueNickname } from "../utils/nickname.util.js";
 
 // 익명 세션 및 임시 유저 생성
@@ -59,18 +59,6 @@ export const findSessionByIdWithUser = async (sessionId) => {
   });
 };
 
-// 유저의 로그인 세션 조회 (비익명)
-export const findUserSession = async (userId) => {
-  return await prisma.session.findUnique({
-    where: {
-      uq_session_user_anonymous: {
-        userId: userId,
-        isAnonymous: false,
-      },
-    },
-  });
-};
-
 // 데이터 병합 트랜잭션
 export const mergeDataByUserId = async (anonymousSessionId, targetUserId) => {
   return await prisma.$transaction(async (tx) => {
@@ -119,20 +107,10 @@ export const mergeDataByUserId = async (anonymousSessionId, targetUserId) => {
   });
 };
 
-// 소셜 로그인 성공 시 세션 업데이트 또는 생성 (보안 로직용)
-export const upsertUserSession = async (userId, refreshToken, sessionId) => {
-  return await prisma.session.upsert({
-    where: {
-      uq_session_user_anonymous: {
-        userId: userId,
-        isAnonymous: false,
-      },
-    },
-    update: {
-      refreshToken: refreshToken,
-      lastSeenAt: new Date(),
-    },
-    create: {
+// 비익명 사용자 세션 생성 (다중 세션 허용)
+export const createUserSession = async (userId, refreshToken, sessionId) => {
+  return await prisma.session.create({
+    data: {
       id: sessionId,
       userId: userId,
       refreshToken: refreshToken,
