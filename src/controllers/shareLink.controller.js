@@ -178,7 +178,7 @@ export const handleCreateShareLink = async (req, res, next) => {
  *                       timestampMs: 45000
  *                   video:
  *                     videoId: "456"
- *                     videoUrl: "https://..."
+ *                     hlsMasterUrl: "https://..."
  *                     thumbnailUrl: "https://..."
  *                   comments:
  *                     - commentId: "1"
