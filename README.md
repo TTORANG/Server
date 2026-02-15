@@ -111,7 +111,7 @@ PPTX/PDF 업로드
 1. 사용자 소셜 로그인 요청 (/auth/{provider}/login)
 2. OAuth Provider 리다이렉트 및 인증
 3. 콜백에서 사용자 upsert 및 세션 생성
-4. JWT Access Token (1시간) + Refresh Token (14일) 발급
+4. JWT Access Token (1시간) + Refresh Token (14일, sid/jti 포함) 발급
 5. isLogin 미들웨어에서 Bearer 토큰 검증 및 인증 처리
 ```
 
@@ -127,6 +127,8 @@ PPTX/PDF 업로드
 ### 보안 기능
 
 - **JWT Token**: Access Token (단기) + Refresh Token (장기) 전략
+- **다중 세션 지원**: 비익명 사용자는 디바이스별 동시 로그인 지원
+- **세션 단위 로그아웃**: 현재 AccessToken의 sessionId 세션만 무효화
 - **OAuth 2.0**: Google, Kakao, Naver 소셜 로그인
 - **CORS 설정**: 프론트엔드 도메인만 허용
 - **OIDC 검증**: Cloud Tasks 워커 엔드포인트 인증
@@ -170,7 +172,7 @@ PPTX/PDF 업로드
 - `GET /auth/google/login` - Google 소셜 로그인
 - `GET /auth/kakao/login` - Kakao 소셜 로그인
 - `GET /auth/naver/login` - Naver 소셜 로그인
-- `POST /auth/logout` - 로그아웃
+- `POST /auth/logout` - 현재 세션 로그아웃
 - `DELETE /users/:userId` - 회원 탈퇴
 
 ### 익명 세션
