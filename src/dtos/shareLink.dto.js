@@ -54,7 +54,7 @@ export const getShareLinkResponseDTO = (data) => {
       createdAt: shareLink.createdAt,
       publisherName,
     },
-    projectContent: {
+    presentationContent: {
       title: content.title,
       slides: content.slides,
       video: content.video || null,
