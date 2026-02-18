@@ -1,5 +1,7 @@
 import { scriptResponseDTO, scriptVersionResponseDTO } from "../dtos/script.dto.js";
 import {
+  processBulkEditProjectScripts,
+  processGetProjectScripts,
   processScriptGet,
   processScriptRestore,
   processScriptUpdate,
@@ -242,6 +244,135 @@ export const handleRestoreVersion = async (req, res, next) => {
       success: {
         message: "대본이 성공적으로 복원되었습니다.",
         ...scriptResponseDTO(result),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @swagger
+ * /presentations/{projectId}/scripts:
+ *   get:
+ *     summary: 프로젝트 전체 대본 조회
+ *     description: 프로젝트의 슬라이드 순서대로 현재 대본 목록을 조회합니다.
+ *     tags: [Script]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "123"
+ *         description: 대본을 가져올 프로젝트 ID
+ *     responses:
+ *       200:
+ *         description: 프로젝트 대본 조회 성공
+ *         content:
+ *           application/json:
+ *             example:
+ *               resultType: "SUCCESS"
+ *               error: null
+ *               success:
+ *                 message: "프로젝트 대본이 성공적으로 조회되었습니다."
+ *                 projectId: "123"
+ *                 scripts:
+ *                   - slideId: "1"
+ *                     scriptText: "첫 번째 슬라이드 대본"
+ *                   - slideId: "2"
+ *                     scriptText: ""
+ */
+export const handleGetProjectScripts = async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const userId = req.user.id;
+    const result = await processGetProjectScripts({ projectId, userId });
+
+    res.status(200).json({
+      resultType: "SUCCESS",
+      error: null,
+      success: {
+        message: "프로젝트 대본이 성공적으로 조회되었습니다.",
+        ...result,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @swagger
+ * /presentations/{projectId}/scripts/bulk-edit:
+ *   patch:
+ *     summary: 프로젝트 대본 일괄 수정
+ *     description: 프로젝트에 속한 여러 슬라이드의 대본을 한 번에 저장합니다.
+ *     tags: [Script]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "123"
+ *         description: 대본을 수정할 프로젝트 ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - scripts
+ *             properties:
+ *               scripts:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - slideId
+ *                     - scriptText
+ *                   properties:
+ *                     slideId:
+ *                       type: string
+ *                       example: "1"
+ *                     scriptText:
+ *                       type: string
+ *                       example: "수정된 대본입니다."
+ *     responses:
+ *       200:
+ *         description: 프로젝트 대본 일괄 수정 성공
+ *         content:
+ *           application/json:
+ *             example:
+ *               resultType: "SUCCESS"
+ *               error: null
+ *               success:
+ *                 message: "대본 일괄 수정이 완료되었습니다."
+ *                 projectId: "123"
+ *                 requestedSlideCount: 2
+ *                 updatedSlideCount: 1
+ *                 unchangedSlideCount: 1
+ *                 updatedSlideIds: ["1"]
+ */
+export const handleBulkEditProjectScripts = async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const userId = req.user.id;
+    const { scripts } = req.body;
+    const result = await processBulkEditProjectScripts({ projectId, userId, scripts });
+
+    res.status(200).json({
+      resultType: "SUCCESS",
+      error: null,
+      success: {
+        message: "대본 일괄 수정이 완료되었습니다.",
+        ...result,
       },
     });
   } catch (error) {

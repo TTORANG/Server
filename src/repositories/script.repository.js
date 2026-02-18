@@ -69,6 +69,35 @@ export const getScriptVersionList = async (slideId) => {
   });
 };
 
+// 프로젝트 슬라이드/대본 목록 조회 (일괄 수정용)
+export const getProjectSlidesWithScripts = async (projectId, userId) => {
+  return await prisma.project.findFirst({
+    where: {
+      id: BigInt(projectId),
+      userId: BigInt(userId),
+      isDeleted: false,
+    },
+    select: {
+      id: true,
+      slides: {
+        where: {
+          isDeleted: false,
+        },
+        select: {
+          id: true,
+          slideNum: true,
+          script: {
+            select: {
+              scriptText: true,
+            },
+          },
+        },
+        orderBy: [{ slideNum: "asc" }, { id: "asc" }],
+      },
+    },
+  });
+};
+
 // 대본 버전 복원
 export const postScriptVersion = async (slideId, versionNumber) => {
   return await prisma.$transaction(async (tx) => {
