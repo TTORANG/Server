@@ -203,7 +203,8 @@ PPTX/PDF 업로드
 
 ### 파일
 
-- `POST /files/upload` - PPTX/PDF 업로드 (변환 자동 시작)
+- `POST /files/upload-url` - PPTX/PDF 업로드용 Signed URL 발급
+- `POST /files/upload-complete` - 브라우저 업로드 완료 확정 (프로젝트 생성 + 변환 시작)
 - `GET /presentations/:projectId/status` - 변환 상태 폴링
 
 ### 영상
