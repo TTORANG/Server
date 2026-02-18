@@ -8,6 +8,10 @@ import {
   handleUpdateProjectName,
 } from "../controllers/project.controller.js";
 import {
+  handleBulkEditProjectScripts,
+  handleGetProjectScripts,
+} from "../controllers/script.controller.js";
+import {
   handleGetRecentComments,
   handleGetSlideAnalytics,
   handleGetSlideRetention,
@@ -21,6 +25,12 @@ router.post("/", isLogin, handleCreateProject);
 
 // 프로젝트 목록 조회/검색
 router.get("/", isLogin, handleGetProjectList);
+
+// 프로젝트 전체 대본 조회
+router.get("/:projectId/scripts", isLogin, handleGetProjectScripts);
+
+// 프로젝트 대본 일괄 수정
+router.patch("/:projectId/scripts/bulk-edit", isLogin, handleBulkEditProjectScripts);
 
 // 프로젝트 이름 업데이트
 router.patch("/:projectId", isLogin, handleUpdateProjectName);
