@@ -20,6 +20,10 @@ import {
   NoSlidesGeneratedError,
 } from "../../errors/conversion.error.js";
 import pLimit from "p-limit";
+import {
+  applyNotesToProjectSlides,
+  extractSlideNotesFromPptxPath,
+} from "./pptxNotes.service.js";
 
 /**
  * PPTX → 이미지 변환 서비스
@@ -152,6 +156,31 @@ export async function pptxToImages(jobOrId) {
       fileType: "pptx",
       pageCount: files.length,
     });
+
+    const notesSummary = {
+      notesDetected: 0,
+      scriptsApplied: 0,
+      scriptsSkippedExisting: 0,
+      notesUnmatched: 0,
+    };
+
+    try {
+      const notesMap = await extractSlideNotesFromPptxPath(input);
+      notesSummary.notesDetected = notesMap.size;
+
+      const applied = await applyNotesToProjectSlides({
+        projectId,
+        notesMap,
+      });
+
+      notesSummary.scriptsApplied = applied.appliedCount;
+      notesSummary.scriptsSkippedExisting = applied.skippedExistingCount;
+      notesSummary.notesUnmatched = applied.unmatchedCount;
+    } catch (error) {
+      console.warn(`[PPTX Notes] failed for project ${projectId}:`, error.message);
+    }
+
+    console.log(`[PPTX Notes] project ${projectId} summary:`, notesSummary);
     return { ok: true, slideCount: files.length };
   } finally {
     // 임시 파일 정리
