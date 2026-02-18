@@ -16,7 +16,7 @@ function getBucket() {
   return storage.bucket(getBucketName());
 }
 
-function getSignedUrlExpiresSec() {
+export function getSignedUrlExpiresSec() {
   const raw = Number.parseInt(process.env.GCS_UPLOAD_SIGNED_URL_EXPIRES_SEC ?? "", 10);
   if (Number.isInteger(raw) && raw > 0) {
     return raw;

@@ -5,10 +5,13 @@ import { extFromContentType } from "../utils/fileExt.util.js";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { startConversionPipeline } from "./conversionJob.service.js";
-import { createSignedUploadUrl, getObjectMetadata } from "./gcs.service.js";
+import {
+  createSignedUploadUrl,
+  getObjectMetadata,
+  getSignedUrlExpiresSec,
+} from "./gcs.service.js";
 
 const UPLOAD_PURPOSE = "presentation_file";
-const DEFAULT_SIGNED_URL_EXPIRES_SEC = 900;
 
 function getUploadTokenSecret() {
   const secret = process.env.JWT_SECRET;
@@ -16,14 +19,6 @@ function getUploadTokenSecret() {
     throw new InvalidUploadError(null, "JWT_SECRET이 설정되어 있지 않습니다.");
   }
   return secret;
-}
-
-function getSignedUrlExpiresSec() {
-  const raw = Number.parseInt(process.env.GCS_UPLOAD_SIGNED_URL_EXPIRES_SEC ?? "", 10);
-  if (Number.isInteger(raw) && raw > 0) {
-    return raw;
-  }
-  return DEFAULT_SIGNED_URL_EXPIRES_SEC;
 }
 
 function normalizeSize(size) {
@@ -43,18 +38,19 @@ function normalizeContentType(contentType) {
 }
 
 function validatePresentationFile({ contentType, size }) {
-  if (!contentType || !ALLOWED_CONTENT_TYPES.has(contentType)) {
+  const normalizedContentType = normalizeContentType(contentType);
+  if (!normalizedContentType || !ALLOWED_CONTENT_TYPES.has(normalizedContentType)) {
     throw new InvalidUploadError({ contentType }, "지원하지 않는 파일 형식입니다.");
   }
 
   const normalizedSize = normalizeSize(size);
-  const ext = extFromContentType(contentType);
+  const ext = extFromContentType(normalizedContentType);
 
   if (!ext || !["pptx", "pdf"].includes(ext)) {
     throw new InvalidUploadError({ contentType }, "지원하지 않는 파일 형식입니다.");
   }
 
-  return { size: normalizedSize, ext };
+  return { size: normalizedSize, ext, contentType: normalizedContentType };
 }
 
 function decodeUploadToken(uploadToken) {
@@ -86,7 +82,11 @@ export async function createPresentationUploadUrl({
     throw new InvalidUploadError({ purpose }, "지원하지 않는 업로드 목적입니다.");
   }
 
-  const { size: validatedSize, ext } = validatePresentationFile({ contentType, size });
+  const {
+    size: validatedSize,
+    ext,
+    contentType: validatedContentType,
+  } = validatePresentationFile({ contentType, size });
 
   if (typeof originalFilename !== "string" || originalFilename.trim().length === 0) {
     throw new InvalidUploadError(
@@ -101,7 +101,7 @@ export async function createPresentationUploadUrl({
 
   const signed = await createSignedUploadUrl({
     objectKey,
-    contentType,
+    contentType: validatedContentType,
   });
 
   const uploadToken = jwt.sign(
@@ -109,7 +109,7 @@ export async function createPresentationUploadUrl({
       purpose: UPLOAD_PURPOSE,
       userId: userId.toString(),
       objectKey,
-      contentType,
+      contentType: validatedContentType,
       size: validatedSize,
       originalFilename: originalFilename.trim(),
       title: typeof title === "string" ? title : null,
