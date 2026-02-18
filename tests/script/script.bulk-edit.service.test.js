@@ -23,7 +23,6 @@ const { ProjectNotFoundError } = await import("../../src/errors/project.error.js
 const {
   ScriptBulkEditDuplicateSlideError,
   ScriptBulkEditPayloadError,
-  ScriptBulkEditSlideNotFoundError,
 } = await import("../../src/errors/script.error.js");
 
 describe("script.bulk-edit.service", () => {
@@ -177,7 +176,7 @@ describe("script.bulk-edit.service", () => {
     ).rejects.toBeInstanceOf(ProjectNotFoundError);
   });
 
-  test("throws slide not found error when payload has slide outside project", async () => {
+  test("throws slide not found error with all invalid slideIds", async () => {
     mockGetProjectSlidesWithScripts.mockResolvedValue({
       id: 11n,
       slides: [{ id: 201n, slideNum: 1n, script: { scriptText: "x" } }],
@@ -187,8 +186,19 @@ describe("script.bulk-edit.service", () => {
       processBulkEditProjectScripts({
         projectId: "11",
         userId: 5n,
-        scripts: [{ slideId: "999", scriptText: "a" }],
-      })
-    ).rejects.toBeInstanceOf(ScriptBulkEditSlideNotFoundError);
+        scripts: [
+          { slideId: "201", scriptText: "a" },
+          { slideId: "999", scriptText: "b" },
+          { slideId: "998", scriptText: "c" },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      data: {
+        projectId: "11",
+        slideIds: ["999", "998"],
+      },
+    });
+    expect(mockGetScriptText).not.toHaveBeenCalled();
+    expect(mockUpdateScriptText).not.toHaveBeenCalled();
   });
 });

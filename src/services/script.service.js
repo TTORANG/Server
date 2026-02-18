@@ -142,12 +142,14 @@ export const processBulkEditProjectScripts = async ({ projectId, userId, scripts
   }
 
   const projectSlideIds = new Set((project.slides || []).map((slide) => slide.id.toString()));
-  const invalidSlide = normalizedScripts.find((item) => !projectSlideIds.has(item.slideId));
+  const invalidSlideIds = normalizedScripts
+    .filter((item) => !projectSlideIds.has(item.slideId))
+    .map((item) => item.slideId);
 
-  if (invalidSlide) {
+  if (invalidSlideIds.length > 0) {
     throw new ScriptBulkEditSlideNotFoundError({
       projectId,
-      slideId: invalidSlide.slideId,
+      slideIds: invalidSlideIds,
     });
   }
 
@@ -155,12 +157,15 @@ export const processBulkEditProjectScripts = async ({ projectId, userId, scripts
   let unchangedSlideCount = 0;
   const updatedSlideIds = [];
 
-  for (const item of normalizedScripts) {
-    const { isUpdated } = await processScriptUpdate(item.slideId, item.scriptText);
+  const updateResults = await Promise.all(
+    normalizedScripts.map((item) => processScriptUpdate(item.slideId, item.scriptText)),
+  );
 
+  for (let i = 0; i < updateResults.length; i++) {
+    const { isUpdated } = updateResults[i];
     if (isUpdated) {
       updatedSlideCount += 1;
-      updatedSlideIds.push(item.slideId);
+      updatedSlideIds.push(normalizedScripts[i].slideId);
       continue;
     }
 
