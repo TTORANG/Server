@@ -1,12 +1,16 @@
 import { jest } from "@jest/globals";
 
-const mockUploadPresentationAndCreateProject = jest.fn();
+const mockCreatePresentationUploadUrl = jest.fn();
+const mockCompletePresentationUpload = jest.fn();
 
 jest.unstable_mockModule("../../src/services/files.service.js", () => ({
-  uploadPresentationAndCreateProject: mockUploadPresentationAndCreateProject,
+  createPresentationUploadUrl: mockCreatePresentationUploadUrl,
+  completePresentationUpload: mockCompletePresentationUpload,
 }));
 
-const { postUploadPresentationFile } = await import("../../src/controllers/files.controller.js");
+const { postCreateUploadUrl, postCompleteUpload } = await import(
+  "../../src/controllers/files.controller.js"
+);
 
 function createRes() {
   return {
@@ -15,28 +19,89 @@ function createRes() {
   };
 }
 
-describe("files upload tests", () => {
+describe("files.controller", () => {
   beforeEach(() => {
-    mockUploadPresentationAndCreateProject.mockReset();
+    mockCreatePresentationUploadUrl.mockReset();
+    mockCompletePresentationUpload.mockReset();
   });
 
-  test("postUploadPresentationFile returns 201 with projectId on success", async () => {
-    mockUploadPresentationAndCreateProject.mockResolvedValue({ projectId: "123" });
+  test("postCreateUploadUrl returns 201 with signed upload payload", async () => {
+    const signed = {
+      objectKey: "dev/upload/temp/file.pdf",
+      uploadUrl: "https://storage.googleapis.com/...",
+      expiresAt: "2026-02-18T00:00:00.000Z",
+      uploadToken: "upload-token",
+    };
+    mockCreatePresentationUploadUrl.mockResolvedValue(signed);
 
     const req = {
-      body: { title: "demo" },
       user: { id: 7n },
-      file: { originalname: "deck.pdf" },
+      body: {
+        purpose: "presentation_file",
+        contentType: "application/pdf",
+        size: 1024,
+        originalFilename: "deck.pdf",
+        title: "demo",
+      },
     };
     const res = createRes();
     const next = jest.fn();
 
-    await postUploadPresentationFile(req, res, next);
+    await postCreateUploadUrl(req, res, next);
 
-    expect(mockUploadPresentationAndCreateProject).toHaveBeenCalledWith({
+    expect(mockCreatePresentationUploadUrl).toHaveBeenCalledWith({
       userId: 7n,
+      purpose: "presentation_file",
+      contentType: "application/pdf",
+      size: 1024,
+      originalFilename: "deck.pdf",
       title: "demo",
-      file: { originalname: "deck.pdf" },
+    });
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith({
+      resultType: "SUCCESS",
+      error: null,
+      success: signed,
+    });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test("postCreateUploadUrl forwards service errors (including required-field failure)", async () => {
+    const error = new Error("missing required field");
+    mockCreatePresentationUploadUrl.mockRejectedValue(error);
+
+    const req = {
+      user: { id: 7n },
+      body: {},
+    };
+    const res = createRes();
+    const next = jest.fn();
+
+    await postCreateUploadUrl(req, res, next);
+
+    expect(next).toHaveBeenCalledWith(error);
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  test("postCompleteUpload returns 201 with projectId", async () => {
+    mockCompletePresentationUpload.mockResolvedValue({ projectId: "123" });
+
+    const req = {
+      user: { id: 7n },
+      body: {
+        objectKey: "dev/upload/temp/file.pdf",
+        uploadToken: "upload-token",
+      },
+    };
+    const res = createRes();
+    const next = jest.fn();
+
+    await postCompleteUpload(req, res, next);
+
+    expect(mockCompletePresentationUpload).toHaveBeenCalledWith({
+      userId: 7n,
+      objectKey: "dev/upload/temp/file.pdf",
+      uploadToken: "upload-token",
     });
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith({
@@ -47,52 +112,20 @@ describe("files upload tests", () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  test("postUploadPresentationFile forwards error to next on service failure", async () => {
-    const error = new Error("upload failed");
-    mockUploadPresentationAndCreateProject.mockRejectedValue(error);
+  test("postCompleteUpload forwards service errors (including required-field failure)", async () => {
+    const error = new Error("missing required field");
+    mockCompletePresentationUpload.mockRejectedValue(error);
 
     const req = {
-      body: { title: "demo" },
       user: { id: 7n },
-      file: { originalname: "deck.pdf" },
+      body: {},
     };
     const res = createRes();
     const next = jest.fn();
 
-    await postUploadPresentationFile(req, res, next);
+    await postCompleteUpload(req, res, next);
 
     expect(next).toHaveBeenCalledWith(error);
     expect(res.status).not.toHaveBeenCalled();
-    expect(res.json).not.toHaveBeenCalled();
-  });
-
-  test("postUploadPresentationFile forwards error when req.body is missing", async () => {
-    const req = {
-      user: { id: 7n },
-      file: { originalname: "deck.pdf" },
-    };
-    const res = createRes();
-    const next = jest.fn();
-
-    await postUploadPresentationFile(req, res, next);
-
-    expect(mockUploadPresentationAndCreateProject).not.toHaveBeenCalled();
-    expect(next).toHaveBeenCalledTimes(1);
-    expect(next.mock.calls[0][0]).toBeInstanceOf(Error);
-  });
-
-  test("postUploadPresentationFile forwards error when req.user is missing", async () => {
-    const req = {
-      body: { title: "demo" },
-      file: { originalname: "deck.pdf" },
-    };
-    const res = createRes();
-    const next = jest.fn();
-
-    await postUploadPresentationFile(req, res, next);
-
-    expect(mockUploadPresentationAndCreateProject).not.toHaveBeenCalled();
-    expect(next).toHaveBeenCalledTimes(1);
-    expect(next.mock.calls[0][0]).toBeInstanceOf(Error);
   });
 });
