@@ -1,11 +1,15 @@
 import { jest } from "@jest/globals";
 
+const mockProcessBulkEditProjectScripts = jest.fn();
+const mockProcessGetProjectScripts = jest.fn();
 const mockProcessScriptGet = jest.fn();
 const mockProcessScriptRestore = jest.fn();
 const mockProcessScriptUpdate = jest.fn();
 const mockProcessScriptVersionGet = jest.fn();
 
 jest.unstable_mockModule("../../src/services/script.service.js", () => ({
+  processBulkEditProjectScripts: mockProcessBulkEditProjectScripts,
+  processGetProjectScripts: mockProcessGetProjectScripts,
   processScriptGet: mockProcessScriptGet,
   processScriptRestore: mockProcessScriptRestore,
   processScriptUpdate: mockProcessScriptUpdate,
@@ -13,15 +17,16 @@ jest.unstable_mockModule("../../src/services/script.service.js", () => ({
 }));
 
 const {
+  handleBulkEditProjectScripts,
+  handleGetProjectScripts,
   handleGetScript,
   handleGetScriptVersion,
   handleRestoreVersion,
   handleUploadScript,
 } = await import("../../src/controllers/script.controller.js");
 
-const { scriptResponseDTO, scriptVersionResponseDTO } = await import(
-  "../../src/dtos/script.dto.js"
-);
+const { scriptResponseDTO, scriptVersionResponseDTO } =
+  await import("../../src/dtos/script.dto.js");
 
 function createRes() {
   return {
@@ -32,6 +37,8 @@ function createRes() {
 
 describe("script.controller", () => {
   beforeEach(() => {
+    mockProcessBulkEditProjectScripts.mockReset();
+    mockProcessGetProjectScripts.mockReset();
     mockProcessScriptGet.mockReset();
     mockProcessScriptRestore.mockReset();
     mockProcessScriptUpdate.mockReset();
@@ -97,9 +104,7 @@ describe("script.controller", () => {
   });
 
   test("handleGetScriptVersion returns dto list", async () => {
-    const versions = [
-      { versionNumber: 1, scriptText: "v1", charCount: 2, createdAt: new Date() },
-    ];
+    const versions = [{ versionNumber: 1, scriptText: "v1", charCount: 2, createdAt: new Date() }];
     mockProcessScriptVersionGet.mockResolvedValue(versions);
 
     const req = { params: { slideId: "3" } };
@@ -144,5 +149,105 @@ describe("script.controller", () => {
         ...scriptResponseDTO(script),
       },
     });
+  });
+
+  test("handleGetProjectScripts returns all scripts", async () => {
+    const projectScripts = {
+      projectId: "12",
+      scripts: [
+        { slideId: "11", scriptText: "첫번째" },
+        { slideId: "12", scriptText: "" },
+      ],
+    };
+
+    mockProcessGetProjectScripts.mockResolvedValue(projectScripts);
+
+    const req = {
+      params: { projectId: "12" },
+      user: { id: 99n },
+    };
+    const res = createRes();
+    const next = jest.fn();
+
+    await handleGetProjectScripts(req, res, next);
+
+    expect(mockProcessGetProjectScripts).toHaveBeenCalledWith({
+      projectId: "12",
+      userId: 99n,
+    });
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      resultType: "SUCCESS",
+      error: null,
+      success: {
+        message: "프로젝트 대본이 성공적으로 조회되었습니다.",
+        ...projectScripts,
+      },
+    });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test("handleBulkEditProjectScripts returns edit summary", async () => {
+    const summary = {
+      projectId: "12",
+      requestedSlideCount: 2,
+      updatedSlideCount: 1,
+      unchangedSlideCount: 1,
+      updatedSlideIds: ["11"],
+    };
+
+    mockProcessBulkEditProjectScripts.mockResolvedValue(summary);
+
+    const req = {
+      params: { projectId: "12" },
+      user: { id: 99n },
+      body: {
+        scripts: [
+          { slideId: "11", scriptText: "수정" },
+          { slideId: "12", scriptText: "" },
+        ],
+      },
+    };
+    const res = createRes();
+    const next = jest.fn();
+
+    await handleBulkEditProjectScripts(req, res, next);
+
+    expect(mockProcessBulkEditProjectScripts).toHaveBeenCalledWith({
+      projectId: "12",
+      userId: 99n,
+      scripts: [
+        { slideId: "11", scriptText: "수정" },
+        { slideId: "12", scriptText: "" },
+      ],
+    });
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      resultType: "SUCCESS",
+      error: null,
+      success: {
+        message: "대본 일괄 수정이 완료되었습니다.",
+        ...summary,
+      },
+    });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test("handleBulkEditProjectScripts forwards service error", async () => {
+    const error = new Error("bulk edit failed");
+    mockProcessBulkEditProjectScripts.mockRejectedValue(error);
+
+    const req = {
+      params: { projectId: "12" },
+      user: { id: 99n },
+      body: { scripts: [] },
+    };
+    const res = createRes();
+    const next = jest.fn();
+
+    await handleBulkEditProjectScripts(req, res, next);
+
+    expect(next).toHaveBeenCalledWith(error);
+    expect(res.status).not.toHaveBeenCalled();
   });
 });
