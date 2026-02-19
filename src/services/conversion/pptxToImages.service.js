@@ -24,6 +24,11 @@ import {
   applyNotesToProjectSlides,
   extractSlideNotesFromPptxPath,
 } from "./pptxNotes.service.js";
+import {
+  chooseSlideImageUploadSource,
+  getConversionUploadConcurrency,
+  renderPdfToPngPages,
+} from "./slideImageConversion.util.js";
 
 /**
  * PPTX → 이미지 변환 서비스
@@ -36,6 +41,7 @@ import {
 export async function pptxToImages(jobOrId) {
   const job = await getJobWithUploadedFile(jobOrId);
   const uf = job.uploadedFile;
+  const jobId = job.id.toString();
 
   // PPTX 파일만 처리 가능
   if (uf.fileExt !== "pptx") {
@@ -69,7 +75,13 @@ export async function pptxToImages(jobOrId) {
       "--outdir",
       workDir,
       input,
-    ]);
+    ], {
+      logMeta: {
+        jobId,
+        jobType: "pptx_to_images",
+        stage: "pptx_to_images.pptx_to_pdf",
+      },
+    });
 
     // 생성된 PDF 경로 정리
     const pdfFiles = (await listFiles(workDir)).filter((f) => f.toLowerCase().endsWith(".pdf"));
@@ -86,21 +98,15 @@ export async function pptxToImages(jobOrId) {
     // PDF → PNG (슬라이드 이미지 생성)
     const prefix = path.join(outDir, "slide");
 
-    const PDFTOPPM =
-      process.platform === "win32"
-        ? process.env.PDFTOPPM_PATH // 로컬
-        : "pdftoppm"; // 배포
-
-    await runCmd(PDFTOPPM, ["-png", "-r", "150", pdfPath, prefix]);
-
-    // 생성된 슬라이드 이미지 정렬
-    const files = (await listFiles(outDir))
-      .filter((p) => p.endsWith(".png"))
-      .sort((a, b) => {
-        const na = Number(a.match(/-(\d+)\.png$/)?.[1] || 0);
-        const nb = Number(b.match(/-(\d+)\.png$/)?.[1] || 0);
-        return na - nb;
-      });
+    const files = await renderPdfToPngPages({
+      inputPdf: pdfPath,
+      outDir,
+      prefix,
+      dpi: 150,
+      jobId,
+      jobType: "pptx_to_images",
+      stageBase: "pptx_to_images.pdf_to_images",
+    });
 
     if (files.length === 0) {
       throw new NoSlidesGeneratedError({ jobId: job.id });
@@ -108,7 +114,7 @@ export async function pptxToImages(jobOrId) {
 
     const projectId = uf.projectId;
     const env = envPrefix();
-    const limit = pLimit(4);
+    const limit = pLimit(getConversionUploadConcurrency());
 
     // 슬라이드별 DB 생성 + GCS 업로드
     await Promise.all(
@@ -123,21 +129,28 @@ export async function pptxToImages(jobOrId) {
             title: null,
           });
 
-          const meta = await maybeImageMeta(file);
-          const objectKey = `${env}/project/${projectId}/slides/${slideNum}/image/${uuid()}.png`;
+          const selected = await chooseSlideImageUploadSource({
+            pngPath: file,
+            workDir: outDir,
+            slideNum,
+            jobId,
+            jobType: "pptx_to_images",
+          });
+          const meta = await maybeImageMeta(selected.srcPath);
+          const objectKey = `${env}/project/${projectId}/slides/${slideNum}/image/${uuid()}.${selected.extension}`;
 
           const uploaded = await uploadToGCS({
             bucketName: uf.storageBucket,
-            srcPath: file,
+            srcPath: selected.srcPath,
             objectKey,
-            contentType: "image/png",
+            contentType: selected.contentType,
           });
 
           await createSlideAsset({
             slideId: slide.id,
             conversionJobId: job.id,
             assetType: "image",
-            format: "png",
+            format: selected.format,
             width: meta.width,
             height: meta.height,
             sizeBytes: meta.sizeBytes,
@@ -145,6 +158,12 @@ export async function pptxToImages(jobOrId) {
             storageKey: uploaded.storageKey,
             url: uploaded.url,
           });
+
+          await Promise.all(
+            selected.cleanupPaths.map((cleanupPath) =>
+              fs.rm(cleanupPath, { force: true }).catch(() => {})
+            )
+          );
         })
       )
     );

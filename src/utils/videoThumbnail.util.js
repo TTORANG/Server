@@ -5,14 +5,20 @@ import { THUMBNAIL_HEIGHT, THUMBNAIL_WIDTH } from "../constants/videos.js";
 
 const FFMPEG = FFMPEG_PATH;
 
-export async function extractVideoThumbnail({ inputPath, videoId, atSeconds = 3 }) {
+export async function extractVideoThumbnail({
+  inputPath,
+  videoId,
+  atSeconds = 3,
+  jobId,
+  jobType = "video_transcode",
+}) {
   const tmpOut = tmpPath(`video-thumb-${videoId}.png`);
 
   await runCmd(FFMPEG, [
-    "-i",
-    inputPath,
     "-ss",
     String(atSeconds),
+    "-i",
+    inputPath,
     "-vframes",
     "1",
     "-vf",
@@ -20,7 +26,13 @@ export async function extractVideoThumbnail({ inputPath, videoId, atSeconds = 3 
     "-f",
     "image2",
     tmpOut,
-  ]);
+  ], {
+    logMeta: {
+      jobId: jobId ? String(jobId) : undefined,
+      jobType,
+      stage: "video_transcode.extract_thumbnail",
+    },
+  });
 
   const env = envPrefix();
   const objectKey = `${env}/video/${videoId}/thumbnail/${uuid()}.png`;

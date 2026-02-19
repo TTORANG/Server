@@ -2,11 +2,14 @@ import fs from "fs/promises";
 import path from "path";
 import JSZip from "jszip";
 import { XMLParser } from "fast-xml-parser";
+import pLimit from "p-limit";
 import { prisma } from "../../db.config.js";
 import { updateScriptText } from "../../repositories/script.repository.js";
+import { parsePositiveInt } from "../../utils/conversion.util.js";
 
 const NOTES_RELATIONSHIP_SUFFIX = "/relationships/notesSlide";
 const CHARS_PER_MINUTE = 300;
+const DEFAULT_NOTES_UPDATE_CONCURRENCY = 8;
 
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
@@ -165,6 +168,9 @@ const estimateDurationSeconds = (charCount) => {
   return Math.ceil((charCount / CHARS_PER_MINUTE) * 60);
 };
 
+const getNotesUpdateConcurrency = () =>
+  parsePositiveInt(process.env.CONVERSION_UPLOAD_CONCURRENCY, DEFAULT_NOTES_UPDATE_CONCURRENCY);
+
 export async function extractSlideNotesFromPptxPath(pptxPath) {
   const buffer = await fs.readFile(pptxPath);
   const zip = await JSZip.loadAsync(buffer);
@@ -240,9 +246,9 @@ export async function applyNotesToProjectSlides({ projectId, notesMap }) {
     }
   }
 
-  let appliedCount = 0;
   let skippedExistingCount = 0;
   let unmatchedCount = 0;
+  const updates = [];
 
   for (const [rawSlideNum, rawText] of map.entries()) {
     const slideNum = Number(rawSlideNum);
@@ -266,13 +272,20 @@ export async function applyNotesToProjectSlides({ projectId, notesMap }) {
 
     const charCount = scriptText.length;
     const duration = estimateDurationSeconds(charCount);
-
-    await updateScriptText(slide.id, scriptText, charCount, duration);
-    appliedCount += 1;
+    updates.push({ slideId: slide.id, scriptText, charCount, duration });
   }
 
+  const limit = pLimit(getNotesUpdateConcurrency());
+  await Promise.all(
+    updates.map((update) =>
+      limit(() =>
+        updateScriptText(update.slideId, update.scriptText, update.charCount, update.duration)
+      )
+    )
+  );
+
   return {
-    appliedCount,
+    appliedCount: updates.length,
     skippedExistingCount,
     unmatchedCount,
   };

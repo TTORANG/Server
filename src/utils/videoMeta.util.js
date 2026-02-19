@@ -3,7 +3,7 @@ import { FFPROBE_PATH } from "./ffmpeg.util.js";
 
 const FFPROBE = FFPROBE_PATH;
 
-export async function probeVideoMeta(inputPath) {
+export async function probeVideoMeta(inputPath, opts = {}) {
   const result = await runCmd(FFPROBE, [
     "-v",
     "error",
@@ -16,7 +16,7 @@ export async function probeVideoMeta(inputPath) {
     "-of",
     "json",
     inputPath,
-  ]);
+  ], opts);
 
   if (!result.stdout) {
     throw new Error("FFPROBE_RETURNED_EMPTY_STDOUT");
