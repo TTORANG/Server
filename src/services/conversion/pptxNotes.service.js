@@ -5,6 +5,7 @@ import { XMLParser } from "fast-xml-parser";
 import pLimit from "p-limit";
 import { prisma } from "../../db.config.js";
 import { updateScriptText } from "../../repositories/script.repository.js";
+import { parsePositiveInt } from "../../utils/conversion.util.js";
 
 const NOTES_RELATIONSHIP_SUFFIX = "/relationships/notesSlide";
 const CHARS_PER_MINUTE = 300;
@@ -167,13 +168,8 @@ const estimateDurationSeconds = (charCount) => {
   return Math.ceil((charCount / CHARS_PER_MINUTE) * 60);
 };
 
-const getNotesUpdateConcurrency = () => {
-  const parsed = Number(process.env.CONVERSION_UPLOAD_CONCURRENCY);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    return DEFAULT_NOTES_UPDATE_CONCURRENCY;
-  }
-  return parsed;
-};
+const getNotesUpdateConcurrency = () =>
+  parsePositiveInt(process.env.CONVERSION_UPLOAD_CONCURRENCY, DEFAULT_NOTES_UPDATE_CONCURRENCY);
 
 export async function extractSlideNotesFromPptxPath(pptxPath) {
   const buffer = await fs.readFile(pptxPath);

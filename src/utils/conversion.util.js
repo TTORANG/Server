@@ -9,7 +9,7 @@ import { prisma } from "../db.config.js";
 const storage = new Storage();
 const DEFAULT_NON_RESUMABLE_MAX_BYTES = 8 * 1024 * 1024;
 
-const parsePositiveInt = (value, fallback) => {
+export const parsePositiveInt = (value, fallback) => {
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
   return parsed;

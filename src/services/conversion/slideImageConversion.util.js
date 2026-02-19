@@ -3,7 +3,7 @@ import { readFileSync } from "fs";
 import os from "os";
 import path from "path";
 import pLimit from "p-limit";
-import { listFiles, runCmd } from "../../utils/conversion.util.js";
+import { listFiles, parsePositiveInt, runCmd } from "../../utils/conversion.util.js";
 
 const DEFAULT_DPI = 150;
 const DEFAULT_PDF_RENDER_BACKEND = "auto";
@@ -49,12 +49,6 @@ const getAvailableCpuCount = () => {
 };
 
 const DEFAULT_RENDER_WORKERS = Math.max(1, Math.min(8, getAvailableCpuCount()));
-
-const toPositiveInt = (value, fallback) => {
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
-  return parsed;
-};
 
 const toBoundedNumber = (value, fallback, { min = Number.NEGATIVE_INFINITY, max = Number.POSITIVE_INFINITY } = {}) => {
   const parsed = Number(value);
@@ -155,10 +149,10 @@ const getSharp = async () => {
 };
 
 export const getConversionRenderWorkers = () =>
-  toPositiveInt(process.env.CONVERSION_RENDER_WORKERS, DEFAULT_RENDER_WORKERS);
+  parsePositiveInt(process.env.CONVERSION_RENDER_WORKERS, DEFAULT_RENDER_WORKERS);
 
 export const getConversionUploadConcurrency = () =>
-  toPositiveInt(process.env.CONVERSION_UPLOAD_CONCURRENCY, DEFAULT_UPLOAD_CONCURRENCY);
+  parsePositiveInt(process.env.CONVERSION_UPLOAD_CONCURRENCY, DEFAULT_UPLOAD_CONCURRENCY);
 
 export const getSlideImagePolicy = () =>
   (process.env.SLIDE_IMAGE_POLICY || DEFAULT_SLIDE_IMAGE_POLICY).trim().toLowerCase();
@@ -167,7 +161,7 @@ export const getSlideJpegQuality = () =>
   toBoundedNumber(process.env.SLIDE_JPEG_QUALITY, DEFAULT_SLIDE_JPEG_QUALITY, { min: 1, max: 100 });
 
 export const getSlideJpegMinPngBytes = () =>
-  toPositiveInt(process.env.SLIDE_JPEG_MIN_PNG_BYTES, DEFAULT_SLIDE_JPEG_MIN_PNG_BYTES);
+  parsePositiveInt(process.env.SLIDE_JPEG_MIN_PNG_BYTES, DEFAULT_SLIDE_JPEG_MIN_PNG_BYTES);
 
 export const getSlideJpegMinSavingRatio = () =>
   toBoundedNumber(process.env.SLIDE_JPEG_MIN_SAVING_RATIO, DEFAULT_SLIDE_JPEG_MIN_SAVING_RATIO, {
@@ -192,10 +186,10 @@ export const shouldUseNearLosslessJpeg = ({
 };
 
 export const splitPageRanges = (pageCount, workers) => {
-  const safePageCount = toPositiveInt(pageCount, 0);
+  const safePageCount = parsePositiveInt(pageCount, 0);
   if (safePageCount <= 0) return [];
 
-  const safeWorkers = Math.max(1, Math.min(toPositiveInt(workers, 1), safePageCount));
+  const safeWorkers = Math.max(1, Math.min(parsePositiveInt(workers, 1), safePageCount));
   const base = Math.floor(safePageCount / safeWorkers);
   const remainder = safePageCount % safeWorkers;
 

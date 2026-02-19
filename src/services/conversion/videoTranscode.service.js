@@ -18,6 +18,7 @@ import {
   uuid,
   envPrefix,
   listFiles,
+  parsePositiveInt,
 } from "../../utils/conversion.util.js";
 import pLimit from "p-limit";
 import { probeVideoMeta } from "../../utils/videoMeta.util.js";
@@ -48,17 +49,14 @@ const FFMPEG = FFMPEG_PATH;
 const DEFAULT_CHUNK_DOWNLOAD_CONCURRENCY = 8;
 const DEFAULT_HLS_UPLOAD_CONCURRENCY = 12;
 
-const toPositiveInt = (value, fallback) => {
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
-  return parsed;
-};
-
 const getChunkDownloadConcurrency = () =>
-  toPositiveInt(process.env.VIDEO_CHUNK_DOWNLOAD_CONCURRENCY, DEFAULT_CHUNK_DOWNLOAD_CONCURRENCY);
+  parsePositiveInt(
+    process.env.VIDEO_CHUNK_DOWNLOAD_CONCURRENCY,
+    DEFAULT_CHUNK_DOWNLOAD_CONCURRENCY
+  );
 
 const getHlsUploadConcurrency = () =>
-  toPositiveInt(process.env.VIDEO_HLS_UPLOAD_CONCURRENCY, DEFAULT_HLS_UPLOAD_CONCURRENCY);
+  parsePositiveInt(process.env.VIDEO_HLS_UPLOAD_CONCURRENCY, DEFAULT_HLS_UPLOAD_CONCURRENCY);
 
 export const videoTranscode = async (jobOrId) => {
   const jobId = typeof jobOrId === "object" ? jobOrId.id : jobOrId;
