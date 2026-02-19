@@ -38,7 +38,7 @@
 ### 🎥 영상 녹화 & 스트리밍
 
 - **청크 업로드**: WebM/MP4 영상 청크 단위 업로드
-- **HLS 트랜스코딩**: FFmpeg 기반 720p + 1080p 자동 변환
+- **HLS 트랜스코딩**: FFmpeg 기반 720p 다운스케일 변환(H.264/AAC, TS 세그먼트)
 - **슬라이드 동기화**: 영상-슬라이드 타임라인 매핑
 
 ### 📈 분석 대시보드
@@ -87,12 +87,12 @@ PPTX/PDF 업로드
 
 영상 청크 업로드 → 녹화 완료
   └─> [Job] video_transcode
-        ├── GCS에서 청크 다운로드 (동시성: 5)
-        ├── FFmpeg concat 병합
+        ├── GCS에서 청크 다운로드 (기본 동시성: 8)
+        ├── FFmpeg concat 병합(copy 우선, 실패 시 폴백)
         ├── 메타데이터 추출 (길이, 해상도, fps, 코덱)
         ├── 썸네일 추출
         ├── 슬라이드별 재생 시간 계산
-        ├── FFmpeg HLS 트랜스코딩 (720p + 1080p)
+        ├── FFmpeg HLS 트랜스코딩 (720p 다운스케일, 1회 인코딩)
         └── HLS 세그먼트 GCS 업로드
 ```
 
@@ -265,6 +265,17 @@ npm install
 
 - 루트의 `.env` 파일을 프로젝트 환경에 맞게 설정
 - DB/Redis/JWT/OAuth/GCP 관련 값 필요
+- 변환 성능 옵션(기본값):
+  - `CONVERSION_RENDER_WORKERS=4`
+  - `CONVERSION_UPLOAD_CONCURRENCY=8`
+  - `PDF_RENDER_BACKEND=auto` (`pdftocairo` 우선, 실패 시 `pdftoppm` 폴백)
+  - `VIDEO_CHUNK_DOWNLOAD_CONCURRENCY=8`
+  - `VIDEO_HLS_UPLOAD_CONCURRENCY=12`
+  - `GCS_NON_RESUMABLE_MAX_BYTES=8388608`
+  - `SLIDE_IMAGE_POLICY=near_lossless`
+  - `SLIDE_JPEG_QUALITY=95`
+  - `SLIDE_JPEG_MIN_PNG_BYTES=2000000`
+  - `SLIDE_JPEG_MIN_SAVING_RATIO=0.40`
 
 ### 3) 개발 서버 실행
 
