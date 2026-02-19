@@ -17,6 +17,10 @@ const mockTmpPath = jest.fn();
 const mockUuid = jest.fn();
 const mockEnvPrefix = jest.fn();
 const mockListFiles = jest.fn();
+const mockParsePositiveInt = jest.fn((value, fallback) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+});
 
 const mockProbeVideoMeta = jest.fn();
 const mockExtractVideoThumbnail = jest.fn();
@@ -50,6 +54,7 @@ jest.unstable_mockModule("../../src/utils/conversion.util.js", () => ({
   uuid: mockUuid,
   envPrefix: mockEnvPrefix,
   listFiles: mockListFiles,
+  parsePositiveInt: mockParsePositiveInt,
 }));
 
 jest.unstable_mockModule("../../src/utils/videoMeta.util.js", () => ({
@@ -93,6 +98,7 @@ describe("videoTranscode.service", () => {
     mockUuid.mockReset();
     mockEnvPrefix.mockReset();
     mockListFiles.mockReset();
+    mockParsePositiveInt.mockClear();
 
     mockProbeVideoMeta.mockReset();
     mockExtractVideoThumbnail.mockReset();
