@@ -7,6 +7,13 @@ import os from "os";
 import { prisma } from "../db.config.js";
 
 const storage = new Storage();
+const DEFAULT_NON_RESUMABLE_MAX_BYTES = 8 * 1024 * 1024;
+
+const parsePositiveInt = (value, fallback) => {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
+  return parsed;
+};
 
 function getBucket() {
   const bucketName = process.env.GCS_BUCKET_NAME;
@@ -49,10 +56,33 @@ export async function downloadFromGCS({ bucketName, objectKey, destPath }) {
   return destPath;
 }
 
-export async function uploadToGCS({ bucketName, srcPath, objectKey, contentType }) {
+export async function uploadToGCS({
+  bucketName,
+  srcPath,
+  objectKey,
+  contentType,
+  resumable,
+}) {
   const bucket = bucketName ? storage.bucket(bucketName) : getBucket();
+
+  let resolvedResumable = resumable;
+  if (resolvedResumable === undefined) {
+    const threshold = parsePositiveInt(
+      process.env.GCS_NON_RESUMABLE_MAX_BYTES,
+      DEFAULT_NON_RESUMABLE_MAX_BYTES
+    );
+
+    try {
+      const stat = await fs.stat(srcPath);
+      resolvedResumable = stat.size >= threshold;
+    } catch {
+      resolvedResumable = true;
+    }
+  }
+
   await bucket.upload(srcPath, {
     destination: objectKey,
+    resumable: resolvedResumable,
     metadata: {
       contentType,
       cacheControl: "public, max-age=31536000",
@@ -67,8 +97,9 @@ export async function uploadToGCS({ bucketName, srcPath, objectKey, contentType 
   };
 }
 
-export function runCmd(cmd, args, { cwd } = {}) {
+export function runCmd(cmd, args, { cwd, logMeta } = {}) {
   return new Promise((resolve, reject) => {
+    const startedAt = Date.now();
     const p = spawn(cmd, args, {
       cwd,
       env: process.env,
@@ -80,9 +111,48 @@ export function runCmd(cmd, args, { cwd } = {}) {
     p.stdout.on("data", (d) => (stdout += d.toString()));
     p.stderr.on("data", (d) => (stderr += d.toString()));
 
-    p.on("error", reject);
+    p.on("error", (error) => {
+      if (logMeta) {
+        const durationMs = Date.now() - startedAt;
+        console.error(
+          JSON.stringify({
+            event: "run_cmd",
+            status: "spawn_error",
+            cmd,
+            args,
+            durationMs,
+            ...logMeta,
+            error: error.message,
+          })
+        );
+      }
+      reject(error);
+    });
 
     p.on("close", (code) => {
+      if (logMeta) {
+        const durationMs = Date.now() - startedAt;
+        const payload = {
+          event: "run_cmd",
+          status: code === 0 ? "ok" : "failed",
+          cmd,
+          durationMs,
+          ...logMeta,
+        };
+
+        if (code === 0) {
+          console.log(JSON.stringify(payload));
+        } else {
+          console.error(
+            JSON.stringify({
+              ...payload,
+              code,
+              stderrPreview: stderr.slice(0, 500),
+            })
+          );
+        }
+      }
+
       if (code === 0) {
         return resolve({ ok: true, stdout, stderr });
       }
