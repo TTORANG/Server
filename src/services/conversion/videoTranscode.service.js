@@ -40,14 +40,29 @@ import { prisma } from "../../db.config.js";
 
 /**
  * Video Transcode 서비스
- * - 청크 다운로드 → 병합(재인코딩) → HLS 변환 → GCS 업로드
+ * - 청크 다운로드 → 병합(무재인코딩 우선) → HLS 변환(1회 인코딩) → GCS 업로드
  *  * jobType: video_transcode
  */
 
 const FFMPEG = FFMPEG_PATH;
+const DEFAULT_CHUNK_DOWNLOAD_CONCURRENCY = 8;
+const DEFAULT_HLS_UPLOAD_CONCURRENCY = 12;
+
+const toPositiveInt = (value, fallback) => {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
+  return parsed;
+};
+
+const getChunkDownloadConcurrency = () =>
+  toPositiveInt(process.env.VIDEO_CHUNK_DOWNLOAD_CONCURRENCY, DEFAULT_CHUNK_DOWNLOAD_CONCURRENCY);
+
+const getHlsUploadConcurrency = () =>
+  toPositiveInt(process.env.VIDEO_HLS_UPLOAD_CONCURRENCY, DEFAULT_HLS_UPLOAD_CONCURRENCY);
 
 export const videoTranscode = async (jobOrId) => {
   const jobId = typeof jobOrId === "object" ? jobOrId.id : jobOrId;
+  const jobIdString = String(jobId);
 
   // 1. Job 및 비디오 정보 조회
   const job = await getJobById(jobId);
@@ -69,13 +84,10 @@ export const videoTranscode = async (jobOrId) => {
 
   const workDir = tmpPath(`video-work-${jobId}`);
   const chunksDir = path.join(workDir, "chunks");
+  const hlsDir = path.join(workDir, "hls");
 
   // 업로드 컨테이너별 병합 경로 선택 (webm/mp4)
   const mergedExt = video.container === "mp4" ? "mp4" : "webm";
-
-  //FFmpeg 인코딩 호환성을 위해 병합 파일은 .mp4로 고정
-  const mergedPath = path.join(workDir, `merged.mp4`);
-  const hlsDir = path.join(workDir, "hls");
 
   try {
     await fs.mkdir(chunksDir, { recursive: true });
@@ -84,11 +96,19 @@ export const videoTranscode = async (jobOrId) => {
     // 2. 청크 다운로드
     await downloadChunks(video.chunks, chunksDir, mergedExt);
 
-    // 3. 청크 병합 (재인코딩)
-    await mergeChunks(chunksDir, mergedPath, video.chunks, mergedExt);
+    // 3. 청크 병합 (무재인코딩 우선)
+    const mergedInputPath = await mergeChunks(chunksDir, video.chunks, mergedExt, {
+      jobId: jobIdString,
+    });
 
     // 4. 메타데이터 및 썸네일 추출
-    const meta = await probeVideoMeta(mergedPath);
+    const meta = await probeVideoMeta(mergedInputPath, {
+      logMeta: {
+        jobId: jobIdString,
+        jobType: "video_transcode",
+        stage: "video_transcode.ffprobe",
+      },
+    });
 
     let thumbnailUrl = null;
     const atSeconds =
@@ -98,9 +118,11 @@ export const videoTranscode = async (jobOrId) => {
 
     try {
       thumbnailUrl = await extractVideoThumbnail({
-        inputPath: mergedPath,
+        inputPath: mergedInputPath,
         videoId: video.id,
         atSeconds,
+        jobId: jobIdString,
+        jobType: "video_transcode",
       });
     } catch (e) {
       console.warn("[VideoThumbnail] failed:", e.message);
@@ -142,8 +164,8 @@ export const videoTranscode = async (jobOrId) => {
       }
     }
 
-    // 6. HLS 변환 및 업로드
-    await encodeToHLS(mergedPath, hlsDir);
+    // 6. HLS 변환 및 업로드 (실제 인코딩은 1회)
+    await encodeToHLS(mergedInputPath, hlsDir, { jobId: jobIdString });
     const hlsMasterUrl = await uploadHLSToGCS(hlsDir, video);
 
     // 트랜스코딩이 완료되면 원본 청크 메타데이터 정리
@@ -168,7 +190,8 @@ export const videoTranscode = async (jobOrId) => {
  * GCS에서 청크 파일들을 병렬로 다운로드
  */
 const downloadChunks = async (chunks, destDir, ext) => {
-  const limit = pLimit(5); // 동시 다운로드 제한
+  const limit = pLimit(getChunkDownloadConcurrency());
+
   await Promise.all(
     chunks.map((chunk) =>
       limit(async () => {
@@ -191,20 +214,42 @@ const buildOrderedChunkPaths = (chunksDir, orderedChunks, ext) =>
     path.join(chunksDir, `chunk_${String(chunk.chunkIndex).padStart(5, "0")}.${ext}`)
   );
 
-/**
- * 청크로 만든 입력(webm/mp4, concat list 포함)을 "중간 mp4"로 통일합니다.
- * 왜 필요하나:
- * - 브라우저/청크마다 타임스탬프가 흔들릴 수 있어서(+genpts, make_zero) 먼저 정규화해야
- *   뒤 HLS 변환에서 길이/싱크가 안정적입니다.
- * - 코덱을 libx264+aac으로 고정해 플레이어 호환성을 높입니다.
- * - aresample=async로 오디오 타임라인을 보정해 소리 싱크 깨짐을 줄입니다.
- */
-const transcodeToIntermediateMp4 = async (inputPath, outputPath, chunksDir, mode = "raw") => {
-  const inputArgs =
-    mode === "concat"
-      ? ["-f", "concat", "-safe", "0", "-i", inputPath]
-      : ["-i", inputPath];
+const mergeByConcatDemuxerCopy = async (chunkPaths, outputPath, chunksDir, { jobId }) => {
+  const concatListPath = path.join(chunksDir, "concat.txt");
+  const concatContent = chunkPaths
+    .map((chunkPath) => `file '${path.basename(chunkPath).replaceAll("'", "'\\''")}'`)
+    .join("\n");
 
+  await fs.writeFile(concatListPath, `${concatContent}\n`, "utf-8");
+
+  await runCmd(
+    FFMPEG,
+    [
+      "-f",
+      "concat",
+      "-safe",
+      "0",
+      "-i",
+      path.basename(concatListPath),
+      "-c",
+      "copy",
+      "-movflags",
+      "+faststart",
+      "-y",
+      outputPath,
+    ],
+    {
+      cwd: chunksDir,
+      logMeta: {
+        jobId,
+        jobType: "video_transcode",
+        stage: "video_transcode.merge.concat_copy",
+      },
+    }
+  );
+};
+
+const remuxToMp4 = async (inputPath, outputPath, { jobId }) => {
   await runCmd(
     FFMPEG,
     [
@@ -212,43 +257,23 @@ const transcodeToIntermediateMp4 = async (inputPath, outputPath, chunksDir, mode
       "+genpts",
       "-avoid_negative_ts",
       "make_zero",
-      ...inputArgs,
-      "-c:v",
-      "libx264",
-      "-preset",
-      "veryfast",
-      "-crf",
-      "21",
-      "-pix_fmt",
-      "yuv420p",
-      "-c:a",
-      "aac",
-      "-b:a",
-      "128k",
-      "-ar",
-      "48000",
-      "-ac",
-      "2",
-      "-af",
-      "aresample=async=1:first_pts=0",
+      "-i",
+      inputPath,
+      "-c",
+      "copy",
       "-movflags",
       "+faststart",
-      "-max_muxing_queue_size",
-      "1024",
       "-y",
       outputPath,
     ],
-    { cwd: chunksDir }
+    {
+      logMeta: {
+        jobId,
+        jobType: "video_transcode",
+        stage: "video_transcode.merge.remux_copy",
+      },
+    }
   );
-};
-
-const mergeByConcatDemuxer = async (chunkPaths, outputPath, chunksDir) => {
-  const concatListPath = path.join(chunksDir, "concat.txt");
-  const concatContent = chunkPaths
-    .map((chunkPath) => `file '${path.basename(chunkPath).replaceAll("'", "'\\''")}'`)
-    .join("\n");
-  await fs.writeFile(concatListPath, `${concatContent}\n`, "utf-8");
-  await transcodeToIntermediateMp4(concatListPath, outputPath, chunksDir, "concat");
 };
 
 const mergeByRawAppend = async (orderedChunks, chunksDir, ext) => {
@@ -266,11 +291,11 @@ const mergeByRawAppend = async (orderedChunks, chunksDir, ext) => {
 };
 
 /**
- * 청크 병합 + 중간 mp4 생성
- * - webm: raw append 고정 (MediaRecorder timeslice 안정성)
- * - mp4: concat demuxer 우선, 실패 시 raw append 폴백
+ * 청크 병합
+ * - webm: raw append 고정
+ * - mp4: concat demuxer + stream copy 우선, 실패 시 raw append + remux(copy) 폴백
  */
-const mergeChunks = async (chunksDir, outputPath, chunks, ext) => {
+const mergeChunks = async (chunksDir, chunks, ext, { jobId }) => {
   const orderedChunks = [...chunks].sort((a, b) => a.chunkIndex - b.chunkIndex);
   const firstIndex = orderedChunks[0]?.chunkIndex;
   if (firstIndex !== 0) {
@@ -292,74 +317,96 @@ const mergeChunks = async (chunksDir, outputPath, chunks, ext) => {
 
   if (ext === "webm") {
     const assembledInputPath = await mergeByRawAppend(orderedChunks, chunksDir, ext);
-    await transcodeToIntermediateMp4(assembledInputPath, outputPath, chunksDir);
     console.log("[VideoTranscode] webm chunk merge succeeded with raw append");
-    return;
+    return assembledInputPath;
   }
 
+  const mergedByConcatPath = path.join(chunksDir, "merged.concat.mp4");
   const chunkPaths = buildOrderedChunkPaths(chunksDir, orderedChunks, ext);
+
   try {
-    await mergeByConcatDemuxer(chunkPaths, outputPath, chunksDir);
-    console.log("[VideoTranscode] mp4 chunk merge succeeded with concat demuxer");
-    return;
+    await mergeByConcatDemuxerCopy(chunkPaths, mergedByConcatPath, chunksDir, { jobId });
+    console.log("[VideoTranscode] mp4 chunk merge succeeded with concat demuxer + copy");
+    return mergedByConcatPath;
   } catch (concatError) {
     const concatMessage =
       concatError?.message?.split("\n").slice(0, 6).join("\n") || String(concatError);
-    console.warn(`[VideoTranscode] mp4 concat merge failed, fallback to raw append\n${concatMessage}`);
+    console.warn(
+      `[VideoTranscode] mp4 concat merge failed, fallback to raw append + remux\n${concatMessage}`
+    );
   }
 
   const assembledInputPath = await mergeByRawAppend(orderedChunks, chunksDir, ext);
-  await transcodeToIntermediateMp4(assembledInputPath, outputPath, chunksDir);
-  console.log("[VideoTranscode] mp4 chunk merge succeeded with raw append fallback");
+  const remuxedPath = path.join(chunksDir, "merged.fallback.mp4");
+
+  try {
+    await remuxToMp4(assembledInputPath, remuxedPath, { jobId });
+    console.log("[VideoTranscode] mp4 chunk merge succeeded with raw append + remux(copy)");
+    return remuxedPath;
+  } catch (remuxError) {
+    const remuxMessage = remuxError?.message?.split("\n").slice(0, 6).join("\n") || String(remuxError);
+    console.warn(
+      `[VideoTranscode] mp4 remux failed, using raw append output directly\n${remuxMessage}`
+    );
+    return assembledInputPath;
+  }
 };
 
 /**
- * 중간 mp4를 실제 서비스 재생용 HLS(master.m3u8 + segment.ts)로 변환합니다.
- * 왜 필요하나:
- * - 720p 고정(scale+pad)으로 화면 크기를 일정하게 맞춰 디바이스별 재생 차이를 줄입니다.
- * - GOP(키프레임 간격)을 고정해 HLS 세그먼트 경계를 안정화합니다.
- * - independent_segments로 각 세그먼트 시작을 독립 재생 가능하게 만듭니다.
+ * 병합된 입력을 HLS(master.m3u8 + segment.ts)로 변환합니다.
+ * - 720p를 넘는 경우에만 다운스케일
  */
-const encodeToHLS = async (inputPath, hlsDir) => {
-  await runCmd(FFMPEG, [
-    "-i",
-    inputPath,
-    "-vf",
-    "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2",
-    "-c:v",
-    "libx264",
-    "-preset",
-    "veryfast",
-    "-crf",
-    "23",
-    "-pix_fmt",
-    "yuv420p",
-    "-g",
-    "60",
-    "-keyint_min",
-    "60",
-    "-sc_threshold",
-    "0",
-    "-c:a",
-    "aac",
-    "-b:a",
-    "128k",
-    "-ac",
-    "2",
-    "-af",
-    "aresample=async=1",
-    "-f",
-    "hls",
-    "-hls_time",
-    "10",
-    "-hls_list_size",
-    "0",
-    "-hls_flags",
-    "independent_segments",
-    "-hls_segment_filename",
-    path.join(hlsDir, "segment_%03d.ts"),
-    path.join(hlsDir, "master.m3u8"),
-  ]);
+const encodeToHLS = async (inputPath, hlsDir, { jobId }) => {
+  await runCmd(
+    FFMPEG,
+    [
+      "-i",
+      inputPath,
+      "-vf",
+      "scale=1280:720:force_original_aspect_ratio=decrease:force_divisible_by=2",
+      "-c:v",
+      "libx264",
+      "-preset",
+      "veryfast",
+      "-crf",
+      "23",
+      "-pix_fmt",
+      "yuv420p",
+      "-g",
+      "60",
+      "-keyint_min",
+      "60",
+      "-sc_threshold",
+      "0",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "128k",
+      "-ac",
+      "2",
+      "-af",
+      "aresample=async=1",
+      "-f",
+      "hls",
+      "-hls_time",
+      "10",
+      "-hls_list_size",
+      "0",
+      "-hls_flags",
+      "independent_segments",
+      "-hls_segment_filename",
+      path.join(hlsDir, "segment_%03d.ts"),
+      "-y",
+      path.join(hlsDir, "master.m3u8"),
+    ],
+    {
+      logMeta: {
+        jobId,
+        jobType: "video_transcode",
+        stage: "video_transcode.encode_hls",
+      },
+    }
+  );
 };
 
 /**
@@ -372,19 +419,24 @@ const uploadHLSToGCS = async (hlsDir, video) => {
   const bucketName = process.env.GCS_BUCKET_NAME;
 
   const files = await listFiles(hlsDir).catch(() => []);
+  const limit = pLimit(getHlsUploadConcurrency());
 
-  for (const file of files) {
-    const filename = path.basename(file);
-    const ext = path.extname(filename).slice(1);
-    const contentType = ext === "m3u8" ? "application/vnd.apple.mpegurl" : "video/mp2t";
+  await Promise.all(
+    files.map((file) =>
+      limit(async () => {
+        const filename = path.basename(file);
+        const ext = path.extname(filename).slice(1);
+        const contentType = ext === "m3u8" ? "application/vnd.apple.mpegurl" : "video/mp2t";
 
-    await uploadToGCS({
-      bucketName,
-      srcPath: file,
-      objectKey: `${destPrefix}/${filename}`,
-      contentType,
-    });
-  }
+        await uploadToGCS({
+          bucketName,
+          srcPath: file,
+          objectKey: `${destPrefix}/${filename}`,
+          contentType,
+        });
+      })
+    )
+  );
 
   const cdnHost = process.env.CDN_HOST;
   return cdnHost
