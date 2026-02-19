@@ -209,8 +209,8 @@ describe("pptxNotes.service", () => {
       },
     });
     expect(mockUpdateScriptText).toHaveBeenCalledTimes(2);
-    expect(mockUpdateScriptText).toHaveBeenNthCalledWith(1, 11n, "hello", 5, 1);
-    expect(mockUpdateScriptText).toHaveBeenNthCalledWith(2, 13n, "world", 5, 1);
+    expect(mockUpdateScriptText).toHaveBeenCalledWith(11n, "hello", 5, 1);
+    expect(mockUpdateScriptText).toHaveBeenCalledWith(13n, "world", 5, 1);
     expect(result).toEqual({
       appliedCount: 2,
       skippedExistingCount: 1,
