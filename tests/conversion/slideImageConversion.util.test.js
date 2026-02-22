@@ -1,9 +1,26 @@
 import {
+  getPdfRendererBinary,
   splitPageRanges,
   shouldUseNearLosslessJpeg,
 } from "../../src/services/conversion/slideImageConversion.util.js";
 
 describe("slideImageConversion.util", () => {
+  test("getPdfRendererBinary uses pdftoppm by default", () => {
+    if (process.platform === "win32") {
+      const original = process.env.PDFTOPPM_PATH;
+      process.env.PDFTOPPM_PATH = "C:\\\\tools\\\\pdftoppm.exe";
+      expect(getPdfRendererBinary()).toBe("C:\\tools\\pdftoppm.exe");
+      if (original === undefined) {
+        delete process.env.PDFTOPPM_PATH;
+      } else {
+        process.env.PDFTOPPM_PATH = original;
+      }
+      return;
+    }
+
+    expect(getPdfRendererBinary()).toBe("pdftoppm");
+  });
+
   test("splitPageRanges distributes pages across workers", () => {
     expect(splitPageRanges(10, 3)).toEqual([
       { start: 1, end: 4 },

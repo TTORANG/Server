@@ -6,7 +6,6 @@ import pLimit from "p-limit";
 import { listFiles, parsePositiveInt, runCmd } from "../../utils/conversion.util.js";
 
 const DEFAULT_DPI = 150;
-const DEFAULT_PDF_RENDER_BACKEND = "auto";
 const DEFAULT_UPLOAD_CONCURRENCY = 8;
 const DEFAULT_SLIDE_IMAGE_POLICY = "near_lossless";
 const DEFAULT_SLIDE_JPEG_QUALITY = 95;
@@ -76,29 +75,20 @@ const normalizeBinary = (defaultBinary, envKey) => {
   return process.env[envKey];
 };
 
-const getPdfRenderBackend = () =>
-  (process.env.PDF_RENDER_BACKEND || DEFAULT_PDF_RENDER_BACKEND).trim().toLowerCase();
-
-const getPdfRendererCandidates = () => {
-  const pdftoppm = normalizeBinary("pdftoppm", "PDFTOPPM_PATH");
-  const pdftocairo = normalizeBinary("pdftocairo", "PDFTOCAIRO_PATH");
-  const backend = getPdfRenderBackend();
-
-  let candidates;
-
-  if (backend === "pdftoppm") {
-    candidates = [pdftoppm];
-  } else if (backend === "pdftocairo") {
-    candidates = [pdftocairo];
-  } else {
-    candidates = [pdftocairo, pdftoppm];
-  }
-
-  return [...new Set(candidates.filter(Boolean))];
-};
+export const getPdfRendererBinary = () => normalizeBinary("pdftoppm", "PDFTOPPM_PATH");
 
 const buildPdfRenderArgs = ({ dpi, inputPdf, prefix, range }) => {
-  const args = ["-png", "-r", String(dpi)];
+  const args = [
+    "-png",
+    "-r",
+    String(dpi),
+    "-aa",
+    "yes",
+    "-aaVector",
+    "yes",
+    "-thinlinemode",
+    "shape",
+  ];
   if (range) {
     args.push("-f", String(range.start), "-l", String(range.end));
   }
@@ -106,36 +96,21 @@ const buildPdfRenderArgs = ({ dpi, inputPdf, prefix, range }) => {
   return args;
 };
 
-const runPdfRenderWithFallback = async ({
+const runPdfRender = async ({
   args,
-  rendererCandidates,
+  renderer,
   jobId,
   jobType,
   stageBase,
 }) => {
-  let lastError = null;
-
-  for (const renderer of rendererCandidates) {
-    const rendererName = path.basename(renderer).toLowerCase();
-
-    try {
-      await runCmd(renderer, args, {
-        logMeta: {
-          jobId: String(jobId),
-          jobType,
-          stage: `${stageBase}.${rendererName}`,
-        },
-      });
-      return;
-    } catch (error) {
-      lastError = error;
-      console.warn(
-        `[Conversion] renderer ${rendererName} failed at stage=${stageBase}. trying next renderer.`
-      );
-    }
-  }
-
-  throw lastError || new Error("PDF_RENDER_FAILED");
+  const rendererName = path.basename(renderer).toLowerCase();
+  await runCmd(renderer, args, {
+    logMeta: {
+      jobId: String(jobId),
+      jobType,
+      stage: `${stageBase}.${rendererName}`,
+    },
+  });
 };
 
 const getSharp = async () => {
@@ -219,8 +194,8 @@ export async function renderPdfToPngPages({
   jobType,
   stageBase = "pdf_render",
 }) {
-  const rendererCandidates = getPdfRendererCandidates();
-  if (rendererCandidates.length === 0) {
+  const renderer = getPdfRendererBinary();
+  if (!renderer) {
     throw new Error("PDF_RENDERER_NOT_CONFIGURED");
   }
 
@@ -238,25 +213,25 @@ export async function renderPdfToPngPages({
     });
     pageCount = parsePdfPageCount(pdfInfo.stdout);
   } catch (error) {
-    console.warn(`[Conversion] pdfinfo failed. falling back to single render: ${error.message}`);
+    console.warn(`[Conversion] pdfinfo failed. using single-pass render: ${error.message}`);
   }
 
   const renderWorkers = getConversionRenderWorkers();
   const ranges = splitPageRanges(pageCount ?? 0, renderWorkers);
 
   if (ranges.length === 0) {
-    await runPdfRenderWithFallback({
+    await runPdfRender({
       args: buildPdfRenderArgs({ dpi, inputPdf, prefix }),
-      rendererCandidates,
+      renderer,
       jobId,
       jobType,
       stageBase: `${stageBase}.single_pass`,
     });
   } else if (ranges.length === 1) {
     const only = ranges[0];
-    await runPdfRenderWithFallback({
+    await runPdfRender({
       args: buildPdfRenderArgs({ dpi, inputPdf, prefix, range: only }),
-      rendererCandidates,
+      renderer,
       jobId,
       jobType,
       stageBase: `${stageBase}.pages.${only.start}-${only.end}`,
@@ -266,9 +241,9 @@ export async function renderPdfToPngPages({
     await Promise.all(
       ranges.map((range) =>
         limit(async () => {
-          await runPdfRenderWithFallback({
+          await runPdfRender({
             args: buildPdfRenderArgs({ dpi, inputPdf, prefix, range }),
-            rendererCandidates,
+            renderer,
             jobId,
             jobType,
             stageBase: `${stageBase}.pages.${range.start}-${range.end}`,
