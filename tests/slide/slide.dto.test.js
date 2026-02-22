@@ -5,7 +5,7 @@ import {
 } from "../../src/dtos/slide.dto.js";
 
 describe("slide.dto", () => {
-  test("slideListResponseDTO uses image asset and default titles", () => {
+  test("slideListResponseDTO returns raw nullable title and image asset", () => {
     const createdAt = new Date("2026-02-12T00:00:00.000Z");
     const updatedAt = new Date("2026-02-12T00:10:00.000Z");
     const slides = [
@@ -37,12 +37,13 @@ describe("slide.dto", () => {
     expect(result[0]).toEqual({
       slideId: "1",
       projectId: "10",
-      title: "슬라이드 1",
+      title: null,
       slideNum: 1,
       imageUrl: "https://storage.googleapis.com/bucket/img.png",
       createdAt,
       updatedAt,
     });
+    expect(result[1].title).toBe("제목");
     expect(result[1].imageUrl).toBe("https://storage.googleapis.com/bucket/only.mp4");
   });
 
@@ -65,7 +66,7 @@ describe("slide.dto", () => {
     });
   });
 
-  test("slideDetailResponseDTO fills title from slideNum", () => {
+  test("slideDetailResponseDTO returns raw nullable title", () => {
     const updatedAt = new Date("2026-02-12T00:10:00.000Z");
     const dto = slideDetailResponseDTO(
       {
@@ -83,7 +84,7 @@ describe("slide.dto", () => {
     expect(dto).toEqual({
       slideId: "4",
       projectId: "9",
-      title: "슬라이드 4",
+      title: null,
       slideNum: 4,
       imageUrl: "https://storage.googleapis.com/bucket/detail.png",
       prevSlideId: null,

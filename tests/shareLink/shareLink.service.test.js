@@ -99,4 +99,55 @@ describe("shareLink.service publisherName", () => {
 
     expect(result.publisherName).toBe("익명 사용자");
   });
+
+  test("processGetShareContent는 슬라이드 제목을 raw 값(null/빈 문자열)으로 반환한다", async () => {
+    shareRepo.findShareLinkWithContent.mockResolvedValue({
+      ...createShareLinkFixture({ id: 1n, nickName: "게시자닉", name: "게시자이름" }),
+      project: {
+        isDeleted: false,
+        title: "공유 프로젝트",
+        user: { id: 1n, nickName: "게시자닉", name: "게시자이름" },
+        comments: [],
+        slides: [
+          {
+            id: 11n,
+            slideNum: 1n,
+            title: null,
+            assets: [{ url: "gs://bucket/slide-1.png" }],
+            script: { scriptText: "첫 번째 대본" },
+            slideDurations: [],
+          },
+          {
+            id: 12n,
+            slideNum: 2n,
+            title: "",
+            assets: [{ url: "gs://bucket/slide-2.png" }],
+            script: { scriptText: "두 번째 대본" },
+            slideDurations: [],
+          },
+        ],
+      },
+    });
+
+    const result = await processGetShareContent("token-123", "session-1");
+
+    expect(result.content.slides).toEqual([
+      {
+        slideId: "11",
+        slideNum: 1,
+        title: null,
+        imageUrl: "gs://bucket/slide-1.png",
+        scriptText: "첫 번째 대본",
+        timestampMs: null,
+      },
+      {
+        slideId: "12",
+        slideNum: 2,
+        title: "",
+        imageUrl: "gs://bucket/slide-2.png",
+        scriptText: "두 번째 대본",
+        timestampMs: null,
+      },
+    ]);
+  });
 });

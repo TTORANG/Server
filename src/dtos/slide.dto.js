@@ -16,13 +16,13 @@ const slideAssetMapper = (slide) => {
   return mainAsset;
 };
 export const slideListResponseDTO = (slides) => {
-  return slides.map((slide, index) => {
+  return slides.map((slide) => {
     let mainAsset = slideAssetMapper(slide);
 
     return {
       slideId: slide.id.toString(),
       projectId: slide.projectId.toString(),
-      title: slide.title || `슬라이드 ${index + 1}`,
+      title: slide.title,
       slideNum: slide.slideNum ? Number(slide.slideNum) : null,
       imageUrl: toPublicStorageUrl(mainAsset ? mainAsset.url : null),
       createdAt: slide.createdAt,
@@ -49,7 +49,7 @@ export const slideDetailResponseDTO = (slide, prevId, nextId) => {
   return {
     slideId: slide.id.toString(),
     projectId: slide.projectId.toString(),
-    title: slide.title || `슬라이드 ${slide.slideNum}`,
+    title: slide.title,
     slideNum: slide.slideNum ? Number(slide.slideNum) : null,
     imageUrl: toPublicStorageUrl(mainAsset ? mainAsset.url : null),
     prevSlideId: prevId,

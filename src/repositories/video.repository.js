@@ -387,6 +387,12 @@ export async function findVideoSlideEnterEvents(videoId) {
     select: {
       slideId: true,
       timestampMs: true,
+      slide: {
+        select: {
+          slideNum: true,
+          title: true,
+        },
+      },
     },
   });
 }

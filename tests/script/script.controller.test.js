@@ -155,8 +155,8 @@ describe("script.controller", () => {
     const projectScripts = {
       projectId: "12",
       scripts: [
-        { slideId: "11", scriptText: "첫번째" },
-        { slideId: "12", scriptText: "" },
+        { slideId: "11", slideNum: 1, title: "표지", scriptText: "첫번째" },
+        { slideId: "12", slideNum: 2, title: null, scriptText: "" },
       ],
     };
 

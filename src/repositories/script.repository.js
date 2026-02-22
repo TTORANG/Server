@@ -86,6 +86,7 @@ export const getProjectSlidesWithScripts = async (projectId, userId) => {
         select: {
           id: true,
           slideNum: true,
+          title: true,
           script: {
             select: {
               scriptText: true,
