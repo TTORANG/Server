@@ -78,7 +78,17 @@ const normalizeBinary = (defaultBinary, envKey) => {
 export const getPdfRendererBinary = () => normalizeBinary("pdftoppm", "PDFTOPPM_PATH");
 
 const buildPdfRenderArgs = ({ dpi, inputPdf, prefix, range }) => {
-  const args = ["-png", "-r", String(dpi)];
+  const args = [
+    "-png",
+    "-r",
+    String(dpi),
+    "-aa",
+    "yes",
+    "-aaVector",
+    "yes",
+    "-thinlinemode",
+    "shape",
+  ];
   if (range) {
     args.push("-f", String(range.start), "-l", String(range.end));
   }

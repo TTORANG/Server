@@ -80,7 +80,23 @@ describe("slideImageConversion renderer", () => {
     expect(mockRunCmd).toHaveBeenNthCalledWith(
       2,
       "pdftoppm",
-      ["-png", "-r", "150", "-f", "1", "-l", "1", "/tmp/input.pdf", "/tmp/out/page"],
+      [
+        "-png",
+        "-r",
+        "150",
+        "-aa",
+        "yes",
+        "-aaVector",
+        "yes",
+        "-thinlinemode",
+        "shape",
+        "-f",
+        "1",
+        "-l",
+        "1",
+        "/tmp/input.pdf",
+        "/tmp/out/page",
+      ],
       expect.objectContaining({
         logMeta: expect.objectContaining({ stage: "unit.pages.1-1.pdftoppm" }),
       })
@@ -145,7 +161,19 @@ describe("slideImageConversion renderer", () => {
     expect(mockRunCmd).toHaveBeenNthCalledWith(
       2,
       "pdftoppm",
-      ["-png", "-r", "150", "/tmp/input.pdf", "/tmp/out/page"],
+      [
+        "-png",
+        "-r",
+        "150",
+        "-aa",
+        "yes",
+        "-aaVector",
+        "yes",
+        "-thinlinemode",
+        "shape",
+        "/tmp/input.pdf",
+        "/tmp/out/page",
+      ],
       expect.objectContaining({
         logMeta: expect.objectContaining({ stage: "unit.single_pass.pdftoppm" }),
       })
