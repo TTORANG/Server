@@ -281,9 +281,11 @@ export const handleRestoreVersion = async (req, res, next) => {
  *                 projectId: "123"
  *                 scripts:
  *                   - slideId: "1"
+ *                     slideNum: 1
  *                     title: "첫 번째 슬라이드"
  *                     scriptText: "첫 번째 슬라이드 대본"
  *                   - slideId: "2"
+ *                     slideNum: 2
  *                     title: null
  *                     scriptText: ""
  */

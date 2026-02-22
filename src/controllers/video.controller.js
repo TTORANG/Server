@@ -1045,9 +1045,11 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
    *                   success:
    *                     slides:
    *                       - slideId: "1"
+   *                         slideNum: 1
    *                         title: "도입"
    *                         timestampMs: 0
    *                       - slideId: "2"
+   *                         slideNum: 2
    *                         title: null
    *                         timestampMs: 15000
    *               noEvents:
@@ -1373,6 +1375,11 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *           type: string
  *           description: 슬라이드 ID(BigInt → string)
  *           example: "1"
+ *         slideNum:
+ *           type: integer
+ *           nullable: true
+ *           description: 슬라이드 번호(설정되지 않은 경우 null)
+ *           example: 2
  *         title:
  *           type: string
  *           nullable: true

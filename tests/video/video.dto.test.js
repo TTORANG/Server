@@ -95,22 +95,24 @@ describe("video.dto", () => {
   test("videoSlideTimelineItemDTO includes raw nullable title", () => {
     const withTitle = videoSlideTimelineItemDTO({
       slideId: 1n,
-      slide: { title: "도입" },
+      slide: { slideNum: 1n, title: "도입" },
       timestampMs: 0,
     });
     const withoutTitle = videoSlideTimelineItemDTO({
       slideId: 2n,
-      slide: { title: null },
+      slide: { slideNum: 2n, title: null },
       timestampMs: 15000,
     });
 
     expect(withTitle).toEqual({
       slideId: "1",
+      slideNum: 1,
       title: "도입",
       timestampMs: 0,
     });
     expect(withoutTitle).toEqual({
       slideId: "2",
+      slideNum: 2,
       title: null,
       timestampMs: 15000,
     });

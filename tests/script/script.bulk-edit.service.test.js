@@ -61,8 +61,8 @@ describe("script.bulk-edit.service", () => {
     expect(result).toEqual({
       projectId: "10",
       scripts: [
-        { slideId: "101", title: "표지", scriptText: "첫번째" },
-        { slideId: "102", title: null, scriptText: "" },
+        { slideId: "101", slideNum: 1, title: "표지", scriptText: "첫번째" },
+        { slideId: "102", slideNum: 2, title: null, scriptText: "" },
       ],
     });
   });
