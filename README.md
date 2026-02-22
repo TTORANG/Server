@@ -268,7 +268,6 @@ npm install
 - 변환 성능 옵션(기본값):
   - `CONVERSION_RENDER_WORKERS`: 미설정 시 `Math.max(1, Math.min(8, getAvailableCpuCount()))` 적용 (CPU 코어 기반, 최소 1, 최대 8)
   - `CONVERSION_UPLOAD_CONCURRENCY=8`
-  - `PDF_RENDER_BACKEND=auto` (`pdftocairo` 우선, 실패 시 `pdftoppm` 폴백)
   - `VIDEO_CHUNK_DOWNLOAD_CONCURRENCY=8`
   - `VIDEO_HLS_UPLOAD_CONCURRENCY=12`
   - `GCS_NON_RESUMABLE_MAX_BYTES=8388608`
