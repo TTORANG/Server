@@ -173,7 +173,7 @@ export const processGetShareContent = async (shareToken, sessionId = null) => {
     return {
       slideId: slide.id.toString(),
       slideNum: Number(slide.slideNum),
-      title: slide.title || null,
+      title: slide.title,
       imageUrl: toPublicStorageUrl(slide.assets[0]?.url || null),
       scriptText: slide.script?.scriptText || "",
       timestampMs: durationInfo ? durationInfo.totalDurationMs : null,
