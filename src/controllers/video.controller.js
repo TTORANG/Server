@@ -447,6 +447,7 @@ export async function handleGetVideoList(req, res, next) {
    *                     replyCount: 3
    *                     reactionCount: 12
    *                     viewCount: 8
+   *                     hlsMasterUrl: "https://example.com/master.m3u8"
    *                     thumbnailUrl: "https://example.com/thumb.jpg"
    *                     createdAt: "2026-02-01T09:00:00.000Z"
    *       400:
@@ -560,6 +561,7 @@ export async function handleGetMyVideoList(req, res, next) {
    *                     replyCount: 1
    *                     reactionCount: 7
    *                     viewCount: 4
+   *                     hlsMasterUrl: "https://example.com/master2.m3u8"
    *                     thumbnailUrl: "https://example.com/thumb2.jpg"
    *                     createdAt: "2026-02-03T13:20:00.000Z"
    *       401:
@@ -1259,6 +1261,11 @@ export async function handleGetVideoSlideTimeline(req, res, next) {
  *           type: integer
  *           description: 영상 조회 수(재생 play 이벤트의 고유 세션 수)
  *           example: 8
+ *         hlsMasterUrl:
+ *           type: string
+ *           nullable: true
+ *           description: HLS 마스터 재생 URL
+ *           example: https://example.com/master.m3u8
  *         thumbnailUrl:
  *           type: string
  *           nullable: true

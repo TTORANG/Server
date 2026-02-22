@@ -13,6 +13,7 @@ describe("video.dto", () => {
       title: "demo",
       status: "ready",
       durationSeconds: 90,
+      hlsMasterUrl: "gs://demo-bucket/hls/master.m3u8",
       thumbnailUrl: "gs://demo-bucket/thumbs/a.png",
       rootCommentCount: null,
       replyCount: undefined,
@@ -32,6 +33,7 @@ describe("video.dto", () => {
       feedbackCount: 3,
       reactionCount: 5,
       viewCount: 7,
+      hlsMasterUrl: "https://storage.googleapis.com/demo-bucket/hls/master.m3u8",
       thumbnailUrl: "https://storage.googleapis.com/demo-bucket/thumbs/a.png",
       createdAt,
     });

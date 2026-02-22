@@ -10,6 +10,7 @@ export const videoListItemDTO = (video) => ({
   feedbackCount: video.feedbackCount ?? 0,
   reactionCount: video.reactionCount ?? 0,
   viewCount: video.viewCount ?? 0,
+  hlsMasterUrl: toPublicStorageUrl(video.hlsMasterUrl),
   thumbnailUrl: toPublicStorageUrl(video.thumbnailUrl),
   createdAt: video.createdAt,
 });
