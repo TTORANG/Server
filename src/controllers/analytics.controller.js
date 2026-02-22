@@ -1012,6 +1012,10 @@ export const handleGetVideoRetention = async (req, res, next) => {
  *                       name:
  *                         type: string
  *                         description: 사용자 이름
+ *                       profileImageUrl:
+ *                         type: string
+ *                         nullable: true
+ *                         description: 사용자 프로필 이미지 URL
  *                   slide:
  *                     type: object
  *                     nullable: true

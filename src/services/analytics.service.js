@@ -470,6 +470,7 @@ export const getRecentComments = async ({ projectId, limit = 10 }) => {
           userId: comment.user.id.toString(),
           nickName: comment.user.nickName || comment.user.name || "익명 사용자",
           name: comment.user.name,
+          profileImageUrl: comment.user.profileImageUrl ?? null,
         },
         slide: slideInfo
           ? {

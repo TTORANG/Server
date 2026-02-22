@@ -47,6 +47,8 @@ jest.unstable_mockModule("../../src/utils/storageUrl.util.js", () => ({
 
 const repo = await import("../../src/repositories/analytics.repository.js");
 const shareRepo = await import("../../src/repositories/shareLink.repository.js");
+const commentRepo = await import("../../src/repositories/comment.repository.js");
+const videoRepo = await import("../../src/repositories/video.repository.js");
 
 const {
   recordPageView,
@@ -58,6 +60,7 @@ const {
   getSlideRetention,
   getVideoExits,
   getVideoRetention,
+  getRecentComments,
 } = await import("../../src/services/analytics.service.js");
 
 // ==================== POST 수집 API ====================
@@ -345,6 +348,52 @@ describe("getVideoRetention (영상 잔존률)", () => {
     const result = await getVideoRetention({ videoId: "10" });
     expect(result.success.totalSessions).toBe(0);
     expect(result.success.videoRetention).toEqual([]);
+  });
+});
+
+describe("getRecentComments (최근 댓글)", () => {
+  beforeEach(() => {
+    repo.findProjectById.mockReset();
+    commentRepo.findRecentVideoCommentsByProjectId.mockReset();
+    videoRepo.findSlideByTimestamp.mockReset();
+  });
+
+  test("user.profileImageUrl을 포함해 최근 댓글을 반환", async () => {
+    repo.findProjectById.mockResolvedValue({ id: 1n });
+    commentRepo.findRecentVideoCommentsByProjectId.mockResolvedValue([
+      {
+        id: 100n,
+        content: "좋아요",
+        timestampMs: 12000,
+        createdAt: new Date("2026-01-01T00:00:00Z"),
+        targetId: 10n,
+        user: {
+          id: 3n,
+          nickName: "alice",
+          name: "Alice",
+          profileImageUrl: "https://cdn.example.com/alice.png",
+        },
+      },
+    ]);
+    videoRepo.findSlideByTimestamp.mockResolvedValue({
+      slideId: 2n,
+      slideNum: 2n,
+      title: "슬라이드2",
+      imageUrl: "https://storage.example.com/slide2.webp",
+    });
+
+    const result = await getRecentComments({ projectId: "1", limit: 5 });
+
+    expect(commentRepo.findRecentVideoCommentsByProjectId).toHaveBeenCalledWith({
+      projectId: 1,
+      limit: 5,
+    });
+    expect(result.success.comments[0].user).toEqual({
+      userId: "3",
+      nickName: "alice",
+      name: "Alice",
+      profileImageUrl: "https://cdn.example.com/alice.png",
+    });
   });
 });
 
