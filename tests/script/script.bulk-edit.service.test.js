@@ -48,8 +48,8 @@ describe("script.bulk-edit.service", () => {
     mockGetProjectSlidesWithScripts.mockResolvedValue({
       id: 10n,
       slides: [
-        { id: 101n, slideNum: 1n, script: { scriptText: "첫번째" } },
-        { id: 102n, slideNum: 2n, script: null },
+        { id: 101n, slideNum: 1n, title: "표지", script: { scriptText: "첫번째" } },
+        { id: 102n, slideNum: 2n, title: null, script: null },
       ],
     });
 
@@ -61,8 +61,8 @@ describe("script.bulk-edit.service", () => {
     expect(result).toEqual({
       projectId: "10",
       scripts: [
-        { slideId: "101", scriptText: "첫번째" },
-        { slideId: "102", scriptText: "" },
+        { slideId: "101", title: "표지", scriptText: "첫번째" },
+        { slideId: "102", title: null, scriptText: "" },
       ],
     });
   });

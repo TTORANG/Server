@@ -128,6 +128,7 @@ export const processGetProjectScripts = async ({ projectId, userId }) => {
     projectId: project.id.toString(),
     scripts: (project.slides || []).map((slide) => ({
       slideId: slide.id.toString(),
+      title: slide.title,
       scriptText: slide.script?.scriptText || "",
     })),
   };
