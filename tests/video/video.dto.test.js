@@ -2,6 +2,7 @@ import {
   recordingFinishSuccessDTO,
   videoDetailResponseDTO,
   videoListItemDTO,
+  videoSlideTimelineItemDTO,
 } from "../../src/dtos/video.dto.js";
 
 describe("video.dto", () => {
@@ -88,6 +89,30 @@ describe("video.dto", () => {
       status: "processing",
       slideCount: 2,
       slideDurations: [{ slideId: "1", totalDurationMs: 1000 }],
+    });
+  });
+
+  test("videoSlideTimelineItemDTO includes raw nullable title", () => {
+    const withTitle = videoSlideTimelineItemDTO({
+      slideId: 1n,
+      slide: { title: "도입" },
+      timestampMs: 0,
+    });
+    const withoutTitle = videoSlideTimelineItemDTO({
+      slideId: 2n,
+      slide: { title: null },
+      timestampMs: 15000,
+    });
+
+    expect(withTitle).toEqual({
+      slideId: "1",
+      title: "도입",
+      timestampMs: 0,
+    });
+    expect(withoutTitle).toEqual({
+      slideId: "2",
+      title: null,
+      timestampMs: 15000,
     });
   });
 });

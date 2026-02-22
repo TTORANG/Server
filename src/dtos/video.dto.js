@@ -69,6 +69,7 @@ export const videoDetailResponseDTO = ({ video, reactions, comments }) => ({
 
 export const videoSlideTimelineItemDTO = (event) => ({
   slideId: event.slideId.toString(),
+  title: event.slide?.title ?? null,
   timestampMs: event.timestampMs,
 });
 
