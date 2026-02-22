@@ -28,7 +28,7 @@ describe("shareLink.dto", () => {
       publisherName: "발표자 닉네임",
     });
 
-    expect(response.projectContent).toEqual({
+    expect(response.presentationContent).toEqual({
       title: "테스트 발표",
       slides: [],
       video: null,
