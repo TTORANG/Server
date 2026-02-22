@@ -37,7 +37,7 @@ import {
  *               success:
  *                 - slideId: "1"
  *                   projectId: "123"
- *                   title: "첫 번째 슬라이드"
+ *                   title: null
  *                   slideNum: 1
  *                   imageUrl: "https://storage.googleapis.com/..."
  *                   createdAt: "2026-01-16T10:00:00.000Z"
@@ -102,6 +102,7 @@ export const handleGetSlides = async (req, res, next) => {
  *             properties:
  *               title:
  *                 type: string
+ *                 nullable: true
  *                 example: "수정된 슬라이드 제목"
  *     responses:
  *       200:
@@ -185,7 +186,7 @@ export const handlePatchSlideTitle = async (req, res, next) => {
  *               success:
  *                 slideId: "1"
  *                 projectId: "123"
- *                 title: "첫 번째 슬라이드"
+ *                 title: null
  *                 slideNum: 1
  *                 imageUrl: "https://storage.googleapis.com/..."
  *                 prevSlideId: null
