@@ -1,7 +1,7 @@
 FROM node:20-alpine
 
-# FFmpeg 설치 (영상 인코딩용) + poppler-utils (PDF to Image 변환용) + libreoffice (PPTX to PDF 변환용) + 한글 폰트
-RUN apk add --no-cache ffmpeg poppler-utils libreoffice font-noto-cjk
+# FFmpeg 설치 (영상 인코딩용) + libreoffice (PPTX to PDF 변환용) + 한글 폰트
+RUN apk add --no-cache ffmpeg libreoffice font-noto-cjk
 
 WORKDIR /app
 

@@ -266,7 +266,7 @@ npm install
 - 루트의 `.env` 파일을 프로젝트 환경에 맞게 설정
 - DB/Redis/JWT/OAuth/GCP 관련 값 필요
 - 변환 성능 옵션(기본값):
-  - `CONVERSION_RENDER_WORKERS`: 미설정 시 `Math.max(1, Math.min(8, getAvailableCpuCount()))` 적용 (CPU 코어 기반, 최소 1, 최대 8)
+  - PDF -> 이미지 렌더링: `@hyzyla/pdfium + sharp` 기반 순차 렌더링
   - `CONVERSION_UPLOAD_CONCURRENCY=8`
   - `VIDEO_CHUNK_DOWNLOAD_CONCURRENCY=8`
   - `VIDEO_HLS_UPLOAD_CONCURRENCY=12`

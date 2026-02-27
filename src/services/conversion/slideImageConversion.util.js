@@ -1,9 +1,7 @@
 import fs from "fs/promises";
-import { readFileSync } from "fs";
-import os from "os";
 import path from "path";
-import pLimit from "p-limit";
-import { listFiles, parsePositiveInt, runCmd } from "../../utils/conversion.util.js";
+import { PDFiumLibrary } from "@hyzyla/pdfium";
+import { parsePositiveInt } from "../../utils/conversion.util.js";
 
 const DEFAULT_DPI = 150;
 const DEFAULT_UPLOAD_CONCURRENCY = 8;
@@ -14,103 +12,10 @@ const DEFAULT_SLIDE_JPEG_MIN_SAVING_RATIO = 0.4;
 
 let sharpModulePromise;
 
-const getCgroupCpuCount = () => {
-  try {
-    const cpuMax = readFileSync("/sys/fs/cgroup/cpu.max", "utf8").trim();
-    const [quotaRaw, periodRaw] = cpuMax.split(" ");
-
-    if (quotaRaw && periodRaw && quotaRaw !== "max") {
-      const quota = Number(quotaRaw);
-      const period = Number(periodRaw);
-      if (Number.isFinite(quota) && Number.isFinite(period) && quota > 0 && period > 0) {
-        return Math.max(1, Math.floor(quota / period));
-      }
-    }
-  } catch {}
-
-  try {
-    const quota = Number(readFileSync("/sys/fs/cgroup/cpu/cpu.cfs_quota_us", "utf8").trim());
-    const period = Number(readFileSync("/sys/fs/cgroup/cpu/cpu.cfs_period_us", "utf8").trim());
-
-    if (Number.isFinite(quota) && Number.isFinite(period) && quota > 0 && period > 0) {
-      return Math.max(1, Math.floor(quota / period));
-    }
-  } catch {}
-
-  return null;
-};
-
-const getAvailableCpuCount = () => {
-  const hostCpuCount = Math.max(1, os.cpus()?.length || 1);
-  const cgroupCpuCount = getCgroupCpuCount();
-  if (!cgroupCpuCount) return hostCpuCount;
-  return Math.max(1, Math.min(hostCpuCount, cgroupCpuCount));
-};
-
-const DEFAULT_RENDER_WORKERS = Math.max(1, Math.min(8, getAvailableCpuCount()));
-
 const toBoundedNumber = (value, fallback, { min = Number.NEGATIVE_INFINITY, max = Number.POSITIVE_INFINITY } = {}) => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.max(min, Math.min(max, parsed));
-};
-
-const parsePdfPageCount = (stdout) => {
-  if (typeof stdout !== "string") return null;
-  const match = stdout.match(/^Pages:\s+(\d+)/m);
-  if (!match) return null;
-  const pageCount = Number(match[1]);
-  return Number.isInteger(pageCount) && pageCount > 0 ? pageCount : null;
-};
-
-const parseOutputPageNumber = (filePath) => {
-  const match = filePath.match(/-(\d+)\.png$/i);
-  if (!match) return 0;
-  const pageNum = Number(match[1]);
-  return Number.isInteger(pageNum) ? pageNum : 0;
-};
-
-const normalizeBinary = (defaultBinary, envKey) => {
-  if (process.platform !== "win32") return defaultBinary;
-  return process.env[envKey];
-};
-
-export const getPdfRendererBinary = () => normalizeBinary("pdftoppm", "PDFTOPPM_PATH");
-
-const buildPdfRenderArgs = ({ dpi, inputPdf, prefix, range }) => {
-  const args = [
-    "-png",
-    "-r",
-    String(dpi),
-    "-aa",
-    "yes",
-    "-aaVector",
-    "yes",
-    "-thinlinemode",
-    "shape",
-  ];
-  if (range) {
-    args.push("-f", String(range.start), "-l", String(range.end));
-  }
-  args.push(inputPdf, prefix);
-  return args;
-};
-
-const runPdfRender = async ({
-  args,
-  renderer,
-  jobId,
-  jobType,
-  stageBase,
-}) => {
-  const rendererName = path.basename(renderer).toLowerCase();
-  await runCmd(renderer, args, {
-    logMeta: {
-      jobId: String(jobId),
-      jobType,
-      stage: `${stageBase}.${rendererName}`,
-    },
-  });
 };
 
 const getSharp = async () => {
@@ -118,13 +23,12 @@ const getSharp = async () => {
 
   sharpModulePromise = import("sharp")
     .then((mod) => mod.default)
-    .catch(() => null);
+    .catch((error) => {
+      throw new Error(`SHARP_LOAD_FAILED: ${error.message}`);
+    });
 
   return sharpModulePromise;
 };
-
-export const getConversionRenderWorkers = () =>
-  parsePositiveInt(process.env.CONVERSION_RENDER_WORKERS, DEFAULT_RENDER_WORKERS);
 
 export const getConversionUploadConcurrency = () =>
   parsePositiveInt(process.env.CONVERSION_UPLOAD_CONCURRENCY, DEFAULT_UPLOAD_CONCURRENCY);
@@ -160,29 +64,22 @@ export const shouldUseNearLosslessJpeg = ({
   return savingRatio >= minSavingRatio;
 };
 
-export const splitPageRanges = (pageCount, workers) => {
-  const safePageCount = parsePositiveInt(pageCount, 0);
-  if (safePageCount <= 0) return [];
+const convertDpiToScale = (dpi) => {
+  const boundedDpi = toBoundedNumber(dpi, DEFAULT_DPI, { min: 1 });
+  return Math.max(1, boundedDpi / 72);
+};
 
-  const safeWorkers = Math.max(1, Math.min(parsePositiveInt(workers, 1), safePageCount));
-  const base = Math.floor(safePageCount / safeWorkers);
-  const remainder = safePageCount % safeWorkers;
-
-  let cursor = 1;
-  const ranges = [];
-
-  for (let i = 0; i < safeWorkers; i += 1) {
-    const size = base + (i < remainder ? 1 : 0);
-    if (size <= 0) continue;
-
-    const start = cursor;
-    const end = cursor + size - 1;
-    ranges.push({ start, end });
-
-    cursor = end + 1;
-  }
-
-  return ranges;
+const encodeBitmapToPng = async ({ data, width, height }) => {
+  const sharp = await getSharp();
+  return sharp(Buffer.from(data), {
+    raw: {
+      width,
+      height,
+      channels: 4,
+    },
+  })
+    .png()
+    .toBuffer();
 };
 
 export async function renderPdfToPngPages({
@@ -190,74 +87,44 @@ export async function renderPdfToPngPages({
   outDir,
   prefix,
   dpi = DEFAULT_DPI,
-  jobId,
-  jobType,
-  stageBase = "pdf_render",
 }) {
-  const renderer = getPdfRendererBinary();
-  if (!renderer) {
-    throw new Error("PDF_RENDERER_NOT_CONFIGURED");
-  }
+  await fs.mkdir(outDir, { recursive: true });
+  const pdfBuffer = await fs.readFile(inputPdf);
+  const scale = convertDpiToScale(dpi);
 
-  const PDFINFO = process.platform === "win32" ? process.env.PDFINFO_PATH : "pdfinfo";
-
-  let pageCount = null;
-
+  let library;
+  let document;
+  const files = [];
   try {
-    const pdfInfo = await runCmd(PDFINFO, [inputPdf], {
-      logMeta: {
-        jobId: String(jobId),
-        jobType,
-        stage: `${stageBase}.pdfinfo`,
-      },
-    });
-    pageCount = parsePdfPageCount(pdfInfo.stdout);
-  } catch (error) {
-    console.warn(`[Conversion] pdfinfo failed. using single-pass render: ${error.message}`);
+    library = await PDFiumLibrary.init();
+    document = await library.loadDocument(pdfBuffer);
+
+    const pageCount = document.getPageCount();
+    for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
+      const page = document.getPage(pageIndex);
+      const rendered = await page.render({
+        scale,
+        render: encodeBitmapToPng,
+      });
+
+      const outputPath = `${prefix}-${pageIndex + 1}.png`;
+      await fs.writeFile(outputPath, Buffer.from(rendered.data));
+      files.push(outputPath);
+    }
+
+    return files;
+  } finally {
+    if (document) {
+      try {
+        document.destroy();
+      } catch {}
+    }
+    if (library) {
+      try {
+        library.destroy();
+      } catch {}
+    }
   }
-
-  const renderWorkers = getConversionRenderWorkers();
-  const ranges = splitPageRanges(pageCount ?? 0, renderWorkers);
-
-  if (ranges.length === 0) {
-    await runPdfRender({
-      args: buildPdfRenderArgs({ dpi, inputPdf, prefix }),
-      renderer,
-      jobId,
-      jobType,
-      stageBase: `${stageBase}.single_pass`,
-    });
-  } else if (ranges.length === 1) {
-    const only = ranges[0];
-    await runPdfRender({
-      args: buildPdfRenderArgs({ dpi, inputPdf, prefix, range: only }),
-      renderer,
-      jobId,
-      jobType,
-      stageBase: `${stageBase}.pages.${only.start}-${only.end}`,
-    });
-  } else {
-    const limit = pLimit(ranges.length);
-    await Promise.all(
-      ranges.map((range) =>
-        limit(async () => {
-          await runPdfRender({
-            args: buildPdfRenderArgs({ dpi, inputPdf, prefix, range }),
-            renderer,
-            jobId,
-            jobType,
-            stageBase: `${stageBase}.pages.${range.start}-${range.end}`,
-          });
-        })
-      )
-    );
-  }
-
-  const files = (await listFiles(outDir))
-    .filter((filePath) => filePath.toLowerCase().endsWith(".png"))
-    .sort((a, b) => parseOutputPageNumber(a) - parseOutputPageNumber(b));
-
-  return files;
 }
 
 export async function chooseSlideImageUploadSource({
@@ -279,7 +146,6 @@ export async function chooseSlideImageUploadSource({
   if (policy !== "near_lossless") return defaultSelection;
 
   const sharp = await getSharp();
-  if (!sharp) return defaultSelection;
 
   const pngStat = await fs.stat(pngPath);
   const minPngBytes = getSlideJpegMinPngBytes();
